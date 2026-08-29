@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
-import { api } from '../../services/api';
+import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api';
 import { User, UserRole, NavItemConfig } from '../../types';
 import { InstallPwaModal } from '../common/InstallPwaModal';
 import {
@@ -21,7 +21,75 @@ import {
   EyeOff,
   RotateCcw,
   Sliders,
+  Database,
+  Plus,
+  Save,
+  Globe2,
 } from 'lucide-react';
+
+
+
+const BARCODE_PROVIDER_OPTIONS: Array<{
+  provider: BarcodeProviderKey;
+  label: string;
+  description: string;
+  supportsCountry: boolean;
+}> = [
+  {
+    provider: 'OPEN_FOOD_FACTS',
+    label: 'Open Food Facts',
+    description: 'Żywność, napoje i dane żywieniowe.',
+    supportsCountry: true,
+  },
+  {
+    provider: 'OPEN_BEAUTY_FACTS',
+    label: 'Open Beauty Facts',
+    description: 'Kosmetyki i produkty pielęgnacyjne.',
+    supportsCountry: false,
+  },
+  {
+    provider: 'OPEN_PRODUCTS_FACTS',
+    label: 'Open Products Facts',
+    description: 'Pozostałe produkty konsumenckie.',
+    supportsCountry: false,
+  },
+  {
+    provider: 'OPEN_PET_FOOD_FACTS',
+    label: 'Open Pet Food Facts',
+    description: 'Karma i produkty dla zwierząt.',
+    supportsCountry: false,
+  },
+];
+
+const COUNTRY_OPTIONS = [
+  { code: 'pl', label: 'Polska' },
+  { code: 'de', label: 'Niemcy' },
+  { code: 'cz', label: 'Czechy' },
+  { code: 'sk', label: 'Słowacja' },
+  { code: 'fr', label: 'Francja' },
+  { code: 'es', label: 'Hiszpania' },
+  { code: 'it', label: 'Włochy' },
+  { code: 'uk', label: 'Wielka Brytania' },
+  { code: 'us', label: 'USA' },
+  { code: 'world', label: 'World / globalna' },
+];
+
+const getBarcodeSourceLabel = (source: BarcodeSourceConfig): string => {
+  const provider = BARCODE_PROVIDER_OPTIONS.find(
+    (option) => option.provider === source.provider
+  );
+
+  if (!provider) return source.provider;
+
+  if (provider.supportsCountry) {
+    const country = COUNTRY_OPTIONS.find(
+      (option) => option.code === source.countryCode
+    );
+    return `${provider.label} — ${country?.label || source.countryCode.toUpperCase()}`;
+  }
+
+  return provider.label;
+};
 
 const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
   { id: 'dashboard', label: 'Pulpit', visible: true, order: 1 },
@@ -42,6 +110,11 @@ export const HouseholdSettingsView: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  // Źródła EAN
+  const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>([]);
+  const [barcodeSourcesLoading, setBarcodeSourcesLoading] = useState(true);
+  const [barcodeSourcesSaving, setBarcodeSourcesSaving] = useState(false);
 
   // Nawigacja
   const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => {
@@ -83,6 +156,181 @@ export const HouseholdSettingsView: React.FC = () => {
     saveNavConfig(DEFAULT_NAV_ITEMS);
   };
 
+
+  const fetchBarcodeSources = async () => {
+    try {
+      setBarcodeSourcesLoading(true);
+      const res = await api.getBarcodeSources();
+      setBarcodeSources(
+        [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
+      );
+    } catch (e: any) {
+      console.error('Błąd pobierania źródeł EAN:', e);
+      showToast(e.message || 'Nie udało się pobrać źródeł EAN.', 'error');
+    } finally {
+      setBarcodeSourcesLoading(false);
+    }
+  };
+
+  const normalizeBarcodePriorities = (
+    sources: BarcodeSourceConfig[]
+  ): BarcodeSourceConfig[] =>
+    sources.map((source, index) => ({
+      ...source,
+      priority: index + 1,
+    }));
+
+  const toggleBarcodeSource = (index: number) => {
+    setBarcodeSources((current) =>
+      current.map((source, sourceIndex) =>
+        sourceIndex === index
+          ? { ...source, enabled: !source.enabled }
+          : source
+      )
+    );
+  };
+
+  const moveBarcodeSource = (index: number, direction: 'up' | 'down') => {
+    setBarcodeSources((current) => {
+      const next = [...current];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+      if (targetIndex < 0 || targetIndex >= next.length) {
+        return current;
+      }
+
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return normalizeBarcodePriorities(next);
+    });
+  };
+
+  const removeBarcodeSource = (index: number) => {
+    setBarcodeSources((current) =>
+      normalizeBarcodePriorities(
+        current.filter((_, sourceIndex) => sourceIndex !== index)
+      )
+    );
+  };
+
+  const addBarcodeSource = () => {
+    setBarcodeSources((current) => {
+      const candidates: BarcodeSourceConfig[] = [
+        {
+          provider: 'OPEN_FOOD_FACTS',
+          countryCode: 'pl',
+          enabled: true,
+          priority: current.length + 1,
+        },
+        {
+          provider: 'OPEN_FOOD_FACTS',
+          countryCode: 'world',
+          enabled: true,
+          priority: current.length + 1,
+        },
+        {
+          provider: 'OPEN_BEAUTY_FACTS',
+          countryCode: 'world',
+          enabled: true,
+          priority: current.length + 1,
+        },
+        {
+          provider: 'OPEN_PRODUCTS_FACTS',
+          countryCode: 'world',
+          enabled: true,
+          priority: current.length + 1,
+        },
+        {
+          provider: 'OPEN_PET_FOOD_FACTS',
+          countryCode: 'world',
+          enabled: true,
+          priority: current.length + 1,
+        },
+      ];
+
+      const candidate = candidates.find(
+        (option) =>
+          !current.some(
+            (source) =>
+              source.provider === option.provider &&
+              source.countryCode === option.countryCode
+          )
+      );
+
+      if (!candidate) {
+        showToast(
+          'Masz już podstawowe źródła. Zmień kraj w jednym z wpisów Open Food Facts, aby dodać kolejne.',
+          'info'
+        );
+        return current;
+      }
+
+      return normalizeBarcodePriorities([...current, candidate]);
+    });
+  };
+
+  const updateBarcodeSourceProvider = (
+    index: number,
+    provider: BarcodeProviderKey
+  ) => {
+    setBarcodeSources((current) =>
+      current.map((source, sourceIndex) =>
+        sourceIndex === index
+          ? {
+              ...source,
+              provider,
+              countryCode:
+                provider === 'OPEN_FOOD_FACTS' ? source.countryCode || 'pl' : 'world',
+            }
+          : source
+      )
+    );
+  };
+
+  const updateBarcodeSourceCountry = (index: number, countryCode: string) => {
+    setBarcodeSources((current) =>
+      current.map((source, sourceIndex) =>
+        sourceIndex === index
+          ? { ...source, countryCode }
+          : source
+      )
+    );
+  };
+
+  const saveBarcodeSources = async () => {
+    try {
+      setBarcodeSourcesSaving(true);
+      const normalized = normalizeBarcodePriorities(barcodeSources);
+      const res = await api.updateBarcodeSources(normalized);
+      setBarcodeSources(
+        [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
+      );
+      showToast('Zapisano źródła wyszukiwania EAN.', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Nie udało się zapisać źródeł EAN.', 'error');
+    } finally {
+      setBarcodeSourcesSaving(false);
+    }
+  };
+
+  const resetBarcodeSources = async () => {
+    if (!window.confirm('Przywrócić domyślne źródła EAN: Open Food Facts PL → World?')) {
+      return;
+    }
+
+    try {
+      setBarcodeSourcesSaving(true);
+      const res = await api.resetBarcodeSources();
+      setBarcodeSources(
+        [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
+      );
+      showToast('Przywrócono domyślne źródła EAN.', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Nie udało się przywrócić ustawień EAN.', 'error');
+    } finally {
+      setBarcodeSourcesSaving(false);
+    }
+  };
+
   const fetchMembers = async () => {
     try {
       const res = await api.getHouseholdMembers();
@@ -94,7 +342,12 @@ export const HouseholdSettingsView: React.FC = () => {
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+    if (isAdmin) {
+      fetchBarcodeSources();
+    } else {
+      setBarcodeSourcesLoading(false);
+    }
+  }, [isAdmin]);
 
   const handleCopyCode = () => {
     if (user?.household?.inviteCode) {
@@ -304,6 +557,195 @@ export const HouseholdSettingsView: React.FC = () => {
         </div>
       </div>
 
+
+      {isAdmin && (
+        <>
+      {/* Źródła danych EAN */}
+      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <Database className="w-5 h-5 text-emerald-400" />
+              Źródła wyszukiwania EAN
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Skaner sprawdza źródła od góry do dołu. Produkt dodany ręcznie w aplikacji zawsze ma najwyższy priorytet.
+            </p>
+          </div>
+
+          {isAdmin && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={resetBarcodeSources}
+                disabled={barcodeSourcesSaving}
+                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold disabled:opacity-40"
+              >
+                <RotateCcw className="w-3.5 h-3.5 inline mr-1.5" />
+                Domyślne
+              </button>
+              <button
+                onClick={saveBarcodeSources}
+                disabled={barcodeSourcesSaving || barcodeSourcesLoading}
+                className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
+              >
+                <Save className="w-3.5 h-3.5 inline mr-1.5" />
+                {barcodeSourcesSaving ? 'Zapisywanie...' : 'Zapisz'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {!isAdmin && (
+          <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs">
+            Tylko administrator gospodarstwa może zmieniać kolejność i aktywne źródła.
+          </div>
+        )}
+
+        {barcodeSourcesLoading ? (
+          <div className="text-xs text-slate-400 py-3">Ładowanie źródeł EAN...</div>
+        ) : (
+          <div className="space-y-2">
+            {barcodeSources.map((source, index) => {
+              const providerMeta = BARCODE_PROVIDER_OPTIONS.find(
+                (option) => option.provider === source.provider
+              );
+
+              return (
+                <div
+                  key={`${source.provider}-${source.countryCode}-${index}`}
+                  className={`p-3 rounded-2xl border transition-colors ${
+                    source.enabled
+                      ? 'bg-slate-800/70 border-slate-700'
+                      : 'bg-slate-950/60 border-slate-800 opacity-65'
+                  }`}
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleBarcodeSource(index)}
+                      disabled={!isAdmin}
+                      className={`self-start lg:self-auto px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold border ${
+                        source.enabled
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                          : 'bg-slate-900 border-slate-700 text-slate-500'
+                      } disabled:cursor-default`}
+                    >
+                      {source.enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      {isAdmin ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <select
+                            value={source.provider}
+                            onChange={(e) =>
+                              updateBarcodeSourceProvider(
+                                index,
+                                e.target.value as BarcodeProviderKey
+                              )
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                          >
+                            {BARCODE_PROVIDER_OPTIONS.map((option) => (
+                              <option key={option.provider} value={option.provider}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          {providerMeta?.supportsCountry ? (
+                            <select
+                              value={source.countryCode}
+                              onChange={(e) =>
+                                updateBarcodeSourceCountry(index, e.target.value)
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                            >
+                              {COUNTRY_OPTIONS.map((country) => (
+                                <option key={country.code} value={country.code}>
+                                  {country.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 flex items-center gap-2">
+                              <Globe2 className="w-3.5 h-3.5" />
+                              Baza globalna
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-sm font-bold text-white">
+                            {getBarcodeSourceLabel(source)}
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-500 mt-1.5">
+                        {providerMeta?.description}
+                      </p>
+                    </div>
+
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 self-end lg:self-auto">
+                        <button
+                          onClick={() => moveBarcodeSource(index, 'up')}
+                          disabled={index === 0}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                          title="Wyższy priorytet"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => moveBarcodeSource(index, 'down')}
+                          disabled={index === barcodeSources.length - 1}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                          title="Niższy priorytet"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => removeBarcodeSource(index)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
+                          title="Usuń źródło"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 text-[10px] text-slate-600">
+                    Priorytet {index + 1}
+                  </div>
+                </div>
+              );
+            })}
+
+            {barcodeSources.length === 0 && (
+              <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
+                Brak skonfigurowanych źródeł. Skanowanie będzie korzystało z domyślnego Open Food Facts PL → World do czasu zapisania konfiguracji.
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAdmin && !barcodeSourcesLoading && (
+          <button
+            type="button"
+            onClick={addBarcodeSource}
+            className="w-full py-2.5 rounded-xl border border-dashed border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-slate-300 hover:text-emerald-300 text-xs font-bold transition-colors"
+          >
+            <Plus className="w-4 h-4 inline mr-1.5" />
+            Dodaj źródło
+          </button>
+        )}
+      </div>
+
+        </>
+      )}
+
       {/* Lista Członków Gospodarstwa */}
       <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
@@ -419,7 +861,7 @@ export const HouseholdSettingsView: React.FC = () => {
       </div>
 
       {/* Kopia Zapasowa & Dołączanie do innego gospodarstwa */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${!isAdmin ? 'sm:grid-cols-2' : ''}`}>
         <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
           <h4 className="font-bold text-sm text-white flex items-center gap-2">
             <Download className="w-4 h-4 text-emerald-400" />
@@ -436,6 +878,7 @@ export const HouseholdSettingsView: React.FC = () => {
           </button>
         </div>
 
+        {!isAdmin && (
         <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
           <h4 className="font-bold text-sm text-white flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-amber-400" />
@@ -458,6 +901,7 @@ export const HouseholdSettingsView: React.FC = () => {
             </button>
           </form>
         </div>
+        )}
       </div>
 
       <InstallPwaModal

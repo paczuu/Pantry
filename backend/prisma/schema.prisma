@@ -23,31 +23,57 @@ model User {
 }
 
 model Household {
-  id               String            @id @default(cuid())
-  name             String
-  inviteCode       String            @unique
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  members          User[]
-  pantryItems      PantryItem[]
-  shoppingLists    ShoppingList[]
-  notes            Note[]
-  activityLogs     ActivityLog[]
-  customCategories CategorySetting[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  inviteCode            String                 @unique
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  members               User[]
+  pantryItems           PantryItem[]
+  shoppingLists         ShoppingList[]
+  notes                 Note[]
+  activityLogs          ActivityLog[]
+  customCategories      CategorySetting[]
+  barcodeSourceSettings BarcodeSourceSetting[]
 }
 
 model ProductCatalog {
-  id          String   @id @default(cuid())
-  barcode     String   @unique
-  name        String
-  brand       String?
-  category    String?
-  capacity    String?  // np. "500g", "1L", "250ml"
-  imageUrl    String?
-  nutriScore  String?
-  source      String   @default("OFF") // "OFF" | "CUSTOM"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  barcode    String
+  name       String
+  brand      String?
+  category   String?
+  capacity   String?  // np. "500g", "1L", "250ml"
+  imageUrl   String?
+  nutriScore String?
+  source     String   @default("OPEN_FOOD_FACTS:world")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([barcode, source])
+  @@index([barcode])
+}
+
+model BarcodeSourceSetting {
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  // np. "OPEN_FOOD_FACTS", "OPEN_BEAUTY_FACTS", "OPEN_PRODUCTS_FACTS"
+  provider    String
+
+  // np. "pl", "de", "cz", "world".
+  // Dla providerów innych niż Open Food Facts obecnie używamy "world".
+  countryCode String    @default("world")
+
+  enabled     Boolean   @default(true)
+  priority    Int       @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([householdId, provider, countryCode])
+  @@index([householdId, priority])
 }
 
 model PantryItem {

@@ -15,6 +15,22 @@ import {
 
 const API_BASE = '/api';
 
+
+export type BarcodeProviderKey =
+  | 'OPEN_FOOD_FACTS'
+  | 'OPEN_BEAUTY_FACTS'
+  | 'OPEN_PRODUCTS_FACTS'
+  | 'OPEN_PET_FOOD_FACTS';
+
+export interface BarcodeSourceConfig {
+  id?: string;
+  provider: BarcodeProviderKey;
+  countryCode: string;
+  enabled: boolean;
+  priority: number;
+}
+
+
 class ApiService {
   private getToken(): string | null {
     return localStorage.getItem('spizarnia_token');
@@ -318,6 +334,33 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
+  async getBarcodeSources(): Promise<{
+    sources: BarcodeSourceConfig[];
+    usingDefaults: boolean;
+  }> {
+    return this.request('/settings/barcode-sources');
+  }
+
+  async updateBarcodeSources(
+    sources: BarcodeSourceConfig[]
+  ): Promise<{ sources: BarcodeSourceConfig[]; message: string }> {
+    return this.request('/settings/barcode-sources', {
+      method: 'PUT',
+      body: JSON.stringify({ sources }),
+    });
+  }
+
+  async resetBarcodeSources(): Promise<{
+    sources: BarcodeSourceConfig[];
+    usingDefaults: boolean;
+    message: string;
+  }> {
+    return this.request('/settings/barcode-sources', {
+      method: 'DELETE',
+    });
+  }
+
 }
 
 export const api = new ApiService();
