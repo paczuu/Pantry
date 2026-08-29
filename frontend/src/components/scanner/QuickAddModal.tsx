@@ -160,10 +160,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold mb-0.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                {initialProduct.source === 'OFF' ? 'Znaleziono w Open Food Facts' : 'Znaleziono w katalogu'}
-              </div>
               <div className="font-extrabold text-white truncate text-sm sm:text-base">{initialProduct.name}</div>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-xs text-slate-400">

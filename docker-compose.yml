@@ -1,16 +1,49 @@
 services:
-  smart-pantry:
+
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: smart-pantry-app
+
+    container_name: smart-pantry-backend
+
     restart: unless-stopped
-    ports:
-      - "3001:3001"
+
     environment:
-      - PORT=3001
-      - DATABASE_URL=file:/app/data/pantry.db
-      - JWT_SECRET=change-this-secret-in-production-random-key-999
-      - NODE_ENV=production
+      PORT: 3001
+      DATABASE_URL: file:/app/data/pantry.db
+      JWT_SECRET: change-this-secret-in-production-random-key-999
+      NODE_ENV: production
+
     volumes:
       - ./data:/app/data
+
+    expose:
+      - "3001"
+
+    networks:
+      - smart-pantry
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    container_name: smart-pantry-frontend
+
+    restart: unless-stopped
+
+    ports:
+      - "3001:80"
+
+    depends_on:
+      - backend
+
+    networks:
+      - smart-pantry
+
+
+networks:
+  smart-pantry:
+    driver: bridge
