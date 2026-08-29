@@ -1,0 +1,330 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Modal } from '../common/Modal';
+import { PantryItem } from '../../types';
+import { usePantry } from '../../contexts/PantryContext';
+import { useToast } from '../../contexts/ToastContext';
+import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
+import { api } from '../../services/api';
+import { Tag, Calendar, PackageOpen, Check, Scale, Minus, Plus, Mic, Loader2 } from 'lucide-react';
+
+interface EditPantryItemModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  item: PantryItem | null;
+}
+
+export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
+  isOpen,
+  onClose,
+  item,
+}) => {
+  const { categories, refreshPantry, refreshStats } = usePantry();
+  const { showToast } = useToast();
+
+  const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [capacity, setCapacity] = useState('');
+  const [category, setCategory] = useState('Inne');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [openedDate, setOpenedDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleVoiceDateDetected = useCallback((detectedDate: string) => {
+    setExpiryDate(detectedDate);
+  }, []);
+
+  const { isListening, isSupported, spokenTranscript, toggleListening, stopListening } = useVoiceExpiry(handleVoiceDateDetected);
+
+  useEffect(() => {
+    if (item) {
+      setName(item.name || '');
+      setBrand(item.brand || '');
+      setQuantity(item.quantity || 1);
+      setCapacity(item.capacity || '');
+      setCategory(item.category || 'Inne');
+      setExpiryDate(item.expiryDate ? item.expiryDate.split('T')[0] : '');
+      setOpenedDate(item.openedDate ? item.openedDate.split('T')[0] : '');
+      setNotes(item.notes || '');
+    }
+  }, [item, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen && isListening) {
+      stopListening();
+    }
+  }, [isOpen, isListening, stopListening]);
+
+  const handleClose = () => {
+    if (isListening) {
+      stopListening();
+    }
+
+    onClose();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!item || !name.trim()) return;
+
+    if (isListening) {
+      stopListening();
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await api.updatePantryItem(item.id, {
+        name: name.trim(),
+        brand: brand.trim() || null,
+        quantity: Math.max(1, quantity),
+        category,
+        expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
+        openedDate: openedDate ? new Date(openedDate).toISOString() : null,
+        notes: notes.trim() || null,
+      });
+
+      showToast(`Zaktualizowano "${name}"`, 'success');
+
+      await Promise.all([refreshPantry(), refreshStats()]);
+
+      onClose();
+    } catch (error: any) {
+      showToast(error.message || 'Błąd edycji produktu.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!item) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="Edycja produktu w spiżarni" maxWidth="lg">
+      <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Nazwa i Producent */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Nazwa produktu *
+            </label>
+
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Producent / Marka
+            </label>
+
+            <input
+              type="text"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        {/* Ilość + Pojemność */}
+        <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between gap-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-200">
+              Ilość (sztuki)
+            </label>
+
+            <p className="text-[11px] text-slate-400">
+              {capacity ? (
+                <span className="text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                  <Scale className="w-3 h-3" />
+                  Pojemność / Gramatura: {capacity}
+                </span>
+              ) : (
+                'Liczba sztuk w magazynie'
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-xl p-0.5">
+            <button
+              type="button"
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+
+            <span className="px-3 text-white font-extrabold text-sm min-w-[3rem] text-center">
+              {quantity} szt.
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setQuantity((q) => q + 1)}
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Kategoria */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+            <Tag className="w-3.5 h-3.5 text-cyan-400" />
+            Kategoria
+          </label>
+
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+          >
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.name}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Data ważności + głos */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-slate-300 flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-amber-400" />
+            Data ważności
+          </label>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+
+            {isSupported ? (
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`p-2.5 rounded-xl transition-all flex items-center gap-1.5 text-xs shrink-0 ${
+                  isListening
+                    ? 'bg-rose-500 text-white border border-rose-400 animate-pulse'
+                    : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'
+                }`}
+                title={isListening ? 'Zatrzymaj nasłuchiwanie' : 'Wprowadź datę głosem'}
+                aria-label={isListening ? 'Zatrzymaj nasłuchiwanie' : 'Wprowadź datę ważności głosem'}
+              >
+                <Mic className={`w-4 h-4 ${isListening ? 'text-white' : 'text-emerald-400'}`} />
+                <span className="hidden sm:inline">
+                  {isListening ? 'Słucham...' : 'Głosowo'}
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="p-2.5 rounded-xl flex items-center gap-1.5 text-xs shrink-0 bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed"
+                title="Rozpoznawanie mowy nie jest obsługiwane w tej przeglądarce"
+              >
+                <Mic className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  Brak obsługi
+                </span>
+              </button>
+            )}
+          </div>
+
+          {isListening && (
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-rose-500/20 text-xs text-rose-300 flex items-start gap-2 animate-fade-in">
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5" />
+
+              <div className="min-w-0">
+                <div className="font-semibold break-words">
+                  {spokenTranscript || 'Słucham...'}
+                </div>
+
+                {!spokenTranscript && (
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Powiedz np. „za 3 dni”, „15 maja”, „31 grudnia 2026”
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isListening && spokenTranscript && (
+            <div className="px-2 text-[11px] text-slate-500 break-words">
+              Ostatnio rozpoznano: „{spokenTranscript}”
+            </div>
+          )}
+        </div>
+
+        {/* Data otwarcia */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+            <PackageOpen className="w-3.5 h-3.5 text-cyan-400" />
+            Data otwarcia
+          </label>
+
+          <input
+            type="date"
+            value={openedDate}
+            onChange={(e) => setOpenedDate(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        {/* Notatki */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1">
+            Notatka
+          </label>
+
+          <input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Dodatkowe uwagi..."
+            className="w-full px-3.5 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        {/* Przyciski */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            Anuluj
+          </button>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-950/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+
+            {isSubmitting ? 'Zapisywanie...' : 'Zapisz zmiany'}
+          </button>
+        </div>
+
+      </form>
+    </Modal>
+  );
+};

@@ -1,0 +1,413 @@
+import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { prisma } from '../config/prisma.js';
+import { logActivity } from '../services/auditService.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'smart-pantry-super-secret-key-change-in-production-2026';
+
+const generateInviteCode = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
+const DEFAULT_CATEGORIES = [
+  { name: 'Nabiał', icon: 'milk', color: 'blue', order: 1 },
+  { name: 'Mięso i Ryby', icon: 'fish', color: 'rose', order: 2 },
+  { name: 'Warzywa i Owoce', icon: 'apple', color: 'emerald', order: 3 },
+  { name: 'Makarony i Sypkie', icon: 'wheat', color: 'amber', order: 4 },
+  { name: 'Napoje', icon: 'cup-soda', color: 'cyan', order: 5 },
+  { name: 'Przyprawy i Sosy', icon: 'flame', color: 'orange', order: 6 },
+  { name: 'Przekąski', icon: 'cookie', color: 'purple', order: 7 },
+  { name: 'Pieczywo', icon: 'croissant', color: 'yellow', order: 8 },
+  { name: 'Mrożonki', icon: 'ice-cream', color: 'sky', order: 9 },
+  { name: 'Przetwory i Konserwy', icon: 'soup', color: 'teal', order: 10 },
+  { name: 'Inne', icon: 'tag', color: 'gray', order: 11 },
+];
+
+export const initHouseholdDefaults = async (householdId: string) => {
+  // Dodaj domyślne kategorie
+  for (const cat of DEFAULT_CATEGORIES) {
+    await prisma.categorySetting.upsert({
+      where: { householdId_name: { householdId, name: cat.name } },
+      update: {},
+      create: { householdId, name: cat.name, icon: cat.icon, color: cat.color, order: cat.order },
+    });
+  }
+
+  // Utwórz domyślną listę zakupów
+  const existingList = await prisma.shoppingList.findFirst({
+    where: { householdId },
+  });
+  if (!existingList) {
+    await prisma.shoppingList.create({
+      data: {
+        householdId,
+        name: 'Główna lista zakupów',
+        icon: 'shopping-cart',
+        color: 'emerald',
+      },
+    });
+  }
+};
+
+const registerSchema = z.object({
+  email: z.string().email('Nieprawidłowy adres email'),
+  password: z.string().min(6, 'Hasło musi mieć co najmniej 6 znaków'),
+  name: z.string().min(2, 'Imię musi mieć co najmniej 2 znaki'),
+  householdName: z.string().optional(),
+  inviteCode: z.string().optional(),
+});
+
+export const register = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parseResult = registerSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ error: parseResult.error.errors[0].message });
+      return;
+    }
+
+    const { email, password, name, householdName, inviteCode } = parseResult.data;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (existingUser) {
+      res.status(400).json({ error: 'Użytkownik o podanym adresie email już istnieje.' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    let householdId: string;
+    let role = 'ADMIN';
+
+    if (inviteCode && inviteCode.trim()) {
+      const household = await prisma.household.findUnique({
+        where: { inviteCode: inviteCode.trim().toUpperCase() },
+      });
+
+      if (!household) {
+        res.status(400).json({ error: 'Nieprawidłowy kod zaproszenia do gospodarstwa.' });
+        return;
+      }
+
+      householdId = household.id;
+      role = 'MEMBER';
+    } else {
+      let uniqueCode = generateInviteCode();
+      while (await prisma.household.findUnique({ where: { inviteCode: uniqueCode } })) {
+        uniqueCode = generateInviteCode();
+      }
+
+      const newHousehold = await prisma.household.create({
+        data: {
+          name: householdName?.trim() || `Spiżarnia (${name})`,
+          inviteCode: uniqueCode,
+        },
+      });
+
+      householdId = newHousehold.id;
+      role = 'ADMIN';
+
+      await initHouseholdDefaults(householdId);
+    }
+
+    const newUser = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        passwordHash,
+        name: name.trim(),
+        role,
+        householdId,
+      },
+      include: {
+        household: true,
+      },
+    });
+
+    await logActivity({
+      householdId,
+      userId: newUser.id,
+      userName: newUser.name,
+      userEmail: newUser.email,
+      action: role === 'ADMIN' ? 'UTWORZONO_GOSPODARSTWO' : 'DOLACZONO_DO_DOMU',
+      entityType: 'MEMBER',
+      entityName: newUser.name,
+      details: role === 'ADMIN'
+        ? `Użytkownik założył nowe gospodarstwo domowe "${newUser.household?.name}".`
+        : `Użytkownik dołączył do gospodarstwa za pomocą kodu zaproszenia.`,
+    });
+
+    const token = jwt.sign(
+      { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role, householdId: newUser.householdId },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.status(201).json({
+      message: 'Konto utworzone pomyślnie.',
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        householdId: newUser.householdId,
+        household: newUser.household,
+      },
+    });
+  } catch (error) {
+    console.error('Błąd rejestracji:', error);
+    res.status(500).json({ error: 'Wystąpił błąd podczas rejestracji.' });
+  }
+};
+
+export const login = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'Podaj email i hasło.' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { household: true },
+    });
+
+    if (!user) {
+      res.status(400).json({ error: 'Nieprawidłowy email lub hasło.' });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      res.status(400).json({ error: 'Nieprawidłowy email lub hasło.' });
+      return;
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: user.role, householdId: user.householdId },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      message: 'Zalogowano pomyślnie.',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        householdId: user.householdId,
+        household: user.household,
+      },
+    });
+  } catch (error) {
+    console.error('Błąd logowania:', error);
+    res.status(500).json({ error: 'Wystąpił błąd podczas logowania.' });
+  }
+};
+
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        role: true,
+        householdId: true,
+        household: {
+          include: {
+            members: {
+              select: { id: true, name: true, email: true, role: true, createdAt: true },
+            },
+            customCategories: { orderBy: { order: 'asc' } },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Użytkownik nie został odnaleziony.' });
+      return;
+    }
+
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas pobierania danych profilu.' });
+  }
+};
+
+export const joinHousehold = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { inviteCode } = req.body;
+    if (!inviteCode) {
+      res.status(400).json({ error: 'Podaj kod zaproszenia.' });
+      return;
+    }
+
+    const household = await prisma.household.findUnique({
+      where: { inviteCode: inviteCode.trim().toUpperCase() },
+    });
+
+    if (!household) {
+      res.status(404).json({ error: 'Gospodarstwo o takim kodzie nie istnieje.' });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        householdId: household.id,
+        role: 'MEMBER',
+      },
+      include: { household: true },
+    });
+
+    await logActivity({
+      householdId: household.id,
+      userId: req.user!.id,
+      userName: req.user!.name,
+      userEmail: req.user!.email,
+      action: 'DOLACZONO_DO_DOMU',
+      entityType: 'MEMBER',
+      entityName: req.user!.name,
+      details: `${req.user!.name} dołączył(a) do gospodarstwa domowego.`,
+    });
+
+    res.json({ message: 'Dołączono do gospodarstwa.', user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas dołączania do gospodarstwa.' });
+  }
+};
+
+export const getHouseholdMembers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const householdId = req.user!.householdId;
+    if (!householdId) {
+      res.status(400).json({ error: 'Brak przypisanego gospodarstwa.' });
+      return;
+    }
+
+    const members = await prisma.user.findMany({
+      where: { householdId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ members });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas pobierania członków.' });
+  }
+};
+
+export const updateMemberRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { memberId } = req.params;
+    const { role } = req.body;
+
+    if (!['ADMIN', 'MEMBER'].includes(role)) {
+      res.status(400).json({ error: 'Nieprawidłowa rola. Dostępne: ADMIN, MEMBER.' });
+      return;
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!targetUser || targetUser.householdId !== req.user!.householdId) {
+      res.status(404).json({ error: 'Członek nie został odnaleziony w tym gospodarstwie.' });
+      return;
+    }
+
+    if (targetUser.id === req.user!.id && role === 'MEMBER') {
+      const adminCount = await prisma.user.count({
+        where: { householdId: req.user!.householdId!, role: 'ADMIN' },
+      });
+      if (adminCount <= 1) {
+        res.status(400).json({ error: 'Nie możesz odebrać sobie roli administratora, jesteś jedynym administratorem.' });
+        return;
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: memberId },
+      data: { role },
+      select: { id: true, name: true, email: true, role: true },
+    });
+
+    await logActivity({
+      householdId: req.user!.householdId!,
+      userId: req.user!.id,
+      userName: req.user!.name,
+      userEmail: req.user!.email,
+      action: 'ZMIANA_ROLI',
+      entityType: 'MEMBER',
+      entityName: targetUser.name,
+      details: `Administrator ${req.user!.name} zmienił rolę użytkownika ${targetUser.name} (${targetUser.email}) na: ${role}.`,
+    });
+
+    res.json({ message: 'Rola została zaktualizowana.', member: updated });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas aktualizacji roli.' });
+  }
+};
+
+export const removeMember = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { memberId } = req.params;
+
+    if (memberId === req.user!.id) {
+      res.status(400).json({ error: 'Nie możesz usunąć samego siebie z gospodarstwa.' });
+      return;
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!targetUser || targetUser.householdId !== req.user!.householdId) {
+      res.status(404).json({ error: 'Użytkownik nie należy do tego gospodarstwa.' });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: memberId },
+      data: { householdId: null, role: 'MEMBER' },
+    });
+
+    await logActivity({
+      householdId: req.user!.householdId!,
+      userId: req.user!.id,
+      userName: req.user!.name,
+      userEmail: req.user!.email,
+      action: 'USUNIETO_CZLONKA',
+      entityType: 'MEMBER',
+      entityName: targetUser.name,
+      details: `Administrator ${req.user!.name} usunął użytkownika ${targetUser.name} (${targetUser.email}) z gospodarstwa.`,
+    });
+
+    res.json({ message: 'Członek został usunięty z gospodarstwa.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas usuwania członka.' });
+  }
+};

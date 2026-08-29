@@ -1,0 +1,16 @@
+services:
+  smart-pantry:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-pantry-app
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=file:/app/data/pantry.db
+      - JWT_SECRET=change-this-secret-in-production-random-key-999
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data

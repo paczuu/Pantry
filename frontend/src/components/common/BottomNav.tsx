@@ -1,0 +1,121 @@
+import React, { useState, useEffect } from 'react';
+import {
+  LayoutDashboard,
+  Boxes,
+  QrCode,
+  ShoppingCart,
+  BookOpen,
+  History,
+  Settings,
+} from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { NavItemConfig } from '../../types';
+
+interface BottomNavProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  onOpenScanner: () => void;
+}
+
+const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
+  { id: 'dashboard', label: 'Pulpit', visible: true, order: 1 },
+  { id: 'pantry', label: 'Spiżarnia', visible: true, order: 2 },
+  { id: 'scan-action', label: 'Skaner', visible: true, order: 3 },
+  { id: 'shopping', label: 'Zakupy', visible: true, order: 4 },
+  { id: 'notes', label: 'Notatki', visible: true, order: 5 },
+  { id: 'audit', label: 'Audyt', visible: true, order: 6 },
+  { id: 'settings', label: 'Opcje', visible: true, order: 7 },
+];
+
+const ICONS_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  dashboard: LayoutDashboard,
+  pantry: Boxes,
+  'scan-action': QrCode,
+  shopping: ShoppingCart,
+  notes: BookOpen,
+  audit: History,
+  settings: Settings,
+};
+
+export const BottomNav: React.FC<BottomNavProps> = ({
+  activeTab,
+  setActiveTab,
+  onOpenScanner,
+}) => {
+  const { isAdmin } = useAuth();
+  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem('spizarnia_nav_config');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return DEFAULT_NAV_ITEMS;
+  });
+
+  useEffect(() => {
+    const handleNavChange = () => {
+      try {
+        const saved = localStorage.getItem('spizarnia_nav_config');
+        if (saved) {
+          setNavConfig(JSON.parse(saved));
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('spizarnia_nav_updated', handleNavChange);
+    return () => {
+      window.removeEventListener('spizarnia_nav_updated', handleNavChange);
+    };
+  }, []);
+
+  // Filtruj widoczne i posortowane
+  const visibleItems = navConfig
+    .filter((item) => {
+      if (!item.visible) return false;
+      if (item.id === 'audit' && !isAdmin) return false;
+      return true;
+    })
+    .sort((a, b) => a.order - b.order);
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 pb-[env(safe-area-inset-bottom)] md:static md:bg-transparent md:border-none md:pb-0">
+      <div className="max-w-md mx-auto px-2 flex items-center justify-around h-16 md:hidden">
+        {visibleItems.map((item) => {
+          const Icon = ICONS_MAP[item.id] || LayoutDashboard;
+
+          if (item.id === 'scan-action') {
+            return (
+              <button
+                key={item.id}
+                onClick={onOpenScanner}
+                className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-400 hover:text-emerald-400 transition-colors"
+              >
+                <Icon className="w-5 h-5 mb-0.5" />
+                <span className="text-[10px] tracking-tight font-medium">{item.label}</span>
+              </button>
+            );
+          }
+
+          const isActive = activeTab === item.id;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center justify-center flex-1 py-1 px-1 transition-colors ${
+                isActive ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'scale-110 text-emerald-400' : ''} transition-transform`} />
+              <span className="text-[10px] tracking-tight">{item.label}</span>
+              {isActive && (
+                <span className="w-1 h-1 bg-emerald-400 rounded-full mt-0.5 animate-fade-in" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+};

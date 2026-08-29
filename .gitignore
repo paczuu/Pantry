@@ -1,0 +1,17 @@
+# Główne foldery i pliki
+/data/
+.env
+
+# Backend (Node.js)
+backend/node_modules/
+backend/dist/
+backend/data/
+backend/.env
+
+# Frontend (np. React / Vite / Angular)
+frontend/node_modules/
+frontend/dist/
+
+# Systemowe pliki operacyjne
+.DS_Store
+Thumbs.db

@@ -1,0 +1,141 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x", "linux-musl"]
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  avatar       String?
+  role         String      @default("MEMBER") // "ADMIN" | "MEMBER"
+  householdId  String?
+  household    Household?  @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  activityLogs ActivityLog[]
+}
+
+model Household {
+  id               String            @id @default(cuid())
+  name             String
+  inviteCode       String            @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  members          User[]
+  pantryItems      PantryItem[]
+  shoppingLists    ShoppingList[]
+  notes            Note[]
+  activityLogs     ActivityLog[]
+  customCategories CategorySetting[]
+}
+
+model ProductCatalog {
+  id          String   @id @default(cuid())
+  barcode     String   @unique
+  name        String
+  brand       String?
+  category    String?
+  capacity    String?  // np. "500g", "1L", "250ml"
+  imageUrl    String?
+  nutriScore  String?
+  source      String   @default("OFF") // "OFF" | "CUSTOM"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PantryItem {
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  barcode     String?
+  name        String
+  brand       String?
+  category    String    @default("Inne")
+  quantity    Int       @default(1) // wyłącznie sztuki
+  capacity    String?   // np. "500g", "1.5L", "250ml"
+  expiryDate  DateTime?
+  openedDate  DateTime?
+  notes       String?
+  imageUrl    String?
+  status      String    @default("ACTIVE") // ACTIVE, CONSUMED, WASTED
+  addedById   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ShoppingList {
+  id          String         @id @default(cuid())
+  householdId String
+  household   Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name        String
+  icon        String         @default("shopping-bag")
+  color       String         @default("emerald")
+  isArchived  Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  items       ShoppingItem[]
+}
+
+model ShoppingItem {
+  id             String       @id @default(cuid())
+  shoppingListId String
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  name           String
+  quantity       Int          @default(1) // wyłącznie sztuki
+  capacity       String?      // np. "500g", "1L"
+  category       String       @default("Inne")
+  barcode        String?
+  isChecked      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Note {
+  id            String    @id @default(cuid())
+  householdId   String
+  household     Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  title         String
+  content       String    @default("")
+  isChecklist   Boolean   @default(false)
+  checklistData String?   // JSON string z elementami checklisty [{id, text, completed}]
+  color         String    @default("default") // default, emerald, blue, amber, rose, purple
+  isPinned      Boolean   @default(false)
+  category      String    @default("Ogólne")
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ActivityLog {
+  id          String     @id @default(cuid())
+  householdId String
+  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName    String
+  userEmail   String
+  action      String     // "DODANO_PRODUKT", "ZMIENIONO_WARTOSCI", "ZMNIEJSZONO_ILOSC", "USUNIETO_PRODUKT", "PRZENIESIONO_Z_ZAKUPOW", etc.
+  entityType  String     // "PANTRY_ITEM", "SHOPPING_ITEM", "NOTE", "MEMBER"
+  entityName  String
+  details     String     // JSON opis zmian
+  createdAt   DateTime   @default(now())
+}
+
+model CategorySetting {
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name        String
+  icon        String    @default("tag")
+  color       String    @default("gray")
+  order       Int       @default(0)
+
+  @@unique([householdId, name])
+}
