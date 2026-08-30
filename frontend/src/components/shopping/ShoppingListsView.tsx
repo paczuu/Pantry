@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingList, ShoppingItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { TransferToPantryModal } from './TransferToPantryModal';
 import { Modal } from '../common/Modal';
+import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
+import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
+import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
 import {
   Plus,
   Trash2,
@@ -34,9 +37,10 @@ export const ShoppingListsView: React.FC = () => {
   const [isNewListModalOpen, setIsNewListModalOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const newItemNameRef = useRef<HTMLInputElement>(null);
 
-  const fetchLists = async () => {
-    setIsLoading(true);
+  const fetchLists = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const data = await api.getShoppingLists();
       setLists(data.lists || []);
@@ -53,6 +57,8 @@ export const ShoppingListsView: React.FC = () => {
   useEffect(() => {
     fetchLists();
   }, []);
+
+  useLiveRefresh('spizarnia_shopping_refresh', () => fetchLists(true));
 
   const activeList = lists.find((l) => l.id === activeListId) || lists[0];
 

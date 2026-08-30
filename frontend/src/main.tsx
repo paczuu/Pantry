@@ -5,9 +5,9 @@ import { App } from './App';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { PantryProvider } from './contexts/PantryContext';
+import { RealtimeProvider } from './contexts/RealtimeContext';
 import './index.css';
 
-// Rejestracja Service Workera dla wsparcia PWA i pracy offline
 registerSW({ immediate: true });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -15,7 +15,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ToastProvider>
       <AuthProvider>
         <PantryProvider>
-          <App />
+          <RealtimeProvider>
+            <App />
+          </RealtimeProvider>
         </PantryProvider>
       </AuthProvider>
     </ToastProvider>

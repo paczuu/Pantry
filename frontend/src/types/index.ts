@@ -166,3 +166,12 @@ export interface NavItemConfig {
   visible: boolean;
   order: number;
 }
+
+export type DataScope = 'pantry' | 'shopping' | 'notes' | 'recipes' | 'settings' | 'household';
+
+export interface PresenceEditor {
+  userId: string;
+  userName: string;
+  entityType: string;
+  entityId: string;
+}

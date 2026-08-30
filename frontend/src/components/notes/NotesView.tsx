@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Note, NoteColor, ChecklistItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { Modal } from '../common/Modal';
+import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
+import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
+import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
 import {
   BookOpen,
   Plus,
@@ -34,6 +37,7 @@ export const NotesView: React.FC = () => {
   const [color, setColor] = useState<NoteColor>('default');
   const [category, setCategory] = useState('Ogólne');
   const [isPinned, setIsPinned] = useState(false);
+  const checklistInputRef = useRef<HTMLInputElement>(null);
 
   const fetchNotes = async () => {
     setIsLoading(true);
@@ -50,6 +54,9 @@ export const NotesView: React.FC = () => {
   useEffect(() => {
     fetchNotes();
   }, []);
+
+  useLiveRefresh('spizarnia_notes_refresh', fetchNotes);
+  useEditingPresence('note', editingNote?.id || null, isModalOpen && !!editingNote);
 
   const handleOpenAdd = () => {
     setEditingNote(null);
@@ -92,6 +99,7 @@ export const NotesView: React.FC = () => {
     };
     setChecklistItems((prev) => [...prev, newItem]);
     setNewChecklistText('');
+    window.setTimeout(() => focusAndKeepVisible(checklistInputRef.current), 0);
   };
 
   const handleRemoveChecklistItem = (id: string) => {
@@ -286,6 +294,7 @@ export const NotesView: React.FC = () => {
                       <h4 className="font-extrabold text-base text-white tracking-tight line-clamp-1">
                         {note.title}
                       </h4>
+                      <LiveEditorsBadge entityType="note" entityId={note.id} className="mt-1" />
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
@@ -412,9 +421,11 @@ export const NotesView: React.FC = () => {
               
               <div className="flex gap-2">
                 <input
+                  ref={checklistInputRef}
                   type="text"
                   value={newChecklistText}
                   onChange={(e) => setNewChecklistText(e.target.value)}
+                  enterKeyHint="enter"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();

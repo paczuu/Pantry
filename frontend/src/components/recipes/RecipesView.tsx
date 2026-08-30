@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Recipe } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { Modal } from '../common/Modal';
+import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
+import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
+import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
 import {
   ChefHat,
   Plus,
@@ -42,6 +45,7 @@ export const RecipesView: React.FC = () => {
   const [newIngredient, setNewIngredient] = useState('');
   const [notes, setNotes] = useState('');
   const [showNotesField, setShowNotesField] = useState(false);
+  const ingredientInputRef = useRef<HTMLInputElement>(null);
 
   const fetchRecipes = async () => {
     setIsLoading(true);
@@ -58,6 +62,9 @@ export const RecipesView: React.FC = () => {
   useEffect(() => {
     fetchRecipes();
   }, []);
+
+  useLiveRefresh('spizarnia_recipes_refresh', fetchRecipes);
+  useEditingPresence('recipe', editingRecipe?.id || null, isModalOpen && !!editingRecipe);
 
   const resetForm = () => {
     setEditingRecipe(null);
@@ -89,6 +96,7 @@ export const RecipesView: React.FC = () => {
     if (!newIngredient.trim()) return;
     setIngredients((prev) => [...prev, newIngredient.trim()]);
     setNewIngredient('');
+    window.setTimeout(() => focusAndKeepVisible(ingredientInputRef.current), 0);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -198,6 +206,7 @@ export const RecipesView: React.FC = () => {
                     <h3 className="font-extrabold text-base text-white tracking-tight">
                       {recipe.name}
                     </h3>
+                    <LiveEditorsBadge entityType="recipe" entityId={recipe.id} className="mt-1" />
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       {items.length} {items.length === 1 ? 'składnik' : 'składników'}
                     </p>
@@ -297,9 +306,11 @@ export const RecipesView: React.FC = () => {
             <label className="block text-xs font-semibold text-slate-300">Lista składników</label>
             <div className="flex gap-2">
               <input
+                ref={ingredientInputRef}
                 type="text"
                 value={newIngredient}
                 onChange={(e) => setNewIngredient(e.target.value)}
+                enterKeyHint="enter"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();

@@ -19,16 +19,29 @@ export const getHouseholdSettings = async (req: Request, res: Response): Promise
 export const updateHouseholdSettings = async (req: Request, res: Response): Promise<void> => {
   try {
     const householdId = req.user!.householdId!;
-    const { expiryWarningDays } = req.body;
+    const { expiryWarningDays, name } = req.body;
+    const data: { expiryWarningDays?: number; name?: string } = {};
+
+    if (expiryWarningDays !== undefined) {
+      data.expiryWarningDays = clampExpiryWarningDays(expiryWarningDays);
+    }
+
+    if (name !== undefined) {
+      if (req.user!.role !== 'ADMIN') {
+        res.status(403).json({ error: 'Tylko administrator może zmienić nazwę gospodarstwa.' });
+        return;
+      }
+      const trimmed = String(name).trim();
+      if (!trimmed) {
+        res.status(400).json({ error: 'Nazwa gospodarstwa nie może być pusta.' });
+        return;
+      }
+      data.name = trimmed;
+    }
 
     const household = await prisma.household.update({
       where: { id: householdId },
-      data: {
-        expiryWarningDays:
-          expiryWarningDays !== undefined
-            ? clampExpiryWarningDays(expiryWarningDays)
-            : undefined,
-      },
+      data,
       select: { id: true, name: true, expiryWarningDays: true },
     });
 

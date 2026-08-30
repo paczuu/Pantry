@@ -375,8 +375,9 @@ class ApiService {
   }
 
   async updateHouseholdSettings(data: {
-    expiryWarningDays: number;
-  }): Promise<{ settings: { expiryWarningDays: number }; message: string }> {
+    expiryWarningDays?: number;
+    name?: string;
+  }): Promise<{ settings: { expiryWarningDays: number; name: string }; message: string }> {
     return this.request('/settings/household', {
       method: 'PUT',
       body: JSON.stringify(data),
