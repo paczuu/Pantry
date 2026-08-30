@@ -5,11 +5,16 @@ import {
   QrCode,
   ShoppingCart,
   BookOpen,
+  ChefHat,
   History,
   Settings,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { NavItemConfig } from '../../types';
+import {
+  NAV_CONFIG_UPDATED_EVENT,
+  loadNavConfig,
+} from '../../utils/navConfig';
 
 interface BottomNavProps {
   activeTab: string;
@@ -17,22 +22,13 @@ interface BottomNavProps {
   onOpenScanner: () => void;
 }
 
-const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
-  { id: 'dashboard', label: 'Pulpit', visible: true, order: 1 },
-  { id: 'pantry', label: 'Spiżarnia', visible: true, order: 2 },
-  { id: 'scan-action', label: 'Skaner', visible: true, order: 3 },
-  { id: 'shopping', label: 'Zakupy', visible: true, order: 4 },
-  { id: 'notes', label: 'Notatki', visible: true, order: 5 },
-  { id: 'audit', label: 'Audyt', visible: true, order: 6 },
-  { id: 'settings', label: 'Opcje', visible: true, order: 7 },
-];
-
 const ICONS_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   pantry: Boxes,
   'scan-action': QrCode,
   shopping: ShoppingCart,
   notes: BookOpen,
+  recipes: ChefHat,
   audit: History,
   settings: Settings,
 };
@@ -43,33 +39,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenScanner,
 }) => {
   const { isAdmin } = useAuth();
-  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => {
-    try {
-      const saved = localStorage.getItem('spizarnia_nav_config');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {}
-    return DEFAULT_NAV_ITEMS;
-  });
+  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => loadNavConfig());
 
   useEffect(() => {
     const handleNavChange = () => {
-      try {
-        const saved = localStorage.getItem('spizarnia_nav_config');
-        if (saved) {
-          setNavConfig(JSON.parse(saved));
-        }
-      } catch (e) {}
+      setNavConfig(loadNavConfig());
     };
 
-    window.addEventListener('spizarnia_nav_updated', handleNavChange);
+    window.addEventListener(NAV_CONFIG_UPDATED_EVENT, handleNavChange);
     return () => {
-      window.removeEventListener('spizarnia_nav_updated', handleNavChange);
+      window.removeEventListener(NAV_CONFIG_UPDATED_EVENT, handleNavChange);
     };
   }, []);
 
-  // Filtruj widoczne i posortowane
   const visibleItems = navConfig
     .filter((item) => {
       if (!item.visible) return false;
@@ -80,7 +62,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 pb-[env(safe-area-inset-bottom)] md:static md:bg-transparent md:border-none md:pb-0">
-      <div className="max-w-md mx-auto px-2 flex items-center justify-around h-16 md:hidden">
+      <div className="max-w-xl mx-auto px-2 flex items-center justify-around h-16">
         {visibleItems.map((item) => {
           const Icon = ICONS_MAP[item.id] || LayoutDashboard;
 

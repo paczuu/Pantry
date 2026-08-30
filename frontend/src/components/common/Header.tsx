@@ -13,9 +13,10 @@ import {
 
 interface HeaderProps {
   onOpenSettings?: () => void;
+  onGoDashboard?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard }) => {
   const { user, logout, isAdmin } = useAuth();
   const { isInstalled } = usePwaInstall();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -26,7 +27,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
       <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo & Nazwa Domu */}
-          <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onGoDashboard}
+            className="flex items-center gap-3 text-left rounded-2xl -ml-1 px-1 py-0.5 hover:bg-slate-900/80 transition-colors"
+            title="Przejdź do pulpitu"
+          >
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-lg shadow-emerald-950/60 flex items-center justify-center">
               <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-emerald-400" />
@@ -48,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
                 {user?.household?.name || 'Gospodarstwo domowe'}
               </p>
             </div>
-          </div>
+          </button>
 
           {/* Prawa strona: Przycisk instalacji PWA + Profil */}
           <div className="flex items-center gap-2">

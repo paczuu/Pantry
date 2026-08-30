@@ -15,6 +15,7 @@ export interface Household {
   id: string;
   name: string;
   inviteCode: string;
+  expiryWarningDays?: number;
   createdAt: string;
   updatedAt?: string;
   members?: User[];
@@ -131,11 +132,24 @@ export interface ActivityLog {
   } | null;
 }
 
+export interface Recipe {
+  id: string;
+  householdId: string;
+  name: string;
+  instructions: string;
+  ingredients: string;
+  notes?: string | null;
+  createdById?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface PantryStats {
   totalActive: number;
   expiredCount: number;
   expiring3DaysCount: number;
   expiring7DaysCount: number;
+  expiryWarningDays?: number;
   openedCount: number;
   categoryCounts: Record<string, number>;
 }

@@ -11,6 +11,7 @@ import {
   Plus,
   ShoppingCart,
   BookOpen,
+  ChefHat,
   ArrowRight,
   MinusCircle,
 } from 'lucide-react';
@@ -28,18 +29,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onEditItem,
   setActiveTab,
 }) => {
-  const { items, stats, setFilter } = usePantry();
+  const { items, stats, setFilter, expiryWarningDays } = usePantry();
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const in3Days = new Date(today);
-  in3Days.setDate(in3Days.getDate() + 3);
+  const warningUntil = new Date(today);
+  warningUntil.setDate(warningUntil.getDate() + expiryWarningDays);
 
   // Filtruj produkty wymagające uwagi (przeterminowane lub wygasające w 3 dni)
   const urgentItems = items.filter((item) => {
     if (!item.expiryDate) return false;
     const exp = new Date(item.expiryDate);
-    return exp <= in3Days;
+    return exp <= warningUntil;
   });
 
   const handleFilterClick = (expiryFilter: string) => {
@@ -116,7 +117,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-2xl font-extrabold text-amber-300 mt-2">
             {stats?.expiring3DaysCount || 0}
           </div>
-          <div className="text-[11px] text-amber-400/80 mt-1">w ciągu 3 dni</div>
+          <div className="text-[11px] text-amber-400/80 mt-1">w ciągu {expiryWarningDays} {expiryWarningDays === 1 ? 'dnia' : 'dni'}</div>
         </div>
 
         {/* Przeterminowane */}
@@ -178,7 +179,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-1">
             <div className="text-emerald-400 font-bold text-sm">Wszystko świeże! 🥑</div>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Żaden z produktów w Twojej spiżarni nie przekracza terminu ważności w najbliższych 3 dniach.
+              Żaden z produktów w Twojej spiżarni nie przekracza terminu ważności w najbliższych {expiryWarningDays} {expiryWarningDays === 1 ? 'dniu' : 'dniach'}.
             </p>
           </div>
         ) : (
@@ -191,7 +192,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </div>
 
       {/* Szybkie skróty do List Zakupów i Notatek */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div
           onClick={() => setActiveTab('shopping')}
           className="p-5 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:border-emerald-500/40 shadow-lg group flex items-center justify-between"
@@ -218,10 +219,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div>
               <h4 className="font-bold text-white text-base">Notatki & Checklisty</h4>
-              <p className="text-xs text-slate-400">Zapisuj przepisy, wskazówki i listy zadań</p>
+              <p className="text-xs text-slate-400">Listy zadań, wskazówki i plany posiłków</p>
             </div>
           </div>
           <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
+        </div>
+
+        <div
+          onClick={() => setActiveTab('recipes')}
+          className="p-5 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:border-orange-500/40 shadow-lg group flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-400 group-hover:bg-orange-500 group-hover:text-slate-950 transition-colors">
+              <ChefHat className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-base">Przepisy</h4>
+              <p className="text-xs text-slate-400">Nazwa, składniki, treść i ukryte uwagi</p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
         </div>
       </div>
     </div>

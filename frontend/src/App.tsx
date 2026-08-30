@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { PantryPage } from './pages/PantryPage';
 import { ShoppingListsView } from './components/shopping/ShoppingListsView';
 import { NotesView } from './components/notes/NotesView';
+import { RecipesView } from './components/recipes/RecipesView';
 import { AuditLogsView } from './components/audit/AuditLogsView';
 import { HouseholdSettingsView } from './components/settings/HouseholdSettingsView';
 import { Header } from './components/common/Header';
@@ -49,7 +50,10 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col selection:bg-emerald-500 selection:text-white">
       {/* Pasek Górny */}
-      <Header onOpenSettings={() => setActiveTab('settings')} />
+      <Header
+        onOpenSettings={() => setActiveTab('settings')}
+        onGoDashboard={() => setActiveTab('dashboard')}
+      />
 
       {/* Główna Zawartość */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8">
@@ -73,6 +77,8 @@ export const App: React.FC = () => {
         {activeTab === 'shopping' && <ShoppingListsView />}
 
         {activeTab === 'notes' && <NotesView />}
+
+        {activeTab === 'recipes' && <RecipesView />}
 
         {activeTab === 'audit' && <AuditLogsView />}
 

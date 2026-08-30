@@ -28,7 +28,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   onEdit,
   viewMode = 'grid',
 }) => {
-  const { consumeItem, deleteItem, refreshPantry } = usePantry();
+  const { consumeItem, deleteItem, refreshPantry, expiryWarningDays } = usePantry();
   const { showToast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -99,11 +99,11 @@ export const PantryCard: React.FC<PantryCardProps> = ({
 
   if (item.expiryDate) {
     const exp = new Date(item.expiryDate);
-    const in3Days = new Date(today);
-    in3Days.setDate(in3Days.getDate() + 3);
+    const warningUntil = new Date(today);
+    warningUntil.setDate(warningUntil.getDate() + expiryWarningDays);
     if (exp < today) {
       isExpired = true;
-    } else if (exp <= in3Days) {
+    } else if (exp <= warningUntil) {
       isExpiringWarning = true;
     }
   }

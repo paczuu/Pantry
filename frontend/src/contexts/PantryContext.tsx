@@ -3,6 +3,7 @@ import { PantryItem, PantryStats, CategorySetting } from '../types';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { clampExpiryWarningDays } from '../utils/expiryWarning';
 
 interface FilterState {
   category: string;
@@ -17,6 +18,7 @@ interface PantryContextType {
   categories: CategorySetting[];
   isLoading: boolean;
   filters: FilterState;
+  expiryWarningDays: number;
   setFilter: (key: keyof FilterState, value: string) => void;
   resetFilters: () => void;
   refreshPantry: () => Promise<void>;
@@ -45,6 +47,10 @@ export const PantryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [categories, setCategories] = useState<CategorySetting[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+
+  const expiryWarningDays = clampExpiryWarningDays(
+    stats?.expiryWarningDays ?? user?.household?.expiryWarningDays
+  );
 
   const refreshSettings = useCallback(async () => {
     if (!user?.householdId) return;
@@ -155,6 +161,7 @@ export const PantryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         categories,
         isLoading,
         filters,
+        expiryWarningDays,
         setFilter,
         resetFilters,
         refreshPantry,

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
+import { addDays, getExpiryWarningDays } from '../utils/expiryWarning.js';
 
 export const getPantryItems = async (
   req: Request,
@@ -51,18 +52,18 @@ export const getPantryItems = async (
       now.getDate()
     );
 
-    const in3Days = new Date(today);
-    in3Days.setDate(in3Days.getDate() + 3);
+    const warningDays = await getExpiryWarningDays(householdId!);
+    const warningUntil = addDays(today, warningDays);
 
     const in7Days = new Date(today);
     in7Days.setDate(in7Days.getDate() + 7);
 
     if (filterByExpiry === 'expired') {
       where.expiryDate = { lt: today };
-    } else if (filterByExpiry === 'expiring_3_days') {
+    } else if (filterByExpiry === 'expiring_3_days' || filterByExpiry === 'expiring_soon') {
       where.expiryDate = {
         gte: today,
-        lte: in3Days,
+        lte: warningUntil,
       };
     } else if (filterByExpiry === 'expiring_7_days') {
       where.expiryDate = {
@@ -1020,10 +1021,8 @@ export const getPantryStats = async (
       now.getDate()
     );
 
-    const in3Days = new Date(today);
-    in3Days.setDate(
-      in3Days.getDate() + 3
-    );
+    const warningDays = await getExpiryWarningDays(householdId);
+    const warningUntil = addDays(today, warningDays);
 
     const in7Days = new Date(today);
     in7Days.setDate(
@@ -1056,7 +1055,7 @@ export const getPantryStats = async (
 
         if (exp < today) {
           expiredCount++;
-        } else if (exp <= in3Days) {
+        } else if (exp <= warningUntil) {
           expiring3DaysCount++;
         } else if (exp <= in7Days) {
           expiring7DaysCount++;
@@ -1069,6 +1068,7 @@ export const getPantryStats = async (
       expiredCount,
       expiring3DaysCount,
       expiring7DaysCount,
+      expiryWarningDays: warningDays,
       openedCount,
       categoryCounts,
     });

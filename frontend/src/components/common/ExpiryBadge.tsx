@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, Clock, CheckCircle, PackageOpen } from 'lucide-react';
+import { usePantry } from '../../contexts/PantryContext';
 
 interface ExpiryBadgeProps {
   expiryDate?: string | null;
@@ -12,6 +13,7 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({
   openedDate,
   className = '',
 }) => {
+  const { expiryWarningDays } = usePantry();
   if (!expiryDate && !openedDate) {
     return (
       <span className={`inline-flex items-center gap-1 text-xs text-slate-400 font-medium ${className}`}>
@@ -58,7 +60,7 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({
           Wygasa jutro
         </span>
       );
-    } else if (diffDays <= 3) {
+    } else if (diffDays <= expiryWarningDays) {
       statusEl = (
         <span
           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 ${className}`}

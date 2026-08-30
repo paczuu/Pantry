@@ -6,6 +6,12 @@ import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api
 import { User, UserRole, NavItemConfig } from '../../types';
 import { InstallPwaModal } from '../common/InstallPwaModal';
 import {
+  DEFAULT_NAV_ITEMS,
+  loadNavConfig,
+  persistNavConfig,
+} from '../../utils/navConfig';
+import { clampExpiryWarningDays } from '../../utils/expiryWarning';
+import {
   Users,
   Copy,
   ShieldCheck,
@@ -25,6 +31,7 @@ import {
   Plus,
   Save,
   Globe2,
+  Clock,
 } from 'lucide-react';
 
 
@@ -91,25 +98,17 @@ const getBarcodeSourceLabel = (source: BarcodeSourceConfig): string => {
   return provider.label;
 };
 
-const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
-  { id: 'dashboard', label: 'Pulpit', visible: true, order: 1 },
-  { id: 'pantry', label: 'Spiżarnia', visible: true, order: 2 },
-  { id: 'scan-action', label: 'Skaner', visible: true, order: 3 },
-  { id: 'shopping', label: 'Zakupy', visible: true, order: 4 },
-  { id: 'notes', label: 'Notatki', visible: true, order: 5 },
-  { id: 'audit', label: 'Audyt', visible: true, order: 6 },
-  { id: 'settings', label: 'Opcje', visible: true, order: 7 },
-];
-
 export const HouseholdSettingsView: React.FC = () => {
   const { user, isAdmin, refreshUser, joinHousehold } = useAuth();
-  const { categories, refreshSettings } = usePantry();
+  const { categories, refreshSettings, refreshStats, expiryWarningDays } = usePantry();
   const { showToast } = useToast();
 
   const [members, setMembers] = useState<User[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [warningDaysInput, setWarningDaysInput] = useState(String(expiryWarningDays));
+  const [warningDaysSaving, setWarningDaysSaving] = useState(false);
 
   // Źródła EAN
   const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>([]);
@@ -117,18 +116,11 @@ export const HouseholdSettingsView: React.FC = () => {
   const [barcodeSourcesSaving, setBarcodeSourcesSaving] = useState(false);
 
   // Nawigacja
-  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => {
-    try {
-      const saved = localStorage.getItem('spizarnia_nav_config');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return DEFAULT_NAV_ITEMS;
-  });
+  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => loadNavConfig());
 
   const saveNavConfig = (newConfig: NavItemConfig[]) => {
     setNavConfig(newConfig);
-    localStorage.setItem('spizarnia_nav_config', JSON.stringify(newConfig));
-    window.dispatchEvent(new Event('spizarnia_nav_updated'));
+    persistNavConfig(newConfig);
     showToast('Zapisano układ paska nawigacyjnego.', 'success');
   };
 
@@ -349,6 +341,26 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   }, [isAdmin]);
 
+  useEffect(() => {
+    setWarningDaysInput(String(expiryWarningDays));
+  }, [expiryWarningDays]);
+
+  const handleSaveExpiryWarningDays = async () => {
+    const days = clampExpiryWarningDays(warningDaysInput);
+    try {
+      setWarningDaysSaving(true);
+      await api.updateHouseholdSettings({ expiryWarningDays: days });
+      setWarningDaysInput(String(days));
+      await refreshUser();
+      await refreshStats();
+      showToast(`Alert o końcu terminu: ${days} ${days === 1 ? 'dzień' : 'dni'}.`, 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Nie udało się zapisać okresu ważności.', 'error');
+    } finally {
+      setWarningDaysSaving(false);
+    }
+  };
+
   const handleCopyCode = () => {
     if (user?.household?.inviteCode) {
       navigator.clipboard.writeText(user.household.inviteCode);
@@ -496,7 +508,7 @@ export const HouseholdSettingsView: React.FC = () => {
               Personalizacja paska nawigacji
             </h3>
             <p className="text-xs text-slate-400">
-              Zmieniaj kolejność przycisków na dolnym pasku oraz ukrywaj te, z których nie korzystasz
+              Usuń przyciski z dolnego paska (ikona oka) albo zmień ich kolejność. Ukryte pozycje nie pojawią się na telefonie.
             </p>
           </div>
           <button
@@ -557,6 +569,38 @@ export const HouseholdSettingsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Okres ostrzeżenia o terminie ważności */}
+      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+        <div>
+          <h3 className="font-bold text-base text-white flex items-center gap-2">
+            <Clock className="w-5 h-5 text-amber-400" />
+            Kończący się termin ważności
+          </h3>
+          <p className="text-xs text-slate-400 mt-1">
+            Pulpit, filtry spiżarni i alerty oznaczają produkty, których termin kończy się w podanej liczbie dni (domyślnie 3).
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <label className="text-xs font-semibold text-slate-300 shrink-0">Liczba dni</label>
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={warningDaysInput}
+            onChange={(e) => setWarningDaysInput(e.target.value)}
+            className="w-full sm:w-28 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+          />
+          <button
+            type="button"
+            onClick={handleSaveExpiryWarningDays}
+            disabled={warningDaysSaving}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
+          >
+            <Save className="w-3.5 h-3.5" />
+            Zapisz
+          </button>
+        </div>
+      </div>
 
       {isAdmin && (
         <>

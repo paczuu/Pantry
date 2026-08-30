@@ -26,12 +26,14 @@ model Household {
   id                    String                 @id @default(cuid())
   name                  String
   inviteCode            String                 @unique
+  expiryWarningDays     Int                    @default(3)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   members               User[]
   pantryItems           PantryItem[]
   shoppingLists         ShoppingList[]
   notes                 Note[]
+  recipes               Recipe[]
   activityLogs          ActivityLog[]
   customCategories      CategorySetting[]
   barcodeSourceSettings BarcodeSourceSetting[]
@@ -131,6 +133,19 @@ model Note {
   color         String    @default("default")
   isPinned      Boolean   @default(false)
   category      String    @default("Ogólne")
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Recipe {
+  id            String    @id @default(cuid())
+  householdId   String
+  household     Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name          String
+  instructions  String    @default("")
+  ingredients   String    @default("[]")
+  notes         String?
   createdById   String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

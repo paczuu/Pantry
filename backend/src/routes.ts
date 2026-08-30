@@ -6,6 +6,7 @@ import * as catalogController from './controllers/catalogController.js';
 import * as pantryController from './controllers/pantryController.js';
 import * as shoppingController from './controllers/shoppingController.js';
 import * as notesController from './controllers/notesController.js';
+import * as recipesController from './controllers/recipesController.js';
 import * as auditController from './controllers/auditController.js';
 import * as settingsController from './controllers/settingsController.js';
 import * as barcodeSettingsController from './controllers/barcodeSettingsController.js';
@@ -109,6 +110,12 @@ router.post('/notes', authenticateToken, notesController.createNote);
 router.put('/notes/:id', authenticateToken, notesController.updateNote);
 router.delete('/notes/:id', authenticateToken, notesController.deleteNote);
 
+// === Recipes / Przepisy ===
+router.get('/recipes', authenticateToken, recipesController.getRecipes);
+router.post('/recipes', authenticateToken, recipesController.createRecipe);
+router.put('/recipes/:id', authenticateToken, recipesController.updateRecipe);
+router.delete('/recipes/:id', authenticateToken, recipesController.deleteRecipe);
+
 // === Audit Log (Admin Only) ===
 router.get(
   '/audit-logs',
@@ -124,6 +131,8 @@ router.get(
 );
 
 // === Settings / Konfiguracja ===
+router.get('/settings/household', authenticateToken, settingsController.getHouseholdSettings);
+router.put('/settings/household', authenticateToken, settingsController.updateHouseholdSettings);
 router.get('/settings/categories', authenticateToken, settingsController.getCategories);
 router.post('/settings/categories', authenticateToken, settingsController.addCategory);
 router.delete(

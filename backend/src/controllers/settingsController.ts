@@ -1,5 +1,42 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
+import { clampExpiryWarningDays } from '../utils/expiryWarning.js';
+
+export const getHouseholdSettings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const householdId = req.user!.householdId!;
+    const household = await prisma.household.findUnique({
+      where: { id: householdId },
+      select: { id: true, name: true, expiryWarningDays: true },
+    });
+
+    res.json({ settings: household });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas pobierania ustawień gospodarstwa.' });
+  }
+};
+
+export const updateHouseholdSettings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const householdId = req.user!.householdId!;
+    const { expiryWarningDays } = req.body;
+
+    const household = await prisma.household.update({
+      where: { id: householdId },
+      data: {
+        expiryWarningDays:
+          expiryWarningDays !== undefined
+            ? clampExpiryWarningDays(expiryWarningDays)
+            : undefined,
+      },
+      select: { id: true, name: true, expiryWarningDays: true },
+    });
+
+    res.json({ settings: household, message: 'Zapisano ustawienia gospodarstwa.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Błąd podczas zapisywania ustawień gospodarstwa.' });
+  }
+};
 
 export const getCategories = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -67,6 +104,7 @@ export const exportHouseholdBackup = async (req: Request, res: Response): Promis
         pantryItems: true,
         shoppingLists: { include: { items: true } },
         notes: true,
+        recipes: true,
         customCategories: true,
       },
     });

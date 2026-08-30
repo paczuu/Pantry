@@ -21,7 +21,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
   viewMode,
   setViewMode,
 }) => {
-  const { filters, setFilter, resetFilters, categories, stats } = usePantry();
+  const { filters, setFilter, resetFilters, categories, stats, expiryWarningDays } = usePantry();
 
   return (
     <div className="space-y-3.5 mb-6">
@@ -113,7 +113,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             }`}
           >
             <Clock className="w-3.5 h-3.5 text-amber-400" />
-            Wkrótce po terminie ({stats?.expiring3DaysCount || 0})
+            Wkrótce ({expiryWarningDays} {expiryWarningDays === 1 ? 'dzień' : 'dni'}) ({stats?.expiring3DaysCount || 0})
           </button>
 
           <button

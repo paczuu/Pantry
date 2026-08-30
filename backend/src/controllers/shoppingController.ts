@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
+import { addDays, getExpiryWarningDays } from '../utils/expiryWarning.js';
 
 export const getShoppingLists = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -275,14 +276,14 @@ export const addExpiringToShoppingList = async (req: Request, res: Response): Pr
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const in3Days = new Date(today);
-    in3Days.setDate(in3Days.getDate() + 3);
+    const warningDays = await getExpiryWarningDays(householdId);
+    const warningUntil = addDays(today, warningDays);
 
     const expiringItems = await prisma.pantryItem.findMany({
       where: {
         householdId,
         status: 'ACTIVE',
-        expiryDate: { lte: in3Days },
+        expiryDate: { lte: warningUntil },
       },
     });
 

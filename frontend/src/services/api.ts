@@ -6,6 +6,7 @@ import {
   ShoppingList,
   ShoppingItem,
   Note,
+  Recipe,
   ActivityLog,
   CategorySetting,
   PantryStats,
@@ -292,6 +293,44 @@ class ApiService {
     });
   }
 
+  // === Recipes ===
+  async getRecipes(): Promise<{ recipes: Recipe[] }> {
+    return this.request('/recipes');
+  }
+
+  async createRecipe(recipe: {
+    name: string;
+    instructions?: string;
+    ingredients?: string[];
+    notes?: string | null;
+  }): Promise<{ recipe: Recipe }> {
+    return this.request('/recipes', {
+      method: 'POST',
+      body: JSON.stringify(recipe),
+    });
+  }
+
+  async updateRecipe(
+    id: string,
+    recipe: Partial<{
+      name: string;
+      instructions: string;
+      ingredients: string[];
+      notes: string | null;
+    }>
+  ): Promise<{ message: string }> {
+    return this.request(`/recipes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(recipe),
+    });
+  }
+
+  async deleteRecipe(id: string): Promise<{ message: string }> {
+    return this.request(`/recipes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // === Audit Logs (Admin Only) ===
   async getAuditLogs(params?: {
     page?: number;
@@ -332,6 +371,15 @@ class ApiService {
   async deleteCategory(id: string): Promise<{ message: string }> {
     return this.request(`/settings/categories/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  async updateHouseholdSettings(data: {
+    expiryWarningDays: number;
+  }): Promise<{ settings: { expiryWarningDays: number }; message: string }> {
+    return this.request('/settings/household', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 
