@@ -9,9 +9,7 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [householdName, setHouseholdName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
-  const [hasInviteCode, setHasInviteCode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,8 +22,7 @@ export const LoginPage: React.FC = () => {
           email.trim(),
           password,
           name.trim(),
-          hasInviteCode ? undefined : householdName.trim() || undefined,
-          hasInviteCode ? inviteCode.trim().toUpperCase() : undefined
+          inviteCode.trim() ? inviteCode.trim().toUpperCase() : undefined
         );
       } else {
         await login(email.trim(), password);
@@ -119,44 +116,23 @@ export const LoginPage: React.FC = () => {
               />
             </div>
 
-            {/* Opcje Gospodarstwa Domowego przy Rejestracji */}
             {isRegister && (
-              <div className="pt-2 border-t border-slate-800 space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-300 font-semibold">
-                  <span>Gospodarstwo domowe</span>
-                  <button
-                    type="button"
-                    onClick={() => setHasInviteCode(!hasInviteCode)}
-                    className="text-emerald-400 hover:underline"
-                  >
-                    {hasInviteCode ? 'Chcę założyć nowe' : 'Mam kod zaproszenia'}
-                  </button>
-                </div>
-
-                {hasInviteCode ? (
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Kod zaproszenia od domownika</label>
-                    <input
-                      type="text"
-                      required
-                      value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                      placeholder="np. AB12CD"
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Nazwa gospodarstwa (opcjonalnie)</label>
-                    <input
-                      type="text"
-                      value={householdName}
-                      onChange={(e) => setHouseholdName(e.target.value)}
-                      placeholder="np. Domowa Spiżarnia"
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                )}
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <label className="block text-[11px] text-slate-400 mb-1">
+                  Kod zaproszenia do gospodarstwa
+                </label>
+                <input
+                  type="text"
+                  minLength={6}
+                  maxLength={6}
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="np. AB12CD"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-[10px] text-slate-500">
+                  Rejestracja wymaga podania aktywnego kodu zaproszenia.
+                </p>
               </div>
             )}
 
@@ -166,7 +142,7 @@ export const LoginPage: React.FC = () => {
               className="w-full py-3 mt-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isRegister ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-              {isLoading ? 'Przetwarzanie...' : isRegister ? 'Zarejestruj i załóż spiżarnię' : 'Zaloguj się'}
+              {isLoading ? 'Przetwarzanie...' : isRegister ? 'Zarejestruj konto' : 'Zaloguj się'}
             </button>
           </form>
         </div>

@@ -74,8 +74,7 @@ const registerSchema = z.object({
   email: z.string().email('Nieprawidłowy adres email'),
   password: z.string().min(6, 'Hasło musi mieć co najmniej 6 znaków'),
   name: z.string().min(2, 'Imię musi mieć co najmniej 2 znaki'),
-  householdName: z.string().optional(),
-  inviteCode: z.string().optional(),
+  inviteCode: z.string().trim().optional(),
 });
 
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -86,10 +85,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { email, password, name, householdName, inviteCode } = parseResult.data;
+    const { email, password, name, inviteCode } = parseResult.data;
+    const normalizedEmail = email.toLowerCase().trim();
+    const cleanInviteCode = inviteCode?.trim().toUpperCase() || '';
 
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -97,55 +98,132 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const [userCount, householdCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.household.count(),
+    ]);
+    const isFirstInstallation = userCount === 0 && householdCount === 0;
+
     const passwordHash = await bcrypt.hash(password, 10);
 
-    let householdId: string;
-    let role = 'ADMIN';
-
-    if (inviteCode && inviteCode.trim()) {
-      const household = await prisma.household.findUnique({
-        where: { inviteCode: inviteCode.trim().toUpperCase() },
-      });
-
-      if (!household) {
-        res.status(400).json({ error: 'Nieprawidłowy kod zaproszenia do gospodarstwa.' });
-        return;
-      }
-
-      if (!isInviteCodeActive(household.inviteCodeExpiresAt)) {
-        res.status(400).json({ error: 'Kod zaproszenia wygasł. Poproś administratora o wygenerowanie nowego kodu.' });
-        return;
-      }
-
-      householdId = household.id;
-      role = 'MEMBER';
-    } else {
+    if (isFirstInstallation) {
       let uniqueCode = generateInviteCode();
       while (await prisma.household.findUnique({ where: { inviteCode: uniqueCode } })) {
         uniqueCode = generateInviteCode();
       }
 
-      const newHousehold = await prisma.household.create({
-        data: {
-          name: householdName?.trim() || name,
-          inviteCode: uniqueCode,
-          inviteCodeExpiresAt: getInviteCodeExpiry(),
-        },
+      const newUser = await prisma.$transaction(async (tx) => {
+        const household = await tx.household.create({
+          data: {
+            name: 'Moje gospodarstwo',
+            inviteCode: uniqueCode,
+            inviteCodeExpiresAt: getInviteCodeExpiry(),
+          },
+        });
+
+        const createdUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash,
+            name: name.trim(),
+            role: 'ADMIN',
+            isSystemAdmin: true,
+            householdId: household.id,
+          },
+          include: {
+            household: true,
+          },
+        });
+
+        for (const cat of DEFAULT_CATEGORIES) {
+          await tx.categorySetting.create({
+            data: {
+              householdId: household.id,
+              name: cat.name,
+              icon: cat.icon,
+              color: cat.color,
+              order: cat.order,
+            },
+          });
+        }
+
+        await tx.shoppingList.create({
+          data: {
+            householdId: household.id,
+            name: 'Główna lista zakupów',
+            icon: 'shopping-cart',
+            color: 'emerald',
+          },
+        });
+
+        return createdUser;
       });
 
-      householdId = newHousehold.id;
-      role = 'ADMIN';
+      await logActivity({
+        householdId: newUser.householdId!,
+        userId: newUser.id,
+        userName: newUser.name,
+        userEmail: newUser.email,
+        action: 'UTWORZONO_GOSPODARSTWO',
+        entityType: 'HOUSEHOLD',
+        entityName: newUser.household?.name || 'Moje gospodarstwo',
+        details: 'Utworzono pierwsze konto instalacji jako administrator gospodarstwa i administrator systemu.',
+      });
 
-      await initHouseholdDefaults(householdId);
+      const token = jwt.sign(
+        { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role, householdId: newUser.householdId },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.status(201).json({
+        message: 'Utworzono pierwsze konto administratora systemu.',
+        token,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          role: newUser.role,
+          isSystemAdmin: newUser.isSystemAdmin,
+          householdId: newUser.householdId,
+          household: sanitizeHousehold(newUser.household as any, newUser.role),
+        },
+      });
+      return;
+    }
+
+    if (!cleanInviteCode) {
+      res.status(400).json({ error: 'Kod zaproszenia jest wymagany. Tylko pierwsze konto w pustej instalacji może zostać utworzone bez kodu.' });
+      return;
+    }
+
+    if (cleanInviteCode.length !== 6) {
+      res.status(400).json({ error: 'Kod zaproszenia musi mieć 6 znaków.' });
+      return;
+    }
+
+    const household = await prisma.household.findUnique({
+      where: { inviteCode: cleanInviteCode },
+    });
+
+    if (!household) {
+      res.status(400).json({ error: 'Nieprawidłowy kod zaproszenia do gospodarstwa.' });
+      return;
+    }
+
+    if (!isInviteCodeActive(household.inviteCodeExpiresAt)) {
+      res.status(400).json({ error: 'Kod zaproszenia wygasł. Poproś administratora o wygenerowanie nowego kodu.' });
+      return;
     }
 
     const newUser = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         passwordHash,
         name: name.trim(),
-        role,
-        householdId,
+        role: 'MEMBER',
+        isSystemAdmin: false,
+        householdId: household.id,
       },
       include: {
         household: true,
@@ -153,16 +231,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     await logActivity({
-      householdId,
+      householdId: household.id,
       userId: newUser.id,
       userName: newUser.name,
       userEmail: newUser.email,
-      action: role === 'ADMIN' ? 'UTWORZONO_GOSPODARSTWO' : 'DOLACZONO_DO_DOMU',
+      action: 'DOLACZONO_DO_DOMU',
       entityType: 'MEMBER',
       entityName: newUser.name,
-      details: role === 'ADMIN'
-        ? `Użytkownik założył nowe gospodarstwo domowe "${newUser.household?.name}".`
-        : `Użytkownik dołączył do gospodarstwa za pomocą kodu zaproszenia.`,
+      details: 'Użytkownik utworzył konto za pomocą kodu zaproszenia i dołączył do gospodarstwa.',
     });
 
     const token = jwt.sign(
@@ -179,6 +255,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         email: newUser.email,
         name: newUser.name,
         role: newUser.role,
+        isSystemAdmin: newUser.isSystemAdmin,
         householdId: newUser.householdId,
         household: sanitizeHousehold(newUser.household as any, newUser.role),
       },
@@ -228,6 +305,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         email: user.email,
         name: user.name,
         role: user.role,
+        isSystemAdmin: user.isSystemAdmin,
         householdId: user.householdId,
         household: sanitizeHousehold(user.household as any, user.role),
       },
@@ -248,11 +326,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         name: true,
         avatar: true,
         role: true,
+        isSystemAdmin: true,
         householdId: true,
         household: {
           include: {
             members: {
-              select: { id: true, name: true, email: true, role: true, createdAt: true },
+              select: { id: true, name: true, email: true, role: true, isSystemAdmin: true, createdAt: true },
             },
             customCategories: { orderBy: { order: 'asc' } },
           },
@@ -392,6 +471,7 @@ export const getHouseholdMembers = async (req: Request, res: Response): Promise<
         name: true,
         email: true,
         role: true,
+        isSystemAdmin: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'asc' },
@@ -473,9 +553,8 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    await prisma.user.update({
+    await prisma.user.delete({
       where: { id: memberId },
-      data: { householdId: null, role: 'MEMBER' },
     });
 
     await logActivity({
@@ -486,11 +565,52 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
       action: 'USUNIETO_CZLONKA',
       entityType: 'MEMBER',
       entityName: targetUser.name,
-      details: `Administrator ${req.user!.name} usunął użytkownika ${targetUser.name} (${targetUser.email}) z gospodarstwa.`,
+      details: `Administrator ${req.user!.name} usunął konto użytkownika ${targetUser.name} (${targetUser.email}) z systemu.`,
     });
 
-    res.json({ message: 'Członek został usunięty z gospodarstwa.' });
+    res.json({ message: 'Konto użytkownika zostało usunięte.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas usuwania członka.' });
+    res.status(500).json({ error: 'Błąd podczas usuwania konta użytkownika.' });
+  }
+};
+
+export const deleteOwnAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, householdId: true, isSystemAdmin: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'Użytkownik nie został odnaleziony.' });
+      return;
+    }
+
+    if (user.householdId) {
+      res.status(400).json({ error: 'Konto można usunąć z tego ekranu tylko wtedy, gdy nie należysz do żadnego gospodarstwa.' });
+      return;
+    }
+
+    if (user.isSystemAdmin) {
+      const systemAdminCount = await prisma.user.count({
+        where: { isSystemAdmin: true },
+      });
+
+      if (systemAdminCount <= 1) {
+        res.status(400).json({ error: 'Nie możesz usunąć jedynego konta administratora systemu.' });
+        return;
+      }
+    }
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.json({ message: 'Twoje konto zostało usunięte.' });
+  } catch (error) {
+    console.error('Błąd usuwania własnego konta:', error);
+    res.status(500).json({ error: 'Nie udało się usunąć konta.' });
   }
 };

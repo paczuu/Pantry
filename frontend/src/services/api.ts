@@ -12,6 +12,8 @@ import {
   PantryStats,
   AuditStats,
   UserRole,
+  SystemUser,
+  SystemHousehold,
 } from '../types';
 
 const API_BASE = '/api';
@@ -78,17 +80,22 @@ class ApiService {
     email: string,
     password: string,
     name: string,
-    householdName?: string,
     inviteCode?: string
   ): Promise<{ token: string; user: User }> {
     return this.request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name, householdName, inviteCode }),
+      body: JSON.stringify({ email, password, name, inviteCode }),
     });
   }
 
   async getMe(): Promise<{ user: User }> {
     return this.request('/auth/me');
+  }
+
+  async deleteOwnAccount(): Promise<{ message: string }> {
+    return this.request('/auth/account', {
+      method: 'DELETE',
+    });
   }
 
   async joinHousehold(inviteCode: string): Promise<{ user: User; message: string }> {
@@ -119,6 +126,52 @@ class ApiService {
   async removeMember(memberId: string): Promise<{ message: string }> {
     return this.request(`/auth/household/members/${memberId}`, {
       method: 'DELETE',
+    });
+  }
+
+
+  // === System Admin ===
+  async getSystemUsers(): Promise<{ users: SystemUser[] }> {
+    return this.request('/system/users');
+  }
+
+  async updateSystemUser(
+    userId: string,
+    data: {
+      role?: UserRole;
+      householdId?: string | null;
+      isSystemAdmin?: boolean;
+    }
+  ): Promise<{ user: SystemUser; message: string }> {
+    return this.request(`/system/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSystemUser(userId: string): Promise<{ message: string }> {
+    return this.request(`/system/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getSystemHouseholds(): Promise<{ households: SystemHousehold[] }> {
+    return this.request('/system/households');
+  }
+
+  async createSystemHousehold(name: string): Promise<{ household: SystemHousehold; message: string }> {
+    return this.request('/system/households', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async generateSystemHouseholdInviteCode(
+    householdId: string
+  ): Promise<{ inviteCode: string; inviteCodeExpiresAt: string; message: string }> {
+    return this.request(`/system/households/${householdId}/invite-code`, {
+      method: 'POST',
+      body: JSON.stringify({}),
     });
   }
 

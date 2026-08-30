@@ -15,6 +15,7 @@ model User {
   name         String
   avatar       String?
   role         String      @default("MEMBER")
+  isSystemAdmin Boolean     @default(false)
   householdId  String?
   household    Household?  @relation(fields: [householdId], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())

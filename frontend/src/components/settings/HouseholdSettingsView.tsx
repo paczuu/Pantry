@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
 import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api';
-import { User, UserRole, NavItemConfig } from '../../types';
+import { User, UserRole, NavItemConfig, SystemUser, SystemHousehold } from '../../types';
 import { InstallPwaModal } from '../common/InstallPwaModal';
 import {
   DEFAULT_NAV_ITEMS,
@@ -42,6 +42,9 @@ import {
   Palette,
   PencilLine,
   Shield,
+  UserCog,
+  Building2,
+  Crown,
 } from 'lucide-react';
 
 const BARCODE_PROVIDER_OPTIONS: Array<{
@@ -100,6 +103,10 @@ export const HouseholdSettingsView: React.FC = () => {
   const [inviteTimeLeft, setInviteTimeLeft] = useState(0);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [backupRestoring, setBackupRestoring] = useState(false);
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
+  const [systemHouseholds, setSystemHouseholds] = useState<SystemHousehold[]>([]);
+  const [systemLoading, setSystemLoading] = useState(false);
+  const [newSystemHouseholdName, setNewSystemHouseholdName] = useState('');
 
   const [householdNameInput, setHouseholdNameInput] = useState(
     user?.household?.name || ''
@@ -413,6 +420,12 @@ export const HouseholdSettingsView: React.FC = () => {
     return () => window.clearInterval(interval);
   }, [isAdmin, (user?.household as any)?.inviteCodeExpiresAt]);
 
+  useEffect(() => {
+    if (user?.isSystemAdmin) {
+      fetchSystemAdminData();
+    }
+  }, [user?.isSystemAdmin]);
+
   const handleGenerateInviteCode = async () => {
     try {
       const res = await api.generateHouseholdInviteCode();
@@ -698,6 +711,156 @@ export const HouseholdSettingsView: React.FC = () => {
       );
     } finally {
       setBackupRestoring(false);
+    }
+  };
+
+  const fetchSystemAdminData = async () => {
+    if (!user?.isSystemAdmin) return;
+
+    try {
+      setSystemLoading(true);
+
+      const [usersRes, householdsRes] = await Promise.all([
+        api.getSystemUsers(),
+        api.getSystemHouseholds(),
+      ]);
+
+      setSystemUsers(usersRes.users || []);
+      setSystemHouseholds(householdsRes.households || []);
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się pobrać danych administracyjnych.',
+        'error'
+      );
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  const handleCreateSystemHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const name = newSystemHouseholdName.trim();
+
+    if (name.length < 2) {
+      showToast('Nazwa gospodarstwa musi mieć co najmniej 2 znaki.', 'error');
+      return;
+    }
+
+    try {
+      const res = await api.createSystemHousehold(name);
+
+      setNewSystemHouseholdName('');
+      await fetchSystemAdminData();
+
+      if (res.household.inviteCode) {
+        await navigator.clipboard.writeText(res.household.inviteCode).catch(() => {});
+      }
+
+      showToast(
+        `Utworzono gospodarstwo "${res.household.name}". Kod zaproszenia został skopiowany.`,
+        'success'
+      );
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się utworzyć gospodarstwa.',
+        'error'
+      );
+    }
+  };
+
+  const handleSystemUserRoleChange = async (
+    targetUser: SystemUser,
+    role: UserRole
+  ) => {
+    try {
+      await api.updateSystemUser(targetUser.id, { role });
+      await fetchSystemAdminData();
+      showToast('Zmieniono rolę użytkownika.', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Nie udało się zmienić roli.', 'error');
+    }
+  };
+
+  const handleSystemUserHouseholdChange = async (
+    targetUser: SystemUser,
+    householdId: string
+  ) => {
+    try {
+      await api.updateSystemUser(targetUser.id, {
+        householdId: householdId || null,
+      });
+      await fetchSystemAdminData();
+      showToast('Zmieniono gospodarstwo użytkownika.', 'success');
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się zmienić gospodarstwa.',
+        'error'
+      );
+    }
+  };
+
+  const handleSystemAdminToggle = async (targetUser: SystemUser) => {
+    try {
+      await api.updateSystemUser(targetUser.id, {
+        isSystemAdmin: !targetUser.isSystemAdmin,
+      });
+
+      await fetchSystemAdminData();
+      await refreshUser();
+
+      showToast(
+        targetUser.isSystemAdmin
+          ? 'Odebrano uprawnienia administratora systemu.'
+          : 'Nadano uprawnienia administratora systemu.',
+        'success'
+      );
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się zmienić uprawnień systemowych.',
+        'error'
+      );
+    }
+  };
+
+  const handleDeleteSystemUser = async (targetUser: SystemUser) => {
+    if (
+      !window.confirm(
+        `Czy na pewno całkowicie usunąć konto "${targetUser.name}" (${targetUser.email})? Tej operacji nie można cofnąć.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.deleteSystemUser(targetUser.id);
+      await fetchSystemAdminData();
+      await fetchMembers();
+      showToast('Konto użytkownika zostało usunięte z bazy.', 'success');
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się usunąć użytkownika.',
+        'error'
+      );
+    }
+  };
+
+  const handleGenerateSystemInvite = async (household: SystemHousehold) => {
+    try {
+      const res = await api.generateSystemHouseholdInviteCode(household.id);
+
+      await navigator.clipboard.writeText(res.inviteCode).catch(() => {});
+      await fetchSystemAdminData();
+
+      showToast(
+        `Wygenerowano kod ${res.inviteCode} dla "${household.name}" i skopiowano go do schowka.`,
+        'success'
+      );
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się wygenerować kodu.',
+        'error'
+      );
     }
   };
 
@@ -1567,6 +1730,237 @@ export const HouseholdSettingsView: React.FC = () => {
                 }}
               />
             </label>
+          </div>
+        </section>
+      )}
+
+      {user?.isSystemAdmin && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-400" />
+                Administracja systemem
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Zarządzaj wszystkimi użytkownikami i gospodarstwami w tej instalacji
+              </p>
+            </div>
+
+            <span className="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-extrabold">
+              SYSTEM ADMIN
+            </span>
+          </div>
+
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-amber-400" />
+                Gospodarstwa ({systemHouseholds.length})
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Tylko administrator systemu może utworzyć nowe gospodarstwo.
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateSystemHousehold} className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={newSystemHouseholdName}
+                onChange={(e) => setNewSystemHouseholdName(e.target.value)}
+                minLength={2}
+                maxLength={60}
+                placeholder="Nazwa nowego gospodarstwa..."
+                className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={!newSystemHouseholdName.trim()}
+                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4" />
+                Utwórz gospodarstwo
+              </button>
+            </form>
+
+            <div className="space-y-2">
+              {systemHouseholds.map((household) => {
+                const expiresAt = household.inviteCodeExpiresAt
+                  ? new Date(household.inviteCodeExpiresAt).getTime()
+                  : 0;
+                const codeActive = expiresAt > Date.now();
+
+                return (
+                  <div
+                    key={household.id}
+                    className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-white">
+                        {household.name}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        {household.memberCount} {household.memberCount === 1 ? 'użytkownik' : 'użytkowników'}
+                      </div>
+                      {codeActive && (
+                        <div className="text-[10px] text-emerald-400 font-mono mt-1">
+                          Kod: {household.inviteCode}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateSystemInvite(household)}
+                      className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      {codeActive ? 'Nowy kod' : 'Wygeneruj kod'}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {!systemLoading && systemHouseholds.length === 0 && (
+                <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
+                  Brak gospodarstw.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <UserCog className="w-5 h-5 text-amber-400" />
+                Wszyscy użytkownicy ({systemUsers.length})
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Zmieniaj gospodarstwo, rolę i uprawnienia systemowe lub całkowicie usuwaj konta.
+              </p>
+            </div>
+
+            {systemLoading ? (
+              <div className="text-xs text-slate-400 py-3">
+                Ładowanie użytkowników...
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {systemUsers.map((systemUser) => {
+                  const isMe = systemUser.id === user?.id;
+
+                  return (
+                    <div
+                      key={systemUser.id}
+                      className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-3"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-sm text-white">
+                              {systemUser.name}
+                            </span>
+
+                            {isMe && (
+                              <span className="text-[10px] text-slate-400">
+                                (Ty)
+                              </span>
+                            )}
+
+                            {systemUser.isSystemAdmin && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-extrabold">
+                                <Crown className="w-3 h-3" />
+                                SYSTEM ADMIN
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-slate-400 truncate">
+                            {systemUser.email}
+                          </div>
+                        </div>
+
+                        {!isMe && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSystemUser(systemUser)}
+                            className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Usuń konto
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">
+                            Gospodarstwo
+                          </label>
+                          <select
+                            value={systemUser.householdId || ''}
+                            onChange={(e) =>
+                              handleSystemUserHouseholdChange(
+                                systemUser,
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="">Brak gospodarstwa</option>
+                            {systemHouseholds.map((household) => (
+                              <option key={household.id} value={household.id}>
+                                {household.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">
+                            Rola w gospodarstwie
+                          </label>
+                          <select
+                            value={systemUser.role}
+                            onChange={(e) =>
+                              handleSystemUserRoleChange(
+                                systemUser,
+                                e.target.value as UserRole
+                              )
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="MEMBER">MEMBER</option>
+                            <option value="ADMIN">ADMIN</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">
+                            Uprawnienia systemowe
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleSystemAdminToggle(systemUser)}
+                            disabled={isMe && systemUser.isSystemAdmin}
+                            className={`w-full px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                              systemUser.isSystemAdmin
+                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                                : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            <Shield className="w-3.5 h-3.5" />
+                            {systemUser.isSystemAdmin
+                              ? 'Administrator systemu'
+                              : 'Nadaj system admin'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       )}

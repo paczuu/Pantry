@@ -1,6 +1,7 @@
 import { Router, text } from 'express';
 import { authenticateToken } from './middleware/auth.js';
 import { requireAdmin } from './middleware/requireAdmin.js';
+import { requireSystemAdmin } from './middleware/requireSystemAdmin.js';
 import * as authController from './controllers/authController.js';
 import * as catalogController from './controllers/catalogController.js';
 import * as pantryController from './controllers/pantryController.js';
@@ -10,6 +11,7 @@ import * as recipesController from './controllers/recipesController.js';
 import * as auditController from './controllers/auditController.js';
 import * as settingsController from './controllers/settingsController.js';
 import * as barcodeSettingsController from './controllers/barcodeSettingsController.js';
+import * as systemAdminController from './controllers/systemAdminController.js';
 
 const router = Router();
 
@@ -17,6 +19,7 @@ const router = Router();
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
+router.delete('/auth/account', authenticateToken, authController.deleteOwnAccount);
 router.post('/auth/join-household', authenticateToken, authController.joinHousehold);
 router.get('/auth/household/members', authenticateToken, authController.getHouseholdMembers);
 router.post(
@@ -36,6 +39,45 @@ router.delete(
   authenticateToken,
   requireAdmin,
   authController.removeMember
+);
+
+
+// === System Admin ===
+router.get(
+  '/system/users',
+  authenticateToken,
+  requireSystemAdmin,
+  systemAdminController.getSystemUsers
+);
+router.put(
+  '/system/users/:userId',
+  authenticateToken,
+  requireSystemAdmin,
+  systemAdminController.updateSystemUser
+);
+router.delete(
+  '/system/users/:userId',
+  authenticateToken,
+  requireSystemAdmin,
+  systemAdminController.deleteSystemUser
+);
+router.get(
+  '/system/households',
+  authenticateToken,
+  requireSystemAdmin,
+  systemAdminController.getSystemHouseholds
+);
+router.post(
+  '/system/households',
+  authenticateToken,
+  requireSystemAdmin,
+  systemAdminController.createSystemHousehold
+);
+router.post(
+  '/system/households/:householdId/invite-code',
+  authenticateToken,
+  requireSystemAdmin,
+  systemAdminController.generateSystemHouseholdInviteCode
 );
 
 // === Catalog & Barcode ===

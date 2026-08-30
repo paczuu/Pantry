@@ -9,7 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAdmin: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  register: (email: string, pass: string, name: string, householdName?: string, inviteCode?: string) => Promise<void>;
+  register: (email: string, pass: string, name: string, inviteCode?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   joinHousehold: (inviteCode: string) => Promise<void>;
@@ -65,11 +65,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     pass: string,
     name: string,
-    householdName?: string,
     inviteCode?: string
   ) => {
     try {
-      const data = await api.register(email, pass, name, householdName, inviteCode);
+      const data = await api.register(email, pass, name, inviteCode);
       localStorage.setItem('spizarnia_token', data.token);
       setToken(data.token);
       setUser(data.user);

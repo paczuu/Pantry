@@ -6,6 +6,7 @@ export interface User {
   name: string;
   avatar?: string | null;
   role: UserRole;
+  isSystemAdmin?: boolean;
   householdId?: string | null;
   household?: Household | null;
   createdAt?: string;
@@ -15,6 +16,7 @@ export interface Household {
   id: string;
   name: string;
   inviteCode: string;
+  inviteCodeExpiresAt?: string | null;
   expiryWarningDays?: number;
   createdAt: string;
   updatedAt?: string;
@@ -175,3 +177,28 @@ export interface PresenceEditor {
   entityType: string;
   entityId: string;
 }
+
+export interface SystemUser {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string | null;
+  role: UserRole;
+  isSystemAdmin: boolean;
+  householdId?: string | null;
+  household?: {
+    id: string;
+    name: string;
+  } | null;
+  createdAt?: string;
+}
+
+export interface SystemHousehold {
+  id: string;
+  name: string;
+  inviteCode: string;
+  inviteCodeExpiresAt?: string | null;
+  createdAt: string;
+  memberCount: number;
+}
+

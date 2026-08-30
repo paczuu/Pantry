@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
+import { NoHouseholdView } from './components/auth/NoHouseholdView';
 import { DashboardPage } from './pages/DashboardPage';
 import { PantryPage } from './pages/PantryPage';
 import { ShoppingListsView } from './components/shopping/ShoppingListsView';
@@ -36,6 +37,10 @@ export const App: React.FC = () => {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  if (!user.householdId) {
+    return <NoHouseholdView />;
   }
 
   const handleOpenScanner = (mode: 'ADD' | 'REMOVE' = 'ADD') => {
