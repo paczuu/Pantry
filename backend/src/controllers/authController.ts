@@ -7,6 +7,8 @@ import { logActivity } from '../services/auditService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'smart-pantry-super-secret-key-change-in-production-2026';
 
+const INVITE_CODE_TTL_MS = 5 * 60 * 1000;
+
 const generateInviteCode = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -14,6 +16,18 @@ const generateInviteCode = (): string => {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+};
+
+const getInviteCodeExpiry = (): Date => new Date(Date.now() + INVITE_CODE_TTL_MS);
+
+const isInviteCodeActive = (expiresAt?: Date | null): boolean => {
+  return Boolean(expiresAt && expiresAt.getTime() > Date.now());
+};
+
+const sanitizeHousehold = <T extends Record<string, any> | null>(household: T, role: string) => {
+  if (!household || role === 'ADMIN') return household;
+  const { inviteCode, inviteCodeExpiresAt, ...safeHousehold } = household;
+  return safeHousehold;
 };
 
 const DEFAULT_CATEGORIES = [
@@ -98,6 +112,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
+      if (!isInviteCodeActive(household.inviteCodeExpiresAt)) {
+        res.status(400).json({ error: 'Kod zaproszenia wygasł. Poproś administratora o wygenerowanie nowego kodu.' });
+        return;
+      }
+
       householdId = household.id;
       role = 'MEMBER';
     } else {
@@ -110,6 +129,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         data: {
           name: householdName?.trim() || name,
           inviteCode: uniqueCode,
+          inviteCodeExpiresAt: getInviteCodeExpiry(),
         },
       });
 
@@ -160,7 +180,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         name: newUser.name,
         role: newUser.role,
         householdId: newUser.householdId,
-        household: newUser.household,
+        household: sanitizeHousehold(newUser.household as any, newUser.role),
       },
     });
   } catch (error) {
@@ -209,7 +229,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         name: user.name,
         role: user.role,
         householdId: user.householdId,
-        household: user.household,
+        household: sanitizeHousehold(user.household as any, user.role),
       },
     });
   } catch (error) {
@@ -245,7 +265,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json({ user });
+    res.json({
+      user: {
+        ...user,
+        household: sanitizeHousehold(user.household as any, user.role),
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Błąd podczas pobierania danych profilu.' });
   }
@@ -265,6 +290,11 @@ export const joinHousehold = async (req: Request, res: Response): Promise<void> 
 
     if (!household) {
       res.status(404).json({ error: 'Gospodarstwo o takim kodzie nie istnieje.' });
+      return;
+    }
+
+    if (!isInviteCodeActive(household.inviteCodeExpiresAt)) {
+      res.status(400).json({ error: 'Kod zaproszenia wygasł. Poproś administratora o wygenerowanie nowego kodu.' });
       return;
     }
 
@@ -288,9 +318,62 @@ export const joinHousehold = async (req: Request, res: Response): Promise<void> 
       details: `${req.user!.name} dołączył(a) do gospodarstwa domowego.`,
     });
 
-    res.json({ message: 'Dołączono do gospodarstwa.', user: updatedUser });
+    res.json({
+      message: 'Dołączono do gospodarstwa.',
+      user: {
+        ...updatedUser,
+        household: sanitizeHousehold(updatedUser.household as any, updatedUser.role),
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Błąd podczas dołączania do gospodarstwa.' });
+  }
+};
+
+export const generateHouseholdInviteCode = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const householdId = req.user!.householdId;
+
+    if (!householdId) {
+      res.status(400).json({ error: 'Brak przypisanego gospodarstwa.' });
+      return;
+    }
+
+    let uniqueCode = generateInviteCode();
+    while (await prisma.household.findUnique({ where: { inviteCode: uniqueCode } })) {
+      uniqueCode = generateInviteCode();
+    }
+
+    const inviteCodeExpiresAt = getInviteCodeExpiry();
+
+    const household = await prisma.household.update({
+      where: { id: householdId },
+      data: {
+        inviteCode: uniqueCode,
+        inviteCodeExpiresAt,
+      },
+      select: { name: true },
+    });
+
+    await logActivity({
+      householdId,
+      userId: req.user!.id,
+      userName: req.user!.name,
+      userEmail: req.user!.email,
+      action: 'WYGENEROWANO_KOD_ZAPROSZENIA',
+      entityType: 'HOUSEHOLD',
+      entityName: household.name,
+      details: 'Administrator wygenerował nowy kod zaproszenia ważny przez 5 minut.',
+    });
+
+    res.json({
+      inviteCode: uniqueCode,
+      inviteCodeExpiresAt: inviteCodeExpiresAt.toISOString(),
+      message: 'Wygenerowano nowy kod zaproszenia. Kod jest ważny przez 5 minut.',
+    });
+  } catch (error) {
+    console.error('Błąd generowania kodu zaproszenia:', error);
+    res.status(500).json({ error: 'Nie udało się wygenerować kodu zaproszenia.' });
   }
 };
 

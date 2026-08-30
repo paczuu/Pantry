@@ -19,6 +19,12 @@ router.post('/auth/login', authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
 router.post('/auth/join-household', authenticateToken, authController.joinHousehold);
 router.get('/auth/household/members', authenticateToken, authController.getHouseholdMembers);
+router.post(
+  '/auth/household/invite-code',
+  authenticateToken,
+  requireAdmin,
+  authController.generateHouseholdInviteCode
+);
 router.put(
   '/auth/household/members/:memberId/role',
   authenticateToken,

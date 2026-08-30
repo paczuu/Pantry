@@ -116,6 +116,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const [members, setMembers] = useState<User[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [inviteTimeLeft, setInviteTimeLeft] = useState(0);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   const [householdNameInput, setHouseholdNameInput] = useState(
@@ -416,6 +417,28 @@ export const HouseholdSettingsView: React.FC = () => {
   useEffect(() => {
     setHouseholdNameInput(user?.household?.name || '');
   }, [user?.household?.name]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+  
+    const expiresAt = (user?.household as any)?.inviteCodeExpiresAt;
+  
+    if (!expiresAt) {
+      setInviteTimeLeft(0);
+      return;
+    }
+  
+    const updateTimeLeft = () => {
+      const remaining = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+      setInviteTimeLeft(Math.ceil(remaining / 1000));
+    };
+  
+    updateTimeLeft();
+  
+    const interval = window.setInterval(updateTimeLeft, 1000);
+  
+    return () => window.clearInterval(interval);
+  }, [isAdmin, (user?.household as any)?.inviteCodeExpiresAt]);
 
   const handleSaveHouseholdName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1207,43 +1230,119 @@ export const HouseholdSettingsView: React.FC = () => {
 
       {/* Gospodarstwo i kod zaproszenia */}
       <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold text-emerald-400">
-              Współdzielenie Spiżarni
-            </div>
-
-            <h3 className="text-lg font-extrabold text-white">
-              {user?.household?.name || 'Moje Gospodarstwo'}
-            </h3>
-
-            <p className="text-xs text-slate-300">
-              Podaj ten kod domownikowi podczas rejestracji lub dołączania,
-              aby wspólnie zarządzać produktami.
-            </p>
+        <div>
+          <div className="text-xs font-semibold text-emerald-400">
+            Gospodarstwo domowe
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
-            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
-              {user?.household?.inviteCode}
-            </span>
-
-            <button
-              onClick={handleCopyCode}
-              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-              title="Kopiuj kod zaproszenia"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
+          <h3 className="text-lg font-extrabold text-white">
+            {user?.household?.name || 'Moje Gospodarstwo'}
+          </h3>
         </div>
 
         {isAdmin && (
+          <div className="pt-4 border-t border-slate-800 space-y-3">
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-emerald-400" />
+                Kod zaproszenia
+              </h4>
+
+              <p className="text-[11px] text-slate-400 mt-1">
+                Kod jest ważny przez 5 minut. Wygenerowanie nowego kodu natychmiast unieważnia poprzedni.
+              </p>
+            </div>
+
+            {inviteTimeLeft > 0 && user?.household?.inviteCode ? (
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex-1 flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
+                        {user.household.inviteCode}
+                      </div>
+
+                      <div className="text-[10px] text-slate-400 px-2 mt-0.5 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        Wygasa za:
+                        <span className={`font-mono font-bold ${
+                          inviteTimeLeft <= 60 ? 'text-rose-400' : 'text-emerald-400'
+                        }`}>
+                          {String(Math.floor(inviteTimeLeft / 60)).padStart(2, '0')}:
+                          {String(inviteTimeLeft % 60).padStart(2, '0')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.household!.inviteCode);
+                        showToast(`Skopiowano kod zaproszenia: ${user.household!.inviteCode}`, 'success');
+                      }}
+                      className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
+                      title="Kopiuj kod zaproszenia"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await api.generateHouseholdInviteCode();
+                        await refreshUser();
+
+                        navigator.clipboard.writeText(res.inviteCode);
+
+                        showToast(
+                          'Wygenerowano nowy kod zaproszenia ważny przez 5 minut i skopiowano go do schowka.',
+                          'success'
+                        );
+                      } catch (e: any) {
+                        showToast(e.message || 'Nie udało się wygenerować kodu zaproszenia.', 'error');
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Nowy kod
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await api.generateHouseholdInviteCode();
+                      await refreshUser();
+
+                      navigator.clipboard.writeText(res.inviteCode);
+
+                      showToast(
+                        'Wygenerowano kod zaproszenia ważny przez 5 minut i skopiowano go do schowka.',
+                        'success'
+                      );
+                    } catch (e: any) {
+                      showToast(e.message || 'Nie udało się wygenerować kodu zaproszenia.', 'error');
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shrink-0"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Wygeneruj kod
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAdmin && (
           <div className="pt-4 border-t border-slate-800">
-            <form
-              onSubmit={handleSaveHouseholdName}
-              className="space-y-3"
-            >
+            <form onSubmit={handleSaveHouseholdName} className="space-y-3">
               <div>
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <PencilLine className="w-4 h-4 text-emerald-400" />
@@ -1276,10 +1375,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Save className="w-3.5 h-3.5" />
-
-                  {householdNameSaving
-                    ? 'Zapisywanie...'
-                    : 'Zmień nazwę'}
+                  {householdNameSaving ? 'Zapisywanie...' : 'Zmień nazwę'}
                 </button>
               </div>
 

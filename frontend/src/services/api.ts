@@ -102,6 +102,13 @@ class ApiService {
     return this.request('/auth/household/members');
   }
 
+  async generateHouseholdInviteCode(): Promise<{ inviteCode: string; inviteCodeExpiresAt: string; message: string }> {
+    return this.request('/auth/household/invite-code', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
   async updateMemberRole(memberId: string, role: UserRole): Promise<{ member: User; message: string }> {
     return this.request(`/auth/household/members/${memberId}/role`, {
       method: 'PUT',
