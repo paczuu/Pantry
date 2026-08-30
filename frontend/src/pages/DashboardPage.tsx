@@ -63,7 +63,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-950/50 transition-all"
           >
             <QrCode className="w-4 h-4" />
-            Skanuj (Dodaj)
+            Skanuj
           </button>
 
           <button
@@ -71,7 +71,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 active:scale-95 font-bold text-xs sm:text-sm transition-all"
           >
             <MinusCircle className="w-4 h-4" />
-            Szybkie Zużycie EAN
+            Szybkie Zużycie
           </button>
 
           <button
@@ -159,7 +159,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-lg text-white">Wymagają uwagi (Zużyj w pierwszej kolejności)</h3>
+            <h3 className="font-bold text-lg text-white">Zużyj w pierwszej kolejności</h3>
             {urgentItems.length > 0 && (
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 {urgentItems.length}

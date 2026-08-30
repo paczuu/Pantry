@@ -222,10 +222,10 @@ export const NotesView: React.FC = () => {
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-cyan-400" />
-            Notatki & Checklisty
+            Notatki & Listy zadań
           </h2>
           <p className="text-xs text-slate-400">
-            Twórz listy zadań z polami wyboru, przepisy, wskazówki i plany posiłków
+            Twórz listy zadań z polami wyboru, wskazówki i plany posiłków
           </p>
         </div>
 
@@ -234,7 +234,7 @@ export const NotesView: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
-          Dodaj notatkę / checklistę
+          Dodaj notatkę / listę zadań
         </button>
       </div>
 
@@ -245,7 +245,7 @@ export const NotesView: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Szukaj w notatkach i checklistach..."
+          placeholder="Szukaj w notatkach i listach..."
           className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
         />
       </div>
@@ -256,7 +256,7 @@ export const NotesView: React.FC = () => {
           <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-base font-bold text-white">Brak notatek</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Kliknij „Dodaj notatkę / checklistę”, aby zapisać przepis, listę zadań lub pomysły na posiłki.
+            Kliknij „Dodaj notatkę / listę zadań”, aby zapisać informacje, listę zadań lub pomysły na posiłki.
           </p>
         </div>
       ) : (
@@ -283,7 +283,7 @@ export const NotesView: React.FC = () => {
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-0.5">
                         {note.isChecklist ? (
                           <span className="inline-flex items-center gap-1 text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.2 rounded-md">
-                            <CheckSquare className="w-3 h-3" /> Checklista ({completedCount}/{items.length})
+                            <CheckSquare className="w-3 h-3" /> Lista zadań ({completedCount}/{items.length})
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-slate-400">
@@ -326,7 +326,7 @@ export const NotesView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Treść / Checklista */}
+                  {/* Treść / Lista zadań */}
                   {note.isChecklist ? (
                     <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto">
                       {items.map((item) => (
@@ -373,11 +373,11 @@ export const NotesView: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingNote ? 'Edytuj' : 'Nowa notatka / Checklista'}
+        title={editingNote ? 'Edytuj' : 'Nowa notatka / lista zadań'}
         maxWidth="lg"
       >
         <form onSubmit={handleSaveNote} className="space-y-4">
-          {/* Przełącznik formatu: Tekst vs Checklista */}
+          {/* Przełącznik formatu: Tekst vs Lista zadań */}
           <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-bold">
             <button
               type="button"
@@ -397,7 +397,7 @@ export const NotesView: React.FC = () => {
               }`}
             >
               <CheckSquare className="w-4 h-4" />
-              Checklista (Lista zadań)
+              Lista zadań
             </button>
           </div>
 
@@ -408,16 +408,16 @@ export const NotesView: React.FC = () => {
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="np. Przepis na sos, Przygotowanie do imprezy..."
+              placeholder="np. Mój dzień, Przygotowanie do imprezy..."
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               autoFocus
             />
           </div>
 
-          {/* Formularz Checklisty */}
+          {/* Formularz Listy zadań */}
           {isChecklist ? (
             <div className="space-y-3">
-              <label className="block text-xs font-semibold text-slate-300">Elementy checklisty</label>
+              <label className="block text-xs font-semibold text-slate-300">Elementy listy</label>
               
               <div className="flex gap-2">
                 <input
@@ -465,12 +465,12 @@ export const NotesView: React.FC = () => {
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Treść notatki / przepis</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Treść notatki</label>
               <textarea
                 rows={6}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Wpisz treść, kroki przepisu lub wskazówki..."
+                placeholder="Wpisz treść, informacje lub wskazówki..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 font-sans"
               />
             </div>
@@ -485,7 +485,6 @@ export const NotesView: React.FC = () => {
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               >
                 <option value="Ogólne">Ogólne</option>
-                <option value="Przepisy">Przepisy</option>
                 <option value="Mrożonki">Mrożonki</option>
                 <option value="Plany posiłków">Plany posiłków</option>
                 <option value="Wskazówki">Wskazówki</option>

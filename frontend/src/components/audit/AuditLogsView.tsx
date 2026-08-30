@@ -164,9 +164,6 @@ export const AuditLogsView: React.FC = () => {
               <ShieldAlert className="w-6 h-6 text-amber-400" />
               Dziennik Zmian & Audyt
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              Tylko dla Administratora
-            </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
             Śledź pełną historię operacji w spiżarni: kto dodał, edytował, odliczył lub usunął produkt

@@ -156,7 +156,7 @@ export const RecipesView: React.FC = () => {
             Przepisy
           </h2>
           <p className="text-xs text-slate-400">
-            Zapisuj przepisy, listę składników i opcjonalne uwagi tylko dla siebie
+            Zapisuj przepisy, listę składników i opcjonalne uwagi
           </p>
         </div>
 

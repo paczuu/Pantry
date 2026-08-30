@@ -456,7 +456,7 @@ export const HouseholdSettingsView: React.FC = () => {
             <Smartphone className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base">Instalacja Aplikacji (PWA)</h3>
+            <h3 className="font-extrabold text-white text-base">Instalacja Aplikacji</h3>
             <p className="text-xs text-slate-300">
               Zainstaluj aplikację na telefonie (Android, iOS) lub komputerze, aby mieć do niej błyskawiczny dostęp.
             </p>

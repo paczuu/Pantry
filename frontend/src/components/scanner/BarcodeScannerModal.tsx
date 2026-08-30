@@ -47,7 +47,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     setIsScanning(false);
     setIsTorchOn(false);
     if (!scanner) return;
-    try { if (scanner.isScanning) await scanner.stop(); } catch (e) { console.warn('Błąd zatrzymywania skanera:', e); }
+    try {
+      if (scanner.isScanning) {
+        try { await (scanner as any).applyVideoConstraints({ advanced: [{ torch: false } as any] }); } catch (e) {}
+        await scanner.stop();
+      }
+    } catch (e) { console.warn('Błąd zatrzymywania skanera:', e); }
     try { scanner.clear(); } catch (e) {}
   }, []);
 
@@ -169,6 +174,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     if (!cleanBarcode) return;
     setIsProcessing(true);
 
+    await stopScanner();
+
     try {
       const res = await api.lookupBarcode(cleanBarcode);
       setScannedBarcode(cleanBarcode);
@@ -188,7 +195,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, mode, playBeep, showToast, soundEnabled, vibrate]);
+  }, [isProcessing, mode, playBeep, showToast, soundEnabled, vibrate, stopScanner]);
 
   // Uruchom skaner dopiero po zgodzie i dopiero gdy kontener istnieje w DOM.
   useEffect(() => {
@@ -289,6 +296,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     }
   };
 
+  const handleClose = async () => {
+    await stopScanner();
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -310,20 +322,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
               </button>
             </div>
 
-            {/* Przyciski Akcji: Dźwięk, Latarka, Kamera, Zamknij */}
+            {/* Przyciski Akcji: Latarka, Zamknij */}
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setSoundEnabled(!soundEnabled)} className="p-2.5 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white transition-all" title={soundEnabled ? 'Dźwięk włączony' : 'Dźwięk wyłączony'}>
-                {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
-              </button>
-              {cameras.length > 1 && (
-                <button type="button" onClick={switchCamera} className="p-2.5 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white transition-all" title="Przełącz aparat">
-                  <SwitchCamera className="w-4 h-4" />
-                </button>
-              )}
               <button type="button" onClick={toggleTorch} disabled={!isScanning} className={`p-2.5 rounded-2xl backdrop-blur-md border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isTorchOn ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-lg shadow-amber-500/50' : 'bg-slate-900/80 border-slate-700 text-slate-200'}`} title="Latarka">
                 <Flashlight className="w-4 h-4" />
               </button>
-              <button type="button" onClick={onClose} className="p-2.5 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-all" title="Zamknij skaner">
+              <button type="button" onClick={handleClose} className="p-2.5 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-all" title="Zamknij skaner">
                 <X className="w-5 h-5 stroke-[2.5]" />
               </button>
             </div>
@@ -334,7 +338,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
             {activeTab === 'camera' ? (
               <>
                 {/* Kontener wideo */}
-                <div id={scannerContainerId} className="absolute inset-0 z-0 w-full h-full overflow-hidden" />
+                <div id={scannerContainerId} className="absolute inset-0 z-0 w-full h-full overflow-hidden [&_video]:!absolute [&_video]:!inset-0 [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_video]:!object-center" />
 
                 {/* Ekran sprawdzania uprawnień */}
                 {permissionState === 'checking' && (
