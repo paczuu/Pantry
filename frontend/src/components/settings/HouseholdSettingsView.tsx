@@ -641,92 +641,6 @@ export const HouseholdSettingsView: React.FC = () => {
         </button>
       </div>
 
-      {/* Gospodarstwo i kod zaproszenia */}
-      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold text-emerald-400">
-              Współdzielenie Spiżarni
-            </div>
-
-            <h3 className="text-lg font-extrabold text-white">
-              {user?.household?.name || 'Moje Gospodarstwo'}
-            </h3>
-
-            <p className="text-xs text-slate-300">
-              Podaj ten kod domownikowi podczas rejestracji lub dołączania,
-              aby wspólnie zarządzać produktami.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
-            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
-              {user?.household?.inviteCode}
-            </span>
-
-            <button
-              onClick={handleCopyCode}
-              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-              title="Kopiuj kod zaproszenia"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {isAdmin && (
-          <div className="pt-4 border-t border-slate-800">
-            <form
-              onSubmit={handleSaveHouseholdName}
-              className="space-y-3"
-            >
-              <div>
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <PencilLine className="w-4 h-4 text-emerald-400" />
-                  Nazwa gospodarstwa
-                </h4>
-
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Jako administrator możesz zmienić nazwę widoczną dla wszystkich domowników.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={householdNameInput}
-                  onChange={(e) => setHouseholdNameInput(e.target.value)}
-                  minLength={2}
-                  maxLength={60}
-                  placeholder="np. Domowa Spiżarnia"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-                />
-
-                <button
-                  type="submit"
-                  disabled={
-                    householdNameSaving ||
-                    !householdNameInput.trim() ||
-                    householdNameInput.trim() === user?.household?.name
-                  }
-                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Save className="w-3.5 h-3.5" />
-
-                  {householdNameSaving
-                    ? 'Zapisywanie...'
-                    : 'Zmień nazwę'}
-                </button>
-              </div>
-
-              <div className="text-[10px] text-slate-500">
-                {householdNameInput.length}/60 znaków
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
       {/* Kolor aplikacji */}
       <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -1040,11 +954,11 @@ export const HouseholdSettingsView: React.FC = () => {
                       className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
                     >
                       <option value="MEMBER">
-                        Domownik (MEMBER)
+                        MEMBER
                       </option>
 
                       <option value="ADMIN">
-                        Administrator (ADMIN)
+                        ADMIN
                       </option>
                     </select>
                   ) : (
@@ -1291,6 +1205,92 @@ export const HouseholdSettingsView: React.FC = () => {
         </>
       )}
 
+      {/* Gospodarstwo i kod zaproszenia */}
+      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold text-emerald-400">
+              Współdzielenie Spiżarni
+            </div>
+
+            <h3 className="text-lg font-extrabold text-white">
+              {user?.household?.name || 'Moje Gospodarstwo'}
+            </h3>
+
+            <p className="text-xs text-slate-300">
+              Podaj ten kod domownikowi podczas rejestracji lub dołączania,
+              aby wspólnie zarządzać produktami.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
+            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
+              {user?.household?.inviteCode}
+            </span>
+
+            <button
+              onClick={handleCopyCode}
+              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
+              title="Kopiuj kod zaproszenia"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {isAdmin && (
+          <div className="pt-4 border-t border-slate-800">
+            <form
+              onSubmit={handleSaveHouseholdName}
+              className="space-y-3"
+            >
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <PencilLine className="w-4 h-4 text-emerald-400" />
+                  Nazwa gospodarstwa
+                </h4>
+
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Jako administrator możesz zmienić nazwę widoczną dla wszystkich domowników.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={householdNameInput}
+                  onChange={(e) => setHouseholdNameInput(e.target.value)}
+                  minLength={2}
+                  maxLength={60}
+                  placeholder="np. Domowa Spiżarnia"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+
+                <button
+                  type="submit"
+                  disabled={
+                    householdNameSaving ||
+                    !householdNameInput.trim() ||
+                    householdNameInput.trim() === user?.household?.name
+                  }
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-3.5 h-3.5" />
+
+                  {householdNameSaving
+                    ? 'Zapisywanie...'
+                    : 'Zmień nazwę'}
+                </button>
+              </div>
+
+              <div className="text-[10px] text-slate-500">
+                {householdNameInput.length}/60 znaków
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
       {/* Backup / Zmiana gospodarstwa */}
       <div
         className={`grid grid-cols-1 gap-4 ${
@@ -1299,24 +1299,6 @@ export const HouseholdSettingsView: React.FC = () => {
             : ''
         }`}
       >
-        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-          <h4 className="font-bold text-sm text-white flex items-center gap-2">
-            <Download className="w-4 h-4 text-emerald-400" />
-            Kopia zapasowa danych
-          </h4>
-
-          <p className="text-xs text-slate-400">
-            Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON
-          </p>
-
-          <button
-            onClick={handleDownloadBackup}
-            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
-          >
-            Pobierz plik kopii zapasowej
-          </button>
-        </div>
-
         {!isAdmin && (
           <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
             <h4 className="font-bold text-sm text-white flex items-center gap-2">
@@ -1350,6 +1332,24 @@ export const HouseholdSettingsView: React.FC = () => {
             </form>
           </div>
         )}
+
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <h4 className="font-bold text-sm text-white flex items-center gap-2">
+            <Download className="w-4 h-4 text-emerald-400" />
+            Kopia zapasowa danych
+          </h4>
+
+          <p className="text-xs text-slate-400">
+            Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON
+          </p>
+
+          <button
+            onClick={handleDownloadBackup}
+            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
+          >
+            Pobierz plik kopii zapasowej
+          </button>
+        </div>
       </div>
 
       <InstallPwaModal

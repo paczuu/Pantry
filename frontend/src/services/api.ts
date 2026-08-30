@@ -60,7 +60,6 @@ class ApiService {
           window.location.href = '/login';
         }
       }
-
       throw new Error(data.error || data.message || `Błąd serwera (${response.status})`);
     }
 
@@ -147,13 +146,11 @@ class ApiService {
     sortBy?: string;
   }): Promise<{ items: PantryItem[] }> {
     const query = new URLSearchParams();
-
     if (params) {
       Object.entries(params).forEach(([key, val]) => {
         if (val) query.append(key, val);
       });
     }
-
     const qStr = query.toString();
     return this.request(`/pantry${qStr ? `?${qStr}` : ''}`);
   }
@@ -305,6 +302,7 @@ class ApiService {
     ingredients?: string[];
     notes?: string | null;
     imageUrl?: string | null;
+    rating?: number;
   }): Promise<{ recipe: Recipe }> {
     return this.request('/recipes', {
       method: 'POST',
@@ -320,6 +318,7 @@ class ApiService {
       ingredients: string[];
       notes: string | null;
       imageUrl: string | null;
+      rating: number;
     }>
   ): Promise<{ message: string }> {
     return this.request(`/recipes/${id}`, {
@@ -346,15 +345,11 @@ class ApiService {
     endDate?: string;
   }): Promise<{ total: number; page: number; totalPages: number; logs: ActivityLog[] }> {
     const query = new URLSearchParams();
-
     if (params) {
       Object.entries(params).forEach(([key, val]) => {
-        if (val !== undefined && val !== null && val !== '') {
-          query.append(key, String(val));
-        }
+        if (val !== undefined && val !== null && val !== '') query.append(key, String(val));
       });
     }
-
     const qStr = query.toString();
     return this.request(`/audit-logs${qStr ? `?${qStr}` : ''}`);
   }

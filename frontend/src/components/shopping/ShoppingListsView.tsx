@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingList, ShoppingItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
-import { TransferToPantryModal } from './TransferToPantryModal';
 import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
-import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
-import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
+import { useLiveRefresh } from '../../contexts/RealtimeContext';
 import {
   Plus,
   Trash2,
-  PackagePlus,
   Clock,
   ShoppingBag,
   Minus,
@@ -36,8 +33,6 @@ export const ShoppingListsView: React.FC = () => {
   // Modals
   const [isNewListModalOpen, setIsNewListModalOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const newItemNameRef = useRef<HTMLInputElement>(null);
 
   const fetchLists = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -221,7 +216,7 @@ export const ShoppingListsView: React.FC = () => {
             Listy Zakupów
           </h2>
           <p className="text-xs text-slate-400">
-            Planuj zakupy i łatwo przenoś kupione produkty do spiżarni
+            Planuj zakupy i oznaczaj kupione produkty
           </p>
         </div>
 
@@ -279,18 +274,6 @@ export const ShoppingListsView: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Przycisk Przenieś do spiżarni */}
-              {checkedCount > 0 && (
-                <button
-                  onClick={() => setIsTransferModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 text-xs font-bold transition-all animate-pulse"
-                  title="Przenieś zaznaczone do spiżarni"
-                >
-                  <PackagePlus className="w-4 h-4 text-emerald-400" />
-                  Przenieś do spiżarni ({checkedCount})
-                </button>
-              )}
-
               {/* Dodaj kończące się ze spiżarni */}
               <button
                 onClick={handleAddExpiring}
@@ -503,14 +486,6 @@ export const ShoppingListsView: React.FC = () => {
           </div>
         </form>
       </Modal>
-
-      {/* Modal Przenoszenia Kupionych */}
-      <TransferToPantryModal
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-        list={activeList}
-        onSuccess={() => fetchLists()}
-      />
     </div>
   );
 };
