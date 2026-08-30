@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, text } from 'express';
 import { authenticateToken } from './middleware/auth.js';
 import { requireAdmin } from './middleware/requireAdmin.js';
 import * as authController from './controllers/authController.js';
@@ -147,6 +147,13 @@ router.delete(
   settingsController.deleteCategory
 );
 router.get('/settings/backup', authenticateToken, settingsController.exportHouseholdBackup);
+router.post(
+  '/settings/backup/restore',
+  authenticateToken,
+  requireAdmin,
+  text({ type: 'application/x-spizarnia-backup', limit: '20mb' }),
+  settingsController.restoreHouseholdBackup
+);
 
 // === Settings / Źródła EAN ===
 router.get(

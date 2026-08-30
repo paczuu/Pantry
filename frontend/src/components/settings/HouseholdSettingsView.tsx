@@ -24,6 +24,7 @@ import {
   Trash2,
   Tag,
   Download,
+  Upload,
   Home,
   KeyRound,
   Smartphone,
@@ -98,6 +99,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [inviteTimeLeft, setInviteTimeLeft] = useState(0);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [backupRestoring, setBackupRestoring] = useState(false);
 
   const [householdNameInput, setHouseholdNameInput] = useState(
     user?.household?.name || ''
@@ -649,6 +651,56 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
+  const handleRestoreBackup = async (file: File) => {
+    if (!isAdmin) return;
+
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      showToast('Wybierz plik kopii zapasowej w formacie JSON.', 'error');
+      return;
+    }
+
+    let backup: unknown;
+
+    try {
+      const content = await file.text();
+      backup = JSON.parse(content);
+    } catch {
+      showToast('Wybrany plik nie zawiera poprawnego JSON.', 'error');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        'Przywrócenie kopii usunie aktualną spiżarnię, listy zakupów, notatki, przepisy i kategorie, a następnie zastąpi je danymi z pliku. Konta użytkowników i ustawienia gospodarstwa pozostaną bez zmian. Kontynuować?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBackupRestoring(true);
+
+      const res = await api.restoreHouseholdBackup(backup);
+
+      await refreshUser();
+      await refreshSettings();
+      await refreshStats();
+      await fetchMembers();
+
+      showToast(
+        `Przywrócono kopię: ${res.restored.pantryItems} produktów, ${res.restored.shoppingLists} list, ${res.restored.notes} notatek i ${res.restored.recipes} przepisów.`,
+        'success'
+      );
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się przywrócić kopii zapasowej.',
+        'error'
+      );
+    } finally {
+      setBackupRestoring(false);
+    }
+  };
+
   const sortedNavItems = [...navConfig].sort((a, b) => a.order - b.order);
 
   return (
@@ -1013,7 +1065,7 @@ export const HouseholdSettingsView: React.FC = () => {
           </div>
         )}
 
-        {/* Dane / dostęp */}
+        {/* Zmiana gospodarstwa */}
         <div className={`grid grid-cols-1 gap-4 ${!isAdmin ? 'sm:grid-cols-2' : ''}`}>
           {!isAdmin && (
             <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
@@ -1045,24 +1097,6 @@ export const HouseholdSettingsView: React.FC = () => {
               </form>
             </div>
           )}
-
-          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-            <h4 className="font-bold text-sm text-white flex items-center gap-2">
-              <Download className="w-4 h-4 text-emerald-400" />
-              Kopia zapasowa danych
-            </h4>
-
-            <p className="text-xs text-slate-400">
-              Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON.
-            </p>
-
-            <button
-              onClick={handleDownloadBackup}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
-            >
-              Pobierz kopię zapasową
-            </button>
-          </div>
         </div>
       </section>
 
@@ -1476,6 +1510,63 @@ export const HouseholdSettingsView: React.FC = () => {
                 Dodaj źródło
               </button>
             )}
+          </div>
+
+          {/* Kopia zapasowa */}
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <h4 className="font-bold text-sm text-white flex items-center gap-2">
+              <Download className="w-4 h-4 text-emerald-400" />
+              Kopia zapasowa danych
+            </h4>
+
+            <p className="text-xs text-slate-400">
+              Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON.
+            </p>
+
+            <button
+              onClick={handleDownloadBackup}
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
+            >
+              Pobierz kopię zapasową
+            </button>
+          </div>
+
+          {/* Przywracanie kopii zapasowej */}
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Upload className="w-5 h-5 text-amber-400" />
+                Przywróć kopię zapasową
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Wczytaj wcześniej pobrany plik JSON. Aktualna spiżarnia, listy zakupów, notatki, przepisy i kategorie zostaną zastąpione danymi z kopii.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
+              Konta użytkowników, hasła, nazwa gospodarstwa i kod zaproszenia nie są przywracane z pliku.
+            </div>
+
+            <label className={`w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-2 ${
+              backupRestoring
+                ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300 cursor-pointer'
+            }`}>
+              <Upload className="w-4 h-4" />
+              {backupRestoring ? 'Przywracanie kopii...' : 'Wybierz plik i przywróć kopię'}
+              <input
+                type="file"
+                accept="application/json,.json"
+                disabled={backupRestoring}
+                className="hidden"
+                onChange={(e) => {
+                  const input = e.currentTarget;
+                  const file = input.files?.[0];
+                  if (file) void handleRestoreBackup(file);
+                  input.value = '';
+                }}
+              />
+            </label>
           </div>
         </section>
       )}

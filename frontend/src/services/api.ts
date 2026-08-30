@@ -393,6 +393,24 @@ class ApiService {
     });
   }
 
+  async restoreHouseholdBackup(backup: unknown): Promise<{
+    message: string;
+    restored: {
+      pantryItems: number;
+      shoppingLists: number;
+      shoppingItems: number;
+      notes: number;
+      recipes: number;
+      categories: number;
+    };
+  }> {
+    return this.request('/settings/backup/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-spizarnia-backup' },
+      body: JSON.stringify(backup),
+    });
+  }
+
   async getBarcodeSources(): Promise<{
     sources: BarcodeSourceConfig[];
     usingDefaults: boolean;
