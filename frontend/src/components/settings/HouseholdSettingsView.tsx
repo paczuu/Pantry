@@ -12,6 +12,12 @@ import {
 } from '../../utils/navConfig';
 import { clampExpiryWarningDays } from '../../utils/expiryWarning';
 import {
+  ACCENT_THEMES,
+  AccentThemeId,
+  applyAccentTheme,
+  getStoredAccentTheme,
+} from '../../utils/accentTheme';
+import {
   Users,
   Copy,
   ShieldCheck,
@@ -32,9 +38,8 @@ import {
   Save,
   Globe2,
   Clock,
+  Palette,
 } from 'lucide-react';
-
-
 
 const BARCODE_PROVIDER_OPTIONS: Array<{
   provider: BarcodeProviderKey;
@@ -92,7 +97,10 @@ const getBarcodeSourceLabel = (source: BarcodeSourceConfig): string => {
     const country = COUNTRY_OPTIONS.find(
       (option) => option.code === source.countryCode
     );
-    return `${provider.label} — ${country?.label || source.countryCode.toUpperCase()}`;
+
+    return `${provider.label} — ${
+      country?.label || source.countryCode.toUpperCase()
+    }`;
   }
 
   return provider.label;
@@ -100,23 +108,33 @@ const getBarcodeSourceLabel = (source: BarcodeSourceConfig): string => {
 
 export const HouseholdSettingsView: React.FC = () => {
   const { user, isAdmin, refreshUser, joinHousehold } = useAuth();
-  const { categories, refreshSettings, refreshStats, expiryWarningDays } = usePantry();
+  const { categories, refreshSettings, refreshStats, expiryWarningDays } =
+    usePantry();
   const { showToast } = useToast();
 
   const [members, setMembers] = useState<User[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
-  const [warningDaysInput, setWarningDaysInput] = useState(String(expiryWarningDays));
+  const [warningDaysInput, setWarningDaysInput] = useState(
+    String(expiryWarningDays)
+  );
   const [warningDaysSaving, setWarningDaysSaving] = useState(false);
+  const [accentTheme, setAccentTheme] = useState<AccentThemeId>(() =>
+    getStoredAccentTheme()
+  );
 
   // Źródła EAN
-  const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>([]);
+  const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>(
+    []
+  );
   const [barcodeSourcesLoading, setBarcodeSourcesLoading] = useState(true);
   const [barcodeSourcesSaving, setBarcodeSourcesSaving] = useState(false);
 
   // Nawigacja
-  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => loadNavConfig());
+  const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() =>
+    loadNavConfig()
+  );
 
   const saveNavConfig = (newConfig: NavItemConfig[]) => {
     setNavConfig(newConfig);
@@ -134,13 +152,18 @@ export const HouseholdSettingsView: React.FC = () => {
   const moveNavItem = (index: number, direction: 'up' | 'down') => {
     const sorted = [...navConfig].sort((a, b) => a.order - b.order);
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
     if (targetIndex < 0 || targetIndex >= sorted.length) return;
 
     const temp = sorted[index];
     sorted[index] = sorted[targetIndex];
     sorted[targetIndex] = temp;
 
-    const updated = sorted.map((item, idx) => ({ ...item, order: idx + 1 }));
+    const updated = sorted.map((item, idx) => ({
+      ...item,
+      order: idx + 1,
+    }));
+
     saveNavConfig(updated);
   };
 
@@ -148,11 +171,27 @@ export const HouseholdSettingsView: React.FC = () => {
     saveNavConfig(DEFAULT_NAV_ITEMS);
   };
 
+  const handleAccentThemeChange = (themeId: AccentThemeId) => {
+    setAccentTheme(themeId);
+    applyAccentTheme(themeId);
+
+    const selectedTheme = ACCENT_THEMES.find((theme) => theme.id === themeId);
+
+    showToast(
+      `Ustawiono kolor aplikacji: ${selectedTheme?.label || themeId}.`,
+      'success'
+    );
+  };
+
+  const resetAccentTheme = () => {
+    handleAccentThemeChange('emerald');
+  };
 
   const fetchBarcodeSources = async () => {
     try {
       setBarcodeSourcesLoading(true);
       const res = await api.getBarcodeSources();
+
       setBarcodeSources(
         [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
       );
@@ -187,11 +226,10 @@ export const HouseholdSettingsView: React.FC = () => {
       const next = [...current];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
 
-      if (targetIndex < 0 || targetIndex >= next.length) {
-        return current;
-      }
+      if (targetIndex < 0 || targetIndex >= next.length) return current;
 
       [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+
       return normalizeBarcodePriorities(next);
     });
   };
@@ -271,7 +309,9 @@ export const HouseholdSettingsView: React.FC = () => {
               ...source,
               provider,
               countryCode:
-                provider === 'OPEN_FOOD_FACTS' ? source.countryCode || 'pl' : 'world',
+                provider === 'OPEN_FOOD_FACTS'
+                  ? source.countryCode || 'pl'
+                  : 'world',
             }
           : source
       )
@@ -281,9 +321,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const updateBarcodeSourceCountry = (index: number, countryCode: string) => {
     setBarcodeSources((current) =>
       current.map((source, sourceIndex) =>
-        sourceIndex === index
-          ? { ...source, countryCode }
-          : source
+        sourceIndex === index ? { ...source, countryCode } : source
       )
     );
   };
@@ -293,9 +331,11 @@ export const HouseholdSettingsView: React.FC = () => {
       setBarcodeSourcesSaving(true);
       const normalized = normalizeBarcodePriorities(barcodeSources);
       const res = await api.updateBarcodeSources(normalized);
+
       setBarcodeSources(
         [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
       );
+
       showToast('Zapisano źródła wyszukiwania EAN.', 'success');
     } catch (e: any) {
       showToast(e.message || 'Nie udało się zapisać źródeł EAN.', 'error');
@@ -305,19 +345,28 @@ export const HouseholdSettingsView: React.FC = () => {
   };
 
   const resetBarcodeSources = async () => {
-    if (!window.confirm('Przywrócić domyślne źródła EAN: Open Food Facts PL → World?')) {
+    if (
+      !window.confirm(
+        'Przywrócić domyślne źródła EAN: Open Food Facts PL → World?'
+      )
+    ) {
       return;
     }
 
     try {
       setBarcodeSourcesSaving(true);
       const res = await api.resetBarcodeSources();
+
       setBarcodeSources(
         [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
       );
+
       showToast('Przywrócono domyślne źródła EAN.', 'success');
     } catch (e: any) {
-      showToast(e.message || 'Nie udało się przywrócić ustawień EAN.', 'error');
+      showToast(
+        e.message || 'Nie udało się przywrócić ustawień EAN.',
+        'error'
+      );
     } finally {
       setBarcodeSourcesSaving(false);
     }
@@ -334,6 +383,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
   useEffect(() => {
     fetchMembers();
+
     if (isAdmin) {
       fetchBarcodeSources();
     } else {
@@ -347,15 +397,28 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const handleSaveExpiryWarningDays = async () => {
     const days = clampExpiryWarningDays(warningDaysInput);
+
     try {
       setWarningDaysSaving(true);
-      await api.updateHouseholdSettings({ expiryWarningDays: days });
+
+      await api.updateHouseholdSettings({
+        expiryWarningDays: days,
+      });
+
       setWarningDaysInput(String(days));
+
       await refreshUser();
       await refreshStats();
-      showToast(`Alert o końcu terminu: ${days} ${days === 1 ? 'dzień' : 'dni'}.`, 'success');
+
+      showToast(
+        `Alert o końcu terminu: ${days} ${days === 1 ? 'dzień' : 'dni'}.`,
+        'success'
+      );
     } catch (e: any) {
-      showToast(e.message || 'Nie udało się zapisać okresu ważności.', 'error');
+      showToast(
+        e.message || 'Nie udało się zapisać okresu ważności.',
+        'error'
+      );
     } finally {
       setWarningDaysSaving(false);
     }
@@ -364,7 +427,10 @@ export const HouseholdSettingsView: React.FC = () => {
   const handleCopyCode = () => {
     if (user?.household?.inviteCode) {
       navigator.clipboard.writeText(user.household.inviteCode);
-      showToast(`Skopiowano kod zaproszenia: ${user.household.inviteCode}`, 'success');
+      showToast(
+        `Skopiowano kod zaproszenia: ${user.household.inviteCode}`,
+        'success'
+      );
     }
   };
 
@@ -372,6 +438,7 @@ export const HouseholdSettingsView: React.FC = () => {
     try {
       await api.updateMemberRole(memberId, newRole);
       showToast('Zaktualizowano uprawnienia domownika.', 'success');
+
       await fetchMembers();
       await refreshUser();
     } catch (e: any) {
@@ -380,7 +447,11 @@ export const HouseholdSettingsView: React.FC = () => {
   };
 
   const handleRemoveMember = async (memberId: string, name: string) => {
-    if (window.confirm(`Czy na pewno chcesz usunąć użytkownika "${name}" z gospodarstwa?`)) {
+    if (
+      window.confirm(
+        `Czy na pewno chcesz usunąć użytkownika "${name}" z gospodarstwa?`
+      )
+    ) {
       try {
         await api.removeMember(memberId);
         showToast('Usunięto członka z gospodarstwa.', 'info');
@@ -393,6 +464,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!newCategoryName.trim()) return;
 
     try {
@@ -419,9 +491,14 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const handleJoinOtherHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!inviteCodeInput.trim()) return;
 
-    if (window.confirm('Dołączenie do innego gospodarstwa spowoduje opuszczenie obecnego. Kontynuować?')) {
+    if (
+      window.confirm(
+        'Dołączenie do innego gospodarstwa spowoduje opuszczenie obecnego. Kontynuować?'
+      )
+    ) {
       try {
         await joinHousehold(inviteCodeInput.trim());
         setInviteCodeInput('');
@@ -445,24 +522,27 @@ export const HouseholdSettingsView: React.FC = () => {
           Gospodarstwo Domowe i Ustawienia
         </h2>
         <p className="text-xs text-slate-400">
-          Zarządzaj domownikami, uprawnieniami, kategoriami i wyglądem paska nawigacji
+          Zarządzaj domownikami, uprawnieniami, wyglądem aplikacji i konfiguracją
+          gospodarstwa
         </p>
       </div>
 
-      {/* Instalacja Aplikacji PWA Banner */}
+      {/* Instalacja Aplikacji PWA */}
       <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/95 to-emerald-950/40 border border-emerald-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-lg shadow-emerald-950/60">
             <Smartphone className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base">Instalacja Aplikacji</h3>
+            <h3 className="font-extrabold text-white text-base">
+              Instalacja Aplikacji
+            </h3>
             <p className="text-xs text-slate-300">
-              Zainstaluj aplikację na telefonie (Android, iOS) lub komputerze, aby mieć do niej błyskawiczny dostęp.
+              Zainstaluj aplikację na telefonie (Android, iOS) lub komputerze,
+              aby mieć do niej błyskawiczny dostęp.
             </p>
           </div>
         </div>
-
         <button
           onClick={() => setIsInstallModalOpen(true)}
           className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/50 transition-all self-start sm:self-auto shrink-0"
@@ -471,35 +551,83 @@ export const HouseholdSettingsView: React.FC = () => {
         </button>
       </div>
 
-      {/* Box Kodu Zaproszenia Domowników */}
-      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Kolor aplikacji */}
+      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold text-emerald-400">Współdzielenie Spiżarni</div>
-            <h3 className="text-lg font-extrabold text-white">
-              {user?.household?.name || 'Moje Gospodarstwo'}
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <Palette className="w-5 h-5 text-emerald-400" />
+              Kolor aplikacji
             </h3>
-            <p className="text-xs text-slate-300">
-              Podaj ten kod domownikowi podczas rejestracji lub dołączania, aby wspólnie zarządzać produktami.
+            <p className="text-xs text-slate-400 mt-1">
+              Wybierz główny kolor przycisków, ikon, ramek i elementów
+              interfejsu.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
-            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
-              {user?.household?.inviteCode}
-            </span>
+          {accentTheme !== 'emerald' && (
             <button
-              onClick={handleCopyCode}
-              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-              title="Kopiuj kod zaproszenia"
+              type="button"
+              onClick={resetAccentTheme}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
             >
-              <Copy className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Domyślny</span>
             </button>
-          </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {ACCENT_THEMES.map((theme) => {
+            const selected = accentTheme === theme.id;
+
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => handleAccentThemeChange(theme.id)}
+                className={`relative flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
+                  selected
+                    ? 'bg-slate-800 border-white/30 shadow-lg'
+                    : 'bg-slate-950/40 border-slate-800 hover:bg-slate-800/70 hover:border-slate-700'
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-xl shrink-0 transition-transform ${
+                    selected ? 'scale-110' : ''
+                  }`}
+                  style={{
+                    backgroundColor: theme.color,
+                    boxShadow: selected
+                      ? `0 0 18px ${theme.color}55`
+                      : 'none',
+                  }}
+                />
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-white truncate">
+                    {theme.label}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {theme.description}
+                  </div>
+                </div>
+
+                {selected && (
+                  <div
+                    className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                    style={{
+                      backgroundColor: theme.color,
+                      boxShadow: `0 0 8px ${theme.color}`,
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Personalizacja Dolnego Paska Nawigacyjnego */}
+      {/* Personalizacja paska */}
       <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -508,7 +636,8 @@ export const HouseholdSettingsView: React.FC = () => {
               Personalizacja paska nawigacji
             </h3>
             <p className="text-xs text-slate-400">
-              Usuń przyciski z dolnego paska (ikona oka) albo zmień ich kolejność. Ukryte pozycje nie pojawią się na telefonie.
+              Usuń przyciski z dolnego paska albo zmień ich kolejność. Ukryte
+              pozycje nie pojawią się na telefonie.
             </p>
           </div>
           <button
@@ -534,13 +663,30 @@ export const HouseholdSettingsView: React.FC = () => {
                   <button
                     onClick={() => toggleNavVisibility(item.id)}
                     className={`p-1.5 rounded-lg transition-colors ${
-                      item.visible ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 bg-slate-900'
+                      item.visible
+                        ? 'text-emerald-400 bg-emerald-500/10'
+                        : 'text-slate-500 bg-slate-900'
                     }`}
-                    title={item.visible ? 'Ukryj ten przycisk' : 'Pokaż ten przycisk'}
+                    title={
+                      item.visible
+                        ? 'Ukryj ten przycisk'
+                        : 'Pokaż ten przycisk'
+                    }
                   >
-                    {item.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    {item.visible ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4" />
+                    )}
                   </button>
-                  <span className={`text-sm font-semibold ${item.visible ? 'text-white' : 'text-slate-500 line-through'}`}>
+
+                  <span
+                    className={`text-sm font-semibold ${
+                      item.visible
+                        ? 'text-white'
+                        : 'text-slate-500 line-through'
+                    }`}
+                  >
                     {item.label}
                   </span>
                 </div>
@@ -550,7 +696,6 @@ export const HouseholdSettingsView: React.FC = () => {
                     onClick={() => moveNavItem(index, 'up')}
                     disabled={index === 0}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                    title="Przesuń w lewo / w górę"
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
@@ -558,7 +703,6 @@ export const HouseholdSettingsView: React.FC = () => {
                     onClick={() => moveNavItem(index, 'down')}
                     disabled={index === sortedNavItems.length - 1}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                    title="Przesuń w prawo / w dół"
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
@@ -569,299 +713,7 @@ export const HouseholdSettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Okres ostrzeżenia o terminie ważności */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-        <div>
-          <h3 className="font-bold text-base text-white flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-400" />
-            Kończący się termin ważności
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">
-            Pulpit, filtry spiżarni i alerty oznaczają produkty, których termin kończy się w podanej liczbie dni (domyślnie 3).
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <label className="text-xs font-semibold text-slate-300 shrink-0">Liczba dni</label>
-          <input
-            type="number"
-            min={1}
-            max={90}
-            value={warningDaysInput}
-            onChange={(e) => setWarningDaysInput(e.target.value)}
-            className="w-full sm:w-28 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-          />
-          <button
-            type="button"
-            onClick={handleSaveExpiryWarningDays}
-            disabled={warningDaysSaving}
-            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Zapisz
-          </button>
-        </div>
-      </div>
-
-      {isAdmin && (
-        <>
-      {/* Źródła danych EAN */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Database className="w-5 h-5 text-emerald-400" />
-              Źródła wyszukiwania EAN
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Skaner sprawdza źródła od góry do dołu. Produkt dodany ręcznie w aplikacji zawsze ma najwyższy priorytet.
-            </p>
-          </div>
-
-          {isAdmin && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={resetBarcodeSources}
-                disabled={barcodeSourcesSaving}
-                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold disabled:opacity-40"
-              >
-                <RotateCcw className="w-3.5 h-3.5 inline mr-1.5" />
-                Domyślne
-              </button>
-              <button
-                onClick={saveBarcodeSources}
-                disabled={barcodeSourcesSaving || barcodeSourcesLoading}
-                className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
-              >
-                <Save className="w-3.5 h-3.5 inline mr-1.5" />
-                {barcodeSourcesSaving ? 'Zapisywanie...' : 'Zapisz'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {!isAdmin && (
-          <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs">
-            Tylko administrator gospodarstwa może zmieniać kolejność i aktywne źródła.
-          </div>
-        )}
-
-        {barcodeSourcesLoading ? (
-          <div className="text-xs text-slate-400 py-3">Ładowanie źródeł EAN...</div>
-        ) : (
-          <div className="space-y-2">
-            {barcodeSources.map((source, index) => {
-              const providerMeta = BARCODE_PROVIDER_OPTIONS.find(
-                (option) => option.provider === source.provider
-              );
-
-              return (
-                <div
-                  key={`${source.provider}-${source.countryCode}-${index}`}
-                  className={`p-3 rounded-2xl border transition-colors ${
-                    source.enabled
-                      ? 'bg-slate-800/70 border-slate-700'
-                      : 'bg-slate-950/60 border-slate-800 opacity-65'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleBarcodeSource(index)}
-                      disabled={!isAdmin}
-                      className={`self-start lg:self-auto px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold border ${
-                        source.enabled
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                          : 'bg-slate-900 border-slate-700 text-slate-500'
-                      } disabled:cursor-default`}
-                    >
-                      {source.enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
-                    </button>
-
-                    <div className="flex-1 min-w-0">
-                      {isAdmin ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <select
-                            value={source.provider}
-                            onChange={(e) =>
-                              updateBarcodeSourceProvider(
-                                index,
-                                e.target.value as BarcodeProviderKey
-                              )
-                            }
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
-                          >
-                            {BARCODE_PROVIDER_OPTIONS.map((option) => (
-                              <option key={option.provider} value={option.provider}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-
-                          {providerMeta?.supportsCountry ? (
-                            <select
-                              value={source.countryCode}
-                              onChange={(e) =>
-                                updateBarcodeSourceCountry(index, e.target.value)
-                              }
-                              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
-                            >
-                              {COUNTRY_OPTIONS.map((country) => (
-                                <option key={country.code} value={country.code}>
-                                  {country.label}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <div className="px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 flex items-center gap-2">
-                              <Globe2 className="w-3.5 h-3.5" />
-                              Baza globalna
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="text-sm font-bold text-white">
-                            {getBarcodeSourceLabel(source)}
-                          </div>
-                        </div>
-                      )}
-
-                      <p className="text-[11px] text-slate-500 mt-1.5">
-                        {providerMeta?.description}
-                      </p>
-                    </div>
-
-                    {isAdmin && (
-                      <div className="flex items-center gap-1 self-end lg:self-auto">
-                        <button
-                          onClick={() => moveBarcodeSource(index, 'up')}
-                          disabled={index === 0}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                          title="Wyższy priorytet"
-                        >
-                          <ArrowUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => moveBarcodeSource(index, 'down')}
-                          disabled={index === barcodeSources.length - 1}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                          title="Niższy priorytet"
-                        >
-                          <ArrowDown className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => removeBarcodeSource(index)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
-                          title="Usuń źródło"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-2 text-[10px] text-slate-600">
-                    Priorytet {index + 1}
-                  </div>
-                </div>
-              );
-            })}
-
-            {barcodeSources.length === 0 && (
-              <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
-                Brak skonfigurowanych źródeł. Skanowanie będzie korzystało z domyślnego Open Food Facts PL → World do czasu zapisania konfiguracji.
-              </div>
-            )}
-          </div>
-        )}
-
-        {isAdmin && !barcodeSourcesLoading && (
-          <button
-            type="button"
-            onClick={addBarcodeSource}
-            className="w-full py-2.5 rounded-xl border border-dashed border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-slate-300 hover:text-emerald-300 text-xs font-bold transition-colors"
-          >
-            <Plus className="w-4 h-4 inline mr-1.5" />
-            Dodaj źródło
-          </button>
-        )}
-      </div>
-
-        </>
-      )}
-
-      {/* Lista Członków Gospodarstwa */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-base text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-cyan-400" />
-            Członkowie gospodarstwa ({members.length})
-          </h3>
-        </div>
-
-        <div className="space-y-2.5">
-          {members.map((member) => {
-            const isMe = member.id === user?.id;
-            const isMemberAdmin = member.role === 'ADMIN';
-
-            return (
-              <div
-                key={member.id}
-                className="flex flex-wrap items-center justify-between p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 gap-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sm text-slate-200">
-                    {member.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-bold text-sm text-white flex items-center gap-2">
-                      {member.name}
-                      {isMe && <span className="text-[10px] text-slate-400 font-normal">(Ty)</span>}
-                    </div>
-                    <div className="text-xs text-slate-400">{member.email}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {isAdmin && !isMe ? (
-                    <select
-                      value={member.role}
-                      onChange={(e) => handleUpdateRole(member.id, e.target.value as UserRole)}
-                      className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="MEMBER">Domownik (MEMBER)</option>
-                      <option value="ADMIN">Administrator (ADMIN)</option>
-                    </select>
-                  ) : (
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold ${
-                        isMemberAdmin
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : 'bg-slate-700 text-slate-300'
-                      }`}
-                    >
-                      {isMemberAdmin && <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
-                      {member.role}
-                    </span>
-                  )}
-
-                  {isAdmin && !isMe && (
-                    <button
-                      onClick={() => handleRemoveMember(member.id, member.name)}
-                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
-                      title="Usuń z gospodarstwa"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Konfiguracja Kategorii */}
+      {/* Kategorie */}
       <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
         <h3 className="font-bold text-base text-white flex items-center gap-2">
           <Tag className="w-5 h-5 text-cyan-400" />
@@ -904,8 +756,338 @@ export const HouseholdSettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Kopia Zapasowa & Dołączanie do innego gospodarstwa */}
-      <div className={`grid grid-cols-1 gap-4 ${!isAdmin ? 'sm:grid-cols-2' : ''}`}>
+      {/* Okres ostrzeżenia */}
+      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+        <div>
+          <h3 className="font-bold text-base text-white flex items-center gap-2">
+            <Clock className="w-5 h-5 text-amber-400" />
+            Kończący się termin ważności
+          </h3>
+          <p className="text-xs text-slate-400 mt-1">
+            Pulpit, filtry spiżarni i alerty oznaczają produkty, których termin
+            kończy się w podanej liczbie dni.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <label className="text-xs font-semibold text-slate-300 shrink-0">
+            Liczba dni
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={warningDaysInput}
+            onChange={(e) => setWarningDaysInput(e.target.value)}
+            className="w-full sm:w-28 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+          />
+          <button
+            type="button"
+            onClick={handleSaveExpiryWarningDays}
+            disabled={warningDaysSaving}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
+          >
+            <Save className="w-3.5 h-3.5" />
+            Zapisz
+          </button>
+        </div>
+      </div>
+
+      {/* Członkowie gospodarstwa */}
+      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+        <h3 className="font-bold text-base text-white flex items-center gap-2">
+          <Users className="w-5 h-5 text-cyan-400" />
+          Członkowie gospodarstwa ({members.length})
+        </h3>
+
+        <div className="space-y-2.5">
+          {members.map((member) => {
+            const isMe = member.id === user?.id;
+            const isMemberAdmin = member.role === 'ADMIN';
+
+            return (
+              <div
+                key={member.id}
+                className="flex flex-wrap items-center justify-between p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 gap-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sm text-slate-200">
+                    {member.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm text-white flex items-center gap-2">
+                      {member.name}
+                      {isMe && (
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          (Ty)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400">{member.email}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isAdmin && !isMe ? (
+                    <select
+                      value={member.role}
+                      onChange={(e) =>
+                        handleUpdateRole(
+                          member.id,
+                          e.target.value as UserRole
+                        )
+                      }
+                      className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="MEMBER">Domownik (MEMBER)</option>
+                      <option value="ADMIN">Administrator (ADMIN)</option>
+                    </select>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold ${
+                        isMemberAdmin
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-slate-700 text-slate-300'
+                      }`}
+                    >
+                      {isMemberAdmin && (
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                      {member.role}
+                    </span>
+                  )}
+
+                  {isAdmin && !isMe && (
+                    <button
+                      onClick={() =>
+                        handleRemoveMember(member.id, member.name)
+                      }
+                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {isAdmin && (
+        <>
+          {/* Źródła danych EAN */}
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-base text-white flex items-center gap-2">
+                  <Database className="w-5 h-5 text-emerald-400" />
+                  Źródła wyszukiwania EAN
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Skaner sprawdza źródła od góry do dołu. Produkt dodany ręcznie
+                  w aplikacji zawsze ma najwyższy priorytet.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={resetBarcodeSources}
+                  disabled={barcodeSourcesSaving}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold disabled:opacity-40"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 inline mr-1.5" />
+                  Domyślne
+                </button>
+                <button
+                  onClick={saveBarcodeSources}
+                  disabled={barcodeSourcesSaving || barcodeSourcesLoading}
+                  className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
+                >
+                  <Save className="w-3.5 h-3.5 inline mr-1.5" />
+                  {barcodeSourcesSaving ? 'Zapisywanie...' : 'Zapisz'}
+                </button>
+              </div>
+            </div>
+
+            {barcodeSourcesLoading ? (
+              <div className="text-xs text-slate-400 py-3">
+                Ładowanie źródeł EAN...
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {barcodeSources.map((source, index) => {
+                  const providerMeta = BARCODE_PROVIDER_OPTIONS.find(
+                    (option) => option.provider === source.provider
+                  );
+
+                  return (
+                    <div
+                      key={`${source.provider}-${source.countryCode}-${index}`}
+                      className={`p-3 rounded-2xl border transition-colors ${
+                        source.enabled
+                          ? 'bg-slate-800/70 border-slate-700'
+                          : 'bg-slate-950/60 border-slate-800 opacity-65'
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleBarcodeSource(index)}
+                          className={`self-start lg:self-auto px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold border ${
+                            source.enabled
+                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                              : 'bg-slate-900 border-slate-700 text-slate-500'
+                          }`}
+                        >
+                          {source.enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <select
+                              value={source.provider}
+                              onChange={(e) =>
+                                updateBarcodeSourceProvider(
+                                  index,
+                                  e.target.value as BarcodeProviderKey
+                                )
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                            >
+                              {BARCODE_PROVIDER_OPTIONS.map((option) => (
+                                <option
+                                  key={option.provider}
+                                  value={option.provider}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+
+                            {providerMeta?.supportsCountry ? (
+                              <select
+                                value={source.countryCode}
+                                onChange={(e) =>
+                                  updateBarcodeSourceCountry(
+                                    index,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                              >
+                                {COUNTRY_OPTIONS.map((country) => (
+                                  <option
+                                    key={country.code}
+                                    value={country.code}
+                                  >
+                                    {country.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 flex items-center gap-2">
+                                <Globe2 className="w-3.5 h-3.5" />
+                                Baza globalna
+                              </div>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-slate-500 mt-1.5">
+                            {providerMeta?.description}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 self-end lg:self-auto">
+                          <button
+                            onClick={() => moveBarcodeSource(index, 'up')}
+                            disabled={index === 0}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => moveBarcodeSource(index, 'down')}
+                            disabled={index === barcodeSources.length - 1}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => removeBarcodeSource(index)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 text-[10px] text-slate-600">
+                        Priorytet {index + 1}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {barcodeSources.length === 0 && (
+                  <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
+                    Brak skonfigurowanych źródeł. Skanowanie będzie korzystało z
+                    domyślnego Open Food Facts PL → World.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!barcodeSourcesLoading && (
+              <button
+                type="button"
+                onClick={addBarcodeSource}
+                className="w-full py-2.5 rounded-xl border border-dashed border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-slate-300 hover:text-emerald-300 text-xs font-bold transition-colors"
+              >
+                <Plus className="w-4 h-4 inline mr-1.5" />
+                Dodaj źródło
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Kod gospodarstwa */}
+      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold text-emerald-400">
+              Współdzielenie Spiżarni
+            </div>
+            <h3 className="text-lg font-extrabold text-white">
+              {user?.household?.name || 'Moje Gospodarstwo'}
+            </h3>
+            <p className="text-xs text-slate-300">
+              Podaj ten kod domownikowi podczas rejestracji lub dołączania, aby
+              wspólnie zarządzać produktami.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
+            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
+              {user?.household?.inviteCode}
+            </span>
+            <button
+              onClick={handleCopyCode}
+              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
+              title="Kopiuj kod zaproszenia"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Backup / Zmiana gospodarstwa */}
+      <div
+        className={`grid grid-cols-1 gap-4 ${
+          !isAdmin ? 'sm:grid-cols-2' : ''
+        }`}
+      >
         <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
           <h4 className="font-bold text-sm text-white flex items-center gap-2">
             <Download className="w-4 h-4 text-emerald-400" />
@@ -923,28 +1105,31 @@ export const HouseholdSettingsView: React.FC = () => {
         </div>
 
         {!isAdmin && (
-        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-          <h4 className="font-bold text-sm text-white flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-amber-400" />
-            Zmień gospodarstwo domowe
-          </h4>
-          <form onSubmit={handleJoinOtherHousehold} className="space-y-2">
-            <input
-              type="text"
-              value={inviteCodeInput}
-              onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
-              placeholder="Wpisz 6-znakowy kod..."
-              className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-emerald-500"
-            />
-            <button
-              type="submit"
-              disabled={!inviteCodeInput.trim()}
-              className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40"
-            >
-              Dołącz z kodem
-            </button>
-          </form>
-        </div>
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <h4 className="font-bold text-sm text-white flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-amber-400" />
+              Zmień gospodarstwo domowe
+            </h4>
+
+            <form onSubmit={handleJoinOtherHousehold} className="space-y-2">
+              <input
+                type="text"
+                value={inviteCodeInput}
+                onChange={(e) =>
+                  setInviteCodeInput(e.target.value.toUpperCase())
+                }
+                placeholder="Wpisz 6-znakowy kod..."
+                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={!inviteCodeInput.trim()}
+                className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40"
+              >
+                Dołącz z kodem
+              </button>
+            </form>
+          </div>
         )}
       </div>
 
