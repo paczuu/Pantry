@@ -26,7 +26,7 @@ interface PantryCardProps {
 export const PantryCard: React.FC<PantryCardProps> = ({
   item,
   onEdit,
-  viewMode = 'grid',
+  viewMode = 'list',
 }) => {
   const { consumeItem, deleteItem, refreshPantry, expiryWarningDays } = usePantry();
   const { showToast } = useToast();

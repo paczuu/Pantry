@@ -39,6 +39,7 @@ import {
   Globe2,
   Clock,
   Palette,
+  PencilLine,
 } from 'lucide-react';
 
 const BARCODE_PROVIDER_OPTIONS: Array<{
@@ -116,10 +117,17 @@ export const HouseholdSettingsView: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  const [householdNameInput, setHouseholdNameInput] = useState(
+    user?.household?.name || ''
+  );
+  const [householdNameSaving, setHouseholdNameSaving] = useState(false);
+
   const [warningDaysInput, setWarningDaysInput] = useState(
     String(expiryWarningDays)
   );
   const [warningDaysSaving, setWarningDaysSaving] = useState(false);
+
   const [accentTheme, setAccentTheme] = useState<AccentThemeId>(() =>
     getStoredAccentTheme()
   );
@@ -146,6 +154,7 @@ export const HouseholdSettingsView: React.FC = () => {
     const updated = navConfig.map((item) =>
       item.id === id ? { ...item, visible: !item.visible } : item
     );
+
     saveNavConfig(updated);
   };
 
@@ -291,6 +300,7 @@ export const HouseholdSettingsView: React.FC = () => {
           'Masz już podstawowe źródła. Zmień kraj w jednym z wpisów Open Food Facts, aby dodać kolejne.',
           'info'
         );
+
         return current;
       }
 
@@ -321,7 +331,12 @@ export const HouseholdSettingsView: React.FC = () => {
   const updateBarcodeSourceCountry = (index: number, countryCode: string) => {
     setBarcodeSources((current) =>
       current.map((source, sourceIndex) =>
-        sourceIndex === index ? { ...source, countryCode } : source
+        sourceIndex === index
+          ? {
+              ...source,
+              countryCode,
+            }
+          : source
       )
     );
   };
@@ -329,7 +344,9 @@ export const HouseholdSettingsView: React.FC = () => {
   const saveBarcodeSources = async () => {
     try {
       setBarcodeSourcesSaving(true);
+
       const normalized = normalizeBarcodePriorities(barcodeSources);
+
       const res = await api.updateBarcodeSources(normalized);
 
       setBarcodeSources(
@@ -355,6 +372,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
     try {
       setBarcodeSourcesSaving(true);
+
       const res = await api.resetBarcodeSources();
 
       setBarcodeSources(
@@ -395,6 +413,60 @@ export const HouseholdSettingsView: React.FC = () => {
     setWarningDaysInput(String(expiryWarningDays));
   }, [expiryWarningDays]);
 
+  useEffect(() => {
+    setHouseholdNameInput(user?.household?.name || '');
+  }, [user?.household?.name]);
+
+  const handleSaveHouseholdName = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!isAdmin) return;
+
+    const cleanName = householdNameInput.trim();
+
+    if (!cleanName) {
+      showToast('Nazwa gospodarstwa nie może być pusta.', 'warning');
+      return;
+    }
+
+    if (cleanName.length < 2) {
+      showToast('Nazwa gospodarstwa musi mieć co najmniej 2 znaki.', 'warning');
+      return;
+    }
+
+    if (cleanName.length > 60) {
+      showToast('Nazwa gospodarstwa może mieć maksymalnie 60 znaków.', 'warning');
+      return;
+    }
+
+    if (cleanName === user?.household?.name) {
+      showToast('Nazwa gospodarstwa nie została zmieniona.', 'info');
+      return;
+    }
+
+    try {
+      setHouseholdNameSaving(true);
+
+      await api.updateHouseholdSettings({
+        name: cleanName,
+      });
+
+      await refreshUser();
+
+      showToast(
+        `Zmieniono nazwę gospodarstwa na "${cleanName}".`,
+        'success'
+      );
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się zmienić nazwy gospodarstwa.',
+        'error'
+      );
+    } finally {
+      setHouseholdNameSaving(false);
+    }
+  };
+
   const handleSaveExpiryWarningDays = async () => {
     const days = clampExpiryWarningDays(warningDaysInput);
 
@@ -427,6 +499,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const handleCopyCode = () => {
     if (user?.household?.inviteCode) {
       navigator.clipboard.writeText(user.household.inviteCode);
+
       showToast(
         `Skopiowano kod zaproszenia: ${user.household.inviteCode}`,
         'success'
@@ -437,6 +510,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const handleUpdateRole = async (memberId: string, newRole: UserRole) => {
     try {
       await api.updateMemberRole(memberId, newRole);
+
       showToast('Zaktualizowano uprawnienia domownika.', 'success');
 
       await fetchMembers();
@@ -454,7 +528,9 @@ export const HouseholdSettingsView: React.FC = () => {
     ) {
       try {
         await api.removeMember(memberId);
+
         showToast('Usunięto członka z gospodarstwa.', 'info');
+
         await fetchMembers();
       } catch (e: any) {
         showToast(e.message || 'Błąd usuwania członka.', 'error');
@@ -469,8 +545,11 @@ export const HouseholdSettingsView: React.FC = () => {
 
     try {
       await api.addCategory(newCategoryName.trim());
+
       showToast(`Dodano kategorię "${newCategoryName}"`, 'success');
+
       setNewCategoryName('');
+
       await refreshSettings();
     } catch (e: any) {
       showToast('Błąd dodawania kategorii.', 'error');
@@ -481,7 +560,9 @@ export const HouseholdSettingsView: React.FC = () => {
     if (window.confirm(`Czy na pewno usunąć kategorię "${name}"?`)) {
       try {
         await api.deleteCategory(id);
+
         showToast('Kategoria usunięta.', 'info');
+
         await refreshSettings();
       } catch (e: any) {
         showToast('Błąd usuwania kategorii.', 'error');
@@ -508,10 +589,16 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const handleDownloadBackup = () => {
     window.open('/api/settings/backup', '_blank');
-    showToast('Pobieranie kopii zapasowej spiżarni...', 'info');
+
+    showToast(
+      'Pobieranie kopii zapasowej spiżarni...',
+      'info'
+    );
   };
 
-  const sortedNavItems = [...navConfig].sort((a, b) => a.order - b.order);
+  const sortedNavItems = [...navConfig].sort(
+    (a, b) => a.order - b.order
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -521,34 +608,123 @@ export const HouseholdSettingsView: React.FC = () => {
           <Home className="w-6 h-6 text-emerald-400" />
           Gospodarstwo Domowe i Ustawienia
         </h2>
+
         <p className="text-xs text-slate-400">
-          Zarządzaj domownikami, uprawnieniami, wyglądem aplikacji i konfiguracją
-          gospodarstwa
+          Zarządzaj domownikami, uprawnieniami, wyglądem aplikacji i konfiguracją gospodarstwa
         </p>
       </div>
 
-      {/* Instalacja Aplikacji PWA */}
+      {/* Instalacja Aplikacji */}
       <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/95 to-emerald-950/40 border border-emerald-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-lg shadow-emerald-950/60">
             <Smartphone className="w-6 h-6" />
           </div>
+
           <div>
             <h3 className="font-extrabold text-white text-base">
               Instalacja Aplikacji
             </h3>
+
             <p className="text-xs text-slate-300">
               Zainstaluj aplikację na telefonie (Android, iOS) lub komputerze,
               aby mieć do niej błyskawiczny dostęp.
             </p>
           </div>
         </div>
+
         <button
           onClick={() => setIsInstallModalOpen(true)}
           className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/50 transition-all self-start sm:self-auto shrink-0"
         >
           Sprawdź instrukcję instalacji
         </button>
+      </div>
+
+      {/* Gospodarstwo i kod zaproszenia */}
+      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold text-emerald-400">
+              Współdzielenie Spiżarni
+            </div>
+
+            <h3 className="text-lg font-extrabold text-white">
+              {user?.household?.name || 'Moje Gospodarstwo'}
+            </h3>
+
+            <p className="text-xs text-slate-300">
+              Podaj ten kod domownikowi podczas rejestracji lub dołączania,
+              aby wspólnie zarządzać produktami.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
+            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
+              {user?.household?.inviteCode}
+            </span>
+
+            <button
+              onClick={handleCopyCode}
+              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
+              title="Kopiuj kod zaproszenia"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {isAdmin && (
+          <div className="pt-4 border-t border-slate-800">
+            <form
+              onSubmit={handleSaveHouseholdName}
+              className="space-y-3"
+            >
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <PencilLine className="w-4 h-4 text-emerald-400" />
+                  Nazwa gospodarstwa
+                </h4>
+
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Jako administrator możesz zmienić nazwę widoczną dla wszystkich domowników.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={householdNameInput}
+                  onChange={(e) => setHouseholdNameInput(e.target.value)}
+                  minLength={2}
+                  maxLength={60}
+                  placeholder="np. Domowa Spiżarnia"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                />
+
+                <button
+                  type="submit"
+                  disabled={
+                    householdNameSaving ||
+                    !householdNameInput.trim() ||
+                    householdNameInput.trim() === user?.household?.name
+                  }
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-3.5 h-3.5" />
+
+                  {householdNameSaving
+                    ? 'Zapisywanie...'
+                    : 'Zmień nazwę'}
+                </button>
+              </div>
+
+              <div className="text-[10px] text-slate-500">
+                {householdNameInput.length}/60 znaków
+              </div>
+            </form>
+          </div>
+        )}
       </div>
 
       {/* Kolor aplikacji */}
@@ -559,9 +735,9 @@ export const HouseholdSettingsView: React.FC = () => {
               <Palette className="w-5 h-5 text-emerald-400" />
               Kolor aplikacji
             </h3>
+
             <p className="text-xs text-slate-400 mt-1">
-              Wybierz główny kolor przycisków, ikon, ramek i elementów
-              interfejsu.
+              Wybierz główny kolor przycisków, ikon, ramek i elementów interfejsu.
             </p>
           </div>
 
@@ -572,7 +748,9 @@ export const HouseholdSettingsView: React.FC = () => {
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Domyślny</span>
+              <span className="hidden sm:inline">
+                Domyślny
+              </span>
             </button>
           )}
         </div>
@@ -603,10 +781,12 @@ export const HouseholdSettingsView: React.FC = () => {
                       : 'none',
                   }}
                 />
+
                 <div className="min-w-0">
                   <div className="text-xs sm:text-sm font-bold text-white truncate">
                     {theme.label}
                   </div>
+
                   <div className="text-[10px] text-slate-500 truncate">
                     {theme.description}
                   </div>
@@ -635,18 +815,22 @@ export const HouseholdSettingsView: React.FC = () => {
               <Sliders className="w-5 h-5 text-emerald-400" />
               Personalizacja paska nawigacji
             </h3>
+
             <p className="text-xs text-slate-400">
-              Usuń przyciski z dolnego paska albo zmień ich kolejność. Ukryte
-              pozycje nie pojawią się na telefonie.
+              Usuń przyciski z dolnego paska albo zmień ich kolejność.
+              Ukryte pozycje nie pojawią się na telefonie.
             </p>
           </div>
+
           <button
             onClick={resetNavConfig}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium"
             title="Przywróć domyślny układ"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Domyślne</span>
+            <span className="hidden sm:inline">
+              Domyślne
+            </span>
           </button>
         </div>
 
@@ -699,6 +883,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
+
                   <button
                     onClick={() => moveNavItem(index, 'down')}
                     disabled={index === sortedNavItems.length - 1}
@@ -720,7 +905,10 @@ export const HouseholdSettingsView: React.FC = () => {
           Kategorie produktów
         </h3>
 
-        <form onSubmit={handleAddCategory} className="flex gap-2">
+        <form
+          onSubmit={handleAddCategory}
+          className="flex gap-2"
+        >
           <input
             type="text"
             value={newCategoryName}
@@ -728,6 +916,7 @@ export const HouseholdSettingsView: React.FC = () => {
             placeholder="Wpisz nową kategorię..."
             className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
           />
+
           <button
             type="submit"
             className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all"
@@ -742,7 +931,10 @@ export const HouseholdSettingsView: React.FC = () => {
               key={cat.id}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200"
             >
-              <span>{cat.name}</span>
+              <span>
+                {cat.name}
+              </span>
+
               {categories.length > 1 && (
                 <button
                   onClick={() => handleDeleteCategory(cat.id, cat.name)}
@@ -763,9 +955,10 @@ export const HouseholdSettingsView: React.FC = () => {
             <Clock className="w-5 h-5 text-amber-400" />
             Kończący się termin ważności
           </h3>
+
           <p className="text-xs text-slate-400 mt-1">
-            Pulpit, filtry spiżarni i alerty oznaczają produkty, których termin
-            kończy się w podanej liczbie dni.
+            Pulpit, filtry spiżarni i alerty oznaczają produkty,
+            których termin kończy się w podanej liczbie dni.
           </p>
         </div>
 
@@ -773,6 +966,7 @@ export const HouseholdSettingsView: React.FC = () => {
           <label className="text-xs font-semibold text-slate-300 shrink-0">
             Liczba dni
           </label>
+
           <input
             type="number"
             min={1}
@@ -781,6 +975,7 @@ export const HouseholdSettingsView: React.FC = () => {
             onChange={(e) => setWarningDaysInput(e.target.value)}
             className="w-full sm:w-28 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
           />
+
           <button
             type="button"
             onClick={handleSaveExpiryWarningDays}
@@ -814,16 +1009,21 @@ export const HouseholdSettingsView: React.FC = () => {
                   <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sm text-slate-200">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
+
                   <div>
                     <div className="font-bold text-sm text-white flex items-center gap-2">
                       {member.name}
+
                       {isMe && (
                         <span className="text-[10px] text-slate-400 font-normal">
                           (Ty)
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400">{member.email}</div>
+
+                    <div className="text-xs text-slate-400">
+                      {member.email}
+                    </div>
                   </div>
                 </div>
 
@@ -839,8 +1039,13 @@ export const HouseholdSettingsView: React.FC = () => {
                       }
                       className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
                     >
-                      <option value="MEMBER">Domownik (MEMBER)</option>
-                      <option value="ADMIN">Administrator (ADMIN)</option>
+                      <option value="MEMBER">
+                        Domownik (MEMBER)
+                      </option>
+
+                      <option value="ADMIN">
+                        Administrator (ADMIN)
+                      </option>
                     </select>
                   ) : (
                     <span
@@ -853,6 +1058,7 @@ export const HouseholdSettingsView: React.FC = () => {
                       {isMemberAdmin && (
                         <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
                       )}
+
                       {member.role}
                     </span>
                   )}
@@ -860,7 +1066,10 @@ export const HouseholdSettingsView: React.FC = () => {
                   {isAdmin && !isMe && (
                     <button
                       onClick={() =>
-                        handleRemoveMember(member.id, member.name)
+                        handleRemoveMember(
+                          member.id,
+                          member.name
+                        )
                       }
                       className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
                     >
@@ -884,9 +1093,10 @@ export const HouseholdSettingsView: React.FC = () => {
                   <Database className="w-5 h-5 text-emerald-400" />
                   Źródła wyszukiwania EAN
                 </h3>
+
                 <p className="text-xs text-slate-400 mt-1">
-                  Skaner sprawdza źródła od góry do dołu. Produkt dodany ręcznie
-                  w aplikacji zawsze ma najwyższy priorytet.
+                  Skaner sprawdza źródła od góry do dołu.
+                  Produkt dodany ręcznie w aplikacji zawsze ma najwyższy priorytet.
                 </p>
               </div>
 
@@ -899,13 +1109,17 @@ export const HouseholdSettingsView: React.FC = () => {
                   <RotateCcw className="w-3.5 h-3.5 inline mr-1.5" />
                   Domyślne
                 </button>
+
                 <button
                   onClick={saveBarcodeSources}
                   disabled={barcodeSourcesSaving || barcodeSourcesLoading}
                   className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
                 >
                   <Save className="w-3.5 h-3.5 inline mr-1.5" />
-                  {barcodeSourcesSaving ? 'Zapisywanie...' : 'Zapisz'}
+
+                  {barcodeSourcesSaving
+                    ? 'Zapisywanie...'
+                    : 'Zapisz'}
                 </button>
               </div>
             </div>
@@ -917,9 +1131,11 @@ export const HouseholdSettingsView: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {barcodeSources.map((source, index) => {
-                  const providerMeta = BARCODE_PROVIDER_OPTIONS.find(
-                    (option) => option.provider === source.provider
-                  );
+                  const providerMeta =
+                    BARCODE_PROVIDER_OPTIONS.find(
+                      (option) =>
+                        option.provider === source.provider
+                    );
 
                   return (
                     <div
@@ -940,7 +1156,9 @@ export const HouseholdSettingsView: React.FC = () => {
                               : 'bg-slate-900 border-slate-700 text-slate-500'
                           }`}
                         >
-                          {source.enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
+                          {source.enabled
+                            ? 'WŁĄCZONE'
+                            : 'WYŁĄCZONE'}
                         </button>
 
                         <div className="flex-1 min-w-0">
@@ -955,14 +1173,16 @@ export const HouseholdSettingsView: React.FC = () => {
                               }
                               className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                             >
-                              {BARCODE_PROVIDER_OPTIONS.map((option) => (
-                                <option
-                                  key={option.provider}
-                                  value={option.provider}
-                                >
-                                  {option.label}
-                                </option>
-                              ))}
+                              {BARCODE_PROVIDER_OPTIONS.map(
+                                (option) => (
+                                  <option
+                                    key={option.provider}
+                                    value={option.provider}
+                                  >
+                                    {option.label}
+                                  </option>
+                                )
+                              )}
                             </select>
 
                             {providerMeta?.supportsCountry ? (
@@ -976,14 +1196,16 @@ export const HouseholdSettingsView: React.FC = () => {
                                 }
                                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                               >
-                                {COUNTRY_OPTIONS.map((country) => (
-                                  <option
-                                    key={country.code}
-                                    value={country.code}
-                                  >
-                                    {country.label}
-                                  </option>
-                                ))}
+                                {COUNTRY_OPTIONS.map(
+                                  (country) => (
+                                    <option
+                                      key={country.code}
+                                      value={country.code}
+                                    >
+                                      {country.label}
+                                    </option>
+                                  )
+                                )}
                               </select>
                             ) : (
                               <div className="px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 flex items-center gap-2">
@@ -1000,21 +1222,37 @@ export const HouseholdSettingsView: React.FC = () => {
 
                         <div className="flex items-center gap-1 self-end lg:self-auto">
                           <button
-                            onClick={() => moveBarcodeSource(index, 'up')}
+                            onClick={() =>
+                              moveBarcodeSource(
+                                index,
+                                'up'
+                              )
+                            }
                             disabled={index === 0}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
                           >
                             <ArrowUp className="w-4 h-4" />
                           </button>
+
                           <button
-                            onClick={() => moveBarcodeSource(index, 'down')}
-                            disabled={index === barcodeSources.length - 1}
+                            onClick={() =>
+                              moveBarcodeSource(
+                                index,
+                                'down'
+                              )
+                            }
+                            disabled={
+                              index === barcodeSources.length - 1
+                            }
                             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
                           >
                             <ArrowDown className="w-4 h-4" />
                           </button>
+
                           <button
-                            onClick={() => removeBarcodeSource(index)}
+                            onClick={() =>
+                              removeBarcodeSource(index)
+                            }
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1031,8 +1269,9 @@ export const HouseholdSettingsView: React.FC = () => {
 
                 {barcodeSources.length === 0 && (
                   <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
-                    Brak skonfigurowanych źródeł. Skanowanie będzie korzystało z
-                    domyślnego Open Food Facts PL → World.
+                    Brak skonfigurowanych źródeł.
+                    Skanowanie będzie korzystało z domyślnego
+                    Open Food Facts PL → World.
                   </div>
                 )}
               </div>
@@ -1052,40 +1291,12 @@ export const HouseholdSettingsView: React.FC = () => {
         </>
       )}
 
-      {/* Kod gospodarstwa */}
-      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold text-emerald-400">
-              Współdzielenie Spiżarni
-            </div>
-            <h3 className="text-lg font-extrabold text-white">
-              {user?.household?.name || 'Moje Gospodarstwo'}
-            </h3>
-            <p className="text-xs text-slate-300">
-              Podaj ten kod domownikowi podczas rejestracji lub dołączania, aby
-              wspólnie zarządzać produktami.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
-            <span className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
-              {user?.household?.inviteCode}
-            </span>
-            <button
-              onClick={handleCopyCode}
-              className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-              title="Kopiuj kod zaproszenia"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Backup / Zmiana gospodarstwa */}
       <div
         className={`grid grid-cols-1 gap-4 ${
-          !isAdmin ? 'sm:grid-cols-2' : ''
+          !isAdmin
+            ? 'sm:grid-cols-2'
+            : ''
         }`}
       >
         <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
@@ -1093,9 +1304,11 @@ export const HouseholdSettingsView: React.FC = () => {
             <Download className="w-4 h-4 text-emerald-400" />
             Kopia zapasowa danych
           </h4>
+
           <p className="text-xs text-slate-400">
             Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON
           </p>
+
           <button
             onClick={handleDownloadBackup}
             className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
@@ -1111,16 +1324,22 @@ export const HouseholdSettingsView: React.FC = () => {
               Zmień gospodarstwo domowe
             </h4>
 
-            <form onSubmit={handleJoinOtherHousehold} className="space-y-2">
+            <form
+              onSubmit={handleJoinOtherHousehold}
+              className="space-y-2"
+            >
               <input
                 type="text"
                 value={inviteCodeInput}
                 onChange={(e) =>
-                  setInviteCodeInput(e.target.value.toUpperCase())
+                  setInviteCodeInput(
+                    e.target.value.toUpperCase()
+                  )
                 }
                 placeholder="Wpisz 6-znakowy kod..."
                 className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-emerald-500"
               />
+
               <button
                 type="submit"
                 disabled={!inviteCodeInput.trim()}
@@ -1135,7 +1354,9 @@ export const HouseholdSettingsView: React.FC = () => {
 
       <InstallPwaModal
         isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
+        onClose={() =>
+          setIsInstallModalOpen(false)
+        }
       />
     </div>
   );

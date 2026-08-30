@@ -218,7 +218,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-white text-base">Notatki & Checklisty</h4>
+              <h4 className="font-bold text-white text-base">Notatki & listy zadań</h4>
               <p className="text-xs text-slate-400">Listy zadań, wskazówki i plany posiłków</p>
             </div>
           </div>

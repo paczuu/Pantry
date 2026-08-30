@@ -37,7 +37,7 @@ export const ACCENT_THEMES: AccentTheme[] = [
   },
   {
     id: 'rose',
-    label: 'Różowy',
+    label: 'Czerwony',
     description: 'Wyrazisty',
     color: '#f43f5e',
   },

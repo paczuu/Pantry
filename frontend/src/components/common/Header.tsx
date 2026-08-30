@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
                       className="w-full text-left px-4 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 font-semibold"
                     >
                       <Smartphone className="w-4 h-4 text-emerald-400" />
-                      Instalacja aplikacji (PWA)
+                      Instalacja aplikacji
                     </button>
 
                     {onOpenSettings && (

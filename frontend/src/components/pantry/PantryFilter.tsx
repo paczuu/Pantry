@@ -9,7 +9,6 @@ import {
   AlertCircle,
   PackageOpen,
   ArrowUpDown,
-  Tag,
 } from 'lucide-react';
 
 interface PantryFilterProps {

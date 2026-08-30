@@ -17,7 +17,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
   onEditItem,
 }) => {
   const { items, isLoading } = usePantry();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">

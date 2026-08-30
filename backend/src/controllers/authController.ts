@@ -108,7 +108,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
       const newHousehold = await prisma.household.create({
         data: {
-          name: householdName?.trim() || `Spiżarnia (${name})`,
+          name: householdName?.trim() || name,
           inviteCode: uniqueCode,
         },
       });

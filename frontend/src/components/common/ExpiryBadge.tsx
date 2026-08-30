@@ -15,11 +15,7 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({
 }) => {
   const { expiryWarningDays } = usePantry();
   if (!expiryDate && !openedDate) {
-    return (
-      <span className={`inline-flex items-center gap-1 text-xs text-slate-400 font-medium ${className}`}>
-        Brak daty
-      </span>
-    );
+    return null;
   }
 
   const now = new Date();
