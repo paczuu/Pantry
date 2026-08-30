@@ -4,6 +4,7 @@ import {
   BarcodeProviderKey,
   BarcodeSourceConfig,
   DEFAULT_BARCODE_SOURCES,
+  getSourceKey,
 } from '../services/barcode/types.js';
 
 const ALLOWED_PROVIDERS: BarcodeProviderKey[] = [
@@ -94,7 +95,7 @@ export const updateBarcodeSources = async (
       return;
     }
 
-    const normalized = incomingSources
+    const normalized: BarcodeSourceConfig[] = incomingSources
       .map((source: Partial<BarcodeSourceConfig>, index: number) =>
         normalizeSource(source, index)
       )
@@ -122,17 +123,16 @@ export const updateBarcodeSources = async (
         where: { householdId },
       });
 
-      for (const source of normalized) {
-        await tx.barcodeSourceSetting.create({
-          data: {
-            householdId,
-            provider: source.provider,
-            countryCode: source.countryCode,
-            enabled: source.enabled,
-            priority: source.priority,
-          },
-        });
-      }
+      await tx.barcodeSourceSetting.createMany({
+        data: normalized.map((source) => ({
+          householdId,
+          sourceKey: getSourceKey(source),
+          provider: source.provider,
+          countryCode: source.countryCode,
+          enabled: source.enabled,
+          priority: source.priority,
+        })),
+      });
     });
 
     const sources = await prisma.barcodeSourceSetting.findMany({

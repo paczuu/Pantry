@@ -2,9 +2,13 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
 
-export const getPantryItems = async (req: Request, res: Response): Promise<void> => {
+export const getPantryItems = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const householdId = req.user!.householdId;
+
     if (!householdId) {
       res.status(400).json({ error: 'Brak przypisanego gospodarstwa.' });
       return;
@@ -30,6 +34,7 @@ export const getPantryItems = async (req: Request, res: Response): Promise<void>
 
     if (search) {
       const q = (search as string).trim();
+
       where.OR = [
         { name: { contains: q } },
         { brand: { contains: q } },
@@ -40,27 +45,45 @@ export const getPantryItems = async (req: Request, res: Response): Promise<void>
     }
 
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
     const in3Days = new Date(today);
     in3Days.setDate(in3Days.getDate() + 3);
+
     const in7Days = new Date(today);
     in7Days.setDate(in7Days.getDate() + 7);
 
     if (filterByExpiry === 'expired') {
       where.expiryDate = { lt: today };
     } else if (filterByExpiry === 'expiring_3_days') {
-      where.expiryDate = { gte: today, lte: in3Days };
+      where.expiryDate = {
+        gte: today,
+        lte: in3Days,
+      };
     } else if (filterByExpiry === 'expiring_7_days') {
-      where.expiryDate = { gte: today, lte: in7Days };
+      where.expiryDate = {
+        gte: today,
+        lte: in7Days,
+      };
     } else if (filterByExpiry === 'opened') {
       where.openedDate = { not: null };
     }
 
     let orderBy: any = { expiryDate: 'asc' };
-    if (sortBy === 'expiry_desc') orderBy = { expiryDate: 'desc' };
-    else if (sortBy === 'name_asc') orderBy = { name: 'asc' };
-    else if (sortBy === 'quantity_desc') orderBy = { quantity: 'desc' };
-    else if (sortBy === 'created_desc') orderBy = { createdAt: 'desc' };
+
+    if (sortBy === 'expiry_desc') {
+      orderBy = { expiryDate: 'desc' };
+    } else if (sortBy === 'name_asc') {
+      orderBy = { name: 'asc' };
+    } else if (sortBy === 'quantity_desc') {
+      orderBy = { quantity: 'desc' };
+    } else if (sortBy === 'created_desc') {
+      orderBy = { createdAt: 'desc' };
+    }
 
     const items = await prisma.pantryItem.findMany({
       where,
@@ -70,35 +93,56 @@ export const getPantryItems = async (req: Request, res: Response): Promise<void>
     res.json({ items });
   } catch (error) {
     console.error('Błąd pobierania pozycji ze spiżarni:', error);
-    res.status(500).json({ error: 'Błąd podczas pobierania produktów.' });
+
+    res.status(500).json({
+      error: 'Błąd podczas pobierania produktów.',
+    });
   }
 };
 
-export const getPantryItemById = async (req: Request, res: Response): Promise<void> => {
+export const getPantryItemById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const householdId = req.user!.householdId!;
 
     const item = await prisma.pantryItem.findFirst({
-      where: { id, householdId },
+      where: {
+        id,
+        householdId,
+      },
     });
 
     if (!item) {
-      res.status(404).json({ error: 'Produkt nie został odnaleziony.' });
+      res.status(404).json({
+        error: 'Produkt nie został odnaleziony.',
+      });
       return;
     }
 
     res.json({ item });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania produktu.' });
+    console.error('Błąd pobierania produktu:', error);
+
+    res.status(500).json({
+      error: 'Błąd podczas pobierania produktu.',
+    });
   }
 };
 
-export const addPantryItem = async (req: Request, res: Response): Promise<void> => {
+export const addPantryItem = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const householdId = req.user!.householdId;
+
     if (!householdId) {
-      res.status(400).json({ error: 'Brak przypisanego gospodarstwa.' });
+      res.status(400).json({
+        error: 'Brak przypisanego gospodarstwa.',
+      });
       return;
     }
 
@@ -116,21 +160,36 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
     } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ error: 'Nazwa produktu jest wymagana.' });
+      res.status(400).json({
+        error: 'Nazwa produktu jest wymagana.',
+      });
       return;
     }
 
-    const parsedQty = Math.max(1, parseInt(quantity) || 1);
-    const targetExpiry = expiryDate ? new Date(expiryDate) : null;
+    const cleanBarcode =
+      barcode && String(barcode).trim()
+        ? String(barcode).trim()
+        : null;
 
-    // Sprawdź czy produkt już istnieje w spiżarni do scalenia ilości
+    const parsedQty = Math.max(
+      1,
+      parseInt(String(quantity), 10) || 1
+    );
+
+    const targetExpiry = expiryDate
+      ? new Date(expiryDate)
+      : null;
+
+    // Sprawdź czy produkt już istnieje w spiżarni
+    // i można zwiększyć jego ilość.
     let existingItem = null;
-    if (barcode && barcode.trim()) {
+
+    if (cleanBarcode) {
       existingItem = await prisma.pantryItem.findFirst({
         where: {
           householdId,
           status: 'ACTIVE',
-          barcode: barcode.trim(),
+          barcode: cleanBarcode,
           expiryDate: targetExpiry,
         },
       });
@@ -139,7 +198,9 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
         where: {
           householdId,
           status: 'ACTIVE',
-          name: { equals: name.trim() },
+          name: {
+            equals: name.trim(),
+          },
           category: category.trim() || 'Inne',
           expiryDate: targetExpiry,
         },
@@ -147,18 +208,28 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
     }
 
     if (existingItem) {
-      // Scal z istniejącym produktem - zwiększ ilość
       const updatedItem = await prisma.pantryItem.update({
-        where: { id: existingItem.id },
+        where: {
+          id: existingItem.id,
+        },
         data: {
           quantity: existingItem.quantity + parsedQty,
-          capacity: capacity?.trim() || existingItem.capacity,
-          brand: brand?.trim() || existingItem.brand,
-          imageUrl: imageUrl || existingItem.imageUrl,
+          capacity:
+            capacity?.trim() ||
+            existingItem.capacity,
+          brand:
+            brand?.trim() ||
+            existingItem.brand,
+          imageUrl:
+            imageUrl ||
+            existingItem.imageUrl,
         },
       });
 
-      const capText = updatedItem.capacity ? ` [${updatedItem.capacity}]` : '';
+      const capText = updatedItem.capacity
+        ? ` [${updatedItem.capacity}]`
+        : '';
+
       await logActivity({
         householdId,
         userId: req.user!.id,
@@ -167,28 +238,37 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
         action: 'ZWIĘKSZONO_ILOSC',
         entityType: 'PANTRY_ITEM',
         entityName: updatedItem.name,
-        details: `Zwiększono ilość istniejącego produktu "${updatedItem.name}"${capText} o ${parsedQty} szt. (aktualnie w spiżarni: ${updatedItem.quantity} szt.).`,
+        details:
+          `Zwiększono ilość istniejącego produktu ` +
+          `"${updatedItem.name}"${capText} o ${parsedQty} szt. ` +
+          `(aktualnie w spiżarni: ${updatedItem.quantity} szt.).`,
       });
 
       res.status(200).json({
         item: updatedItem,
         isMerged: true,
-        message: `Zwiększono ilość "${updatedItem.name}" o ${parsedQty} szt. (łącznie: ${updatedItem.quantity} szt.)`,
+        message:
+          `Zwiększono ilość "${updatedItem.name}" ` +
+          `o ${parsedQty} szt. ` +
+          `(łącznie: ${updatedItem.quantity} szt.)`,
       });
+
       return;
     }
 
     const newItem = await prisma.pantryItem.create({
       data: {
         householdId,
-        barcode: barcode?.trim() || null,
+        barcode: cleanBarcode,
         name: name.trim(),
         brand: brand?.trim() || null,
         category: category.trim() || 'Inne',
         quantity: parsedQty,
         capacity: capacity?.trim() || null,
         expiryDate: targetExpiry,
-        openedDate: openedDate ? new Date(openedDate) : null,
+        openedDate: openedDate
+          ? new Date(openedDate)
+          : null,
         notes: notes?.trim() || null,
         imageUrl: imageUrl || null,
         addedById: req.user!.id,
@@ -196,36 +276,57 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
       },
     });
 
-    // Zapisz do ProductCatalog jeśli podano kod kreskowy
-    if (barcode && barcode.trim()) {
+    // Produkt dodany ręcznie do spiżarni zapisujemy
+    // jako CUSTOM w ProductCatalog.
+    if (cleanBarcode) {
       try {
-        await prisma.productCatalog.upsert({
-          where: { barcode: barcode.trim() },
-          update: {
-            name: name.trim(),
-            brand: brand?.trim() || null,
-            category: category.trim() || 'Inne',
-            capacity: capacity?.trim() || null,
-            imageUrl: imageUrl || null,
-          },
-          create: {
-            barcode: barcode.trim(),
-            name: name.trim(),
-            brand: brand?.trim() || null,
-            category: category.trim() || 'Inne',
-            capacity: capacity?.trim() || null,
-            imageUrl: imageUrl || null,
+        const catalogData = {
+          name: name.trim(),
+          brand: brand?.trim() || null,
+          category: category.trim() || 'Inne',
+          capacity: capacity?.trim() || null,
+          imageUrl: imageUrl || null,
+        };
+
+        const existing = await prisma.productCatalog.findFirst({
+          where: {
+            barcode: cleanBarcode,
             source: 'CUSTOM',
           },
         });
-      } catch (e) {
-        // ignoruj
+
+        if (existing) {
+          await prisma.productCatalog.update({
+            where: { id: existing.id },
+            data: catalogData,
+          });
+        } else {
+          await prisma.productCatalog.create({
+            data: {
+              barcode: cleanBarcode,
+              source: 'CUSTOM',
+              ...catalogData,
+            },
+          });
+        }
+      } catch (error) {
+        console.error(
+          'Nie udało się zapisać produktu CUSTOM do ProductCatalog:',
+          error
+        );
       }
     }
 
-    // Zapis audytu
-    const expiryText = expiryDate ? ` (Ważność: ${new Date(expiryDate).toLocaleDateString('pl-PL')})` : '';
-    const capText = capacity ? ` [${capacity}]` : '';
+    const expiryText = expiryDate
+      ? ` (Ważność: ${new Date(
+          expiryDate
+        ).toLocaleDateString('pl-PL')})`
+      : '';
+
+    const capText = capacity
+      ? ` [${capacity}]`
+      : '';
+
     await logActivity({
       householdId,
       userId: req.user!.id,
@@ -235,7 +336,9 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
       entityType: 'PANTRY_ITEM',
       entityName: newItem.name,
       details: {
-        message: `Dodano ${newItem.quantity} szt.${capText}${expiryText}.`,
+        message:
+          `Dodano ${newItem.quantity} szt.` +
+          `${capText}${expiryText}.`,
         item: {
           id: newItem.id,
           name: newItem.name,
@@ -249,24 +352,38 @@ export const addPantryItem = async (req: Request, res: Response): Promise<void> 
       },
     });
 
-    res.status(201).json({ item: newItem, message: 'Produkt został dodany do spiżarni.' });
+    res.status(201).json({
+      item: newItem,
+      message: 'Produkt został dodany do spiżarni.',
+    });
   } catch (error) {
     console.error('Błąd dodawania produktu:', error);
-    res.status(500).json({ error: 'Błąd podczas dodawania produktu.' });
+
+    res.status(500).json({
+      error: 'Błąd podczas dodawania produktu.',
+    });
   }
 };
 
-export const updatePantryItem = async (req: Request, res: Response): Promise<void> => {
+export const updatePantryItem = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const householdId = req.user!.householdId!;
 
     const existing = await prisma.pantryItem.findFirst({
-      where: { id, householdId },
+      where: {
+        id,
+        householdId,
+      },
     });
 
     if (!existing) {
-      res.status(404).json({ error: 'Produkt nie został odnaleziony.' });
+      res.status(404).json({
+        error: 'Produkt nie został odnaleziony.',
+      });
       return;
     }
 
@@ -283,39 +400,150 @@ export const updatePantryItem = async (req: Request, res: Response): Promise<voi
       status,
     } = req.body;
 
-    const parsedQty = quantity !== undefined ? Math.max(0, parseInt(quantity) || 0) : existing.quantity;
+    const parsedQty =
+      quantity !== undefined
+        ? Math.max(
+            0,
+            parseInt(String(quantity), 10) || 0
+          )
+        : existing.quantity;
 
-    // Przygotuj zestawienie zmian do audytu
     const changes: string[] = [];
-    if (name && name !== existing.name) changes.push(`nazwę z "${existing.name}" na "${name}"`);
-    if (parsedQty !== existing.quantity) changes.push(`ilość z ${existing.quantity} na ${parsedQty} szt.`);
-    if (capacity !== undefined && capacity !== existing.capacity) changes.push(`pojemność/gramaturę na "${capacity || 'brak'}"`);
-    if (category && category !== existing.category) changes.push(`kategorię z "${existing.category}" na "${category}"`);
+
+    if (name && name !== existing.name) {
+      changes.push(
+        `nazwę z "${existing.name}" na "${name}"`
+      );
+    }
+
+    if (parsedQty !== existing.quantity) {
+      changes.push(
+        `ilość z ${existing.quantity} na ${parsedQty} szt.`
+      );
+    }
+
+    if (
+      capacity !== undefined &&
+      capacity !== existing.capacity
+    ) {
+      changes.push(
+        `pojemność/gramaturę na "${capacity || 'brak'}"`
+      );
+    }
+
+    if (
+      category &&
+      category !== existing.category
+    ) {
+      changes.push(
+        `kategorię z "${existing.category}" na "${category}"`
+      );
+    }
+
     if (expiryDate !== undefined) {
-      const oldExp = existing.expiryDate ? existing.expiryDate.toISOString().split('T')[0] : 'brak';
-      const newExp = expiryDate ? new Date(expiryDate).toISOString().split('T')[0] : 'brak';
-      if (oldExp !== newExp) changes.push(`datę ważności z ${oldExp} na ${newExp}`);
+      const oldExp = existing.expiryDate
+        ? existing.expiryDate
+            .toISOString()
+            .split('T')[0]
+        : 'brak';
+
+      const newExp = expiryDate
+        ? new Date(expiryDate)
+            .toISOString()
+            .split('T')[0]
+        : 'brak';
+
+      if (oldExp !== newExp) {
+        changes.push(
+          `datę ważności z ${oldExp} na ${newExp}`
+        );
+      }
     }
+
     if (openedDate !== undefined) {
-      const oldOp = existing.openedDate ? existing.openedDate.toISOString().split('T')[0] : 'brak';
-      const newOp = openedDate ? new Date(openedDate).toISOString().split('T')[0] : 'brak';
-      if (oldOp !== newOp) changes.push(`datę otwarcia z ${oldOp} na ${newOp}`);
+      const oldOp = existing.openedDate
+        ? existing.openedDate
+            .toISOString()
+            .split('T')[0]
+        : 'brak';
+
+      const newOp = openedDate
+        ? new Date(openedDate)
+            .toISOString()
+            .split('T')[0]
+        : 'brak';
+
+      if (oldOp !== newOp) {
+        changes.push(
+          `datę otwarcia z ${oldOp} na ${newOp}`
+        );
+      }
     }
-    if (status && status !== existing.status) changes.push(`status z ${existing.status} na ${status}`);
+
+    if (
+      status &&
+      status !== existing.status
+    ) {
+      changes.push(
+        `status z ${existing.status} na ${status}`
+      );
+    }
 
     const updated = await prisma.pantryItem.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
-        name: name ? name.trim() : existing.name,
-        brand: brand !== undefined ? (brand?.trim() || null) : existing.brand,
-        category: category !== undefined ? category.trim() : existing.category,
+        name: name
+          ? name.trim()
+          : existing.name,
+
+        brand:
+          brand !== undefined
+            ? brand?.trim() || null
+            : existing.brand,
+
+        category:
+          category !== undefined
+            ? category.trim()
+            : existing.category,
+
         quantity: parsedQty,
-        capacity: capacity !== undefined ? (capacity?.trim() || null) : existing.capacity,
-        expiryDate: expiryDate !== undefined ? (expiryDate ? new Date(expiryDate) : null) : existing.expiryDate,
-        openedDate: openedDate !== undefined ? (openedDate ? new Date(openedDate) : null) : existing.openedDate,
-        notes: notes !== undefined ? (notes?.trim() || null) : existing.notes,
-        imageUrl: imageUrl !== undefined ? imageUrl : existing.imageUrl,
-        status: status || (parsedQty <= 0 ? 'CONSUMED' : existing.status),
+
+        capacity:
+          capacity !== undefined
+            ? capacity?.trim() || null
+            : existing.capacity,
+
+        expiryDate:
+          expiryDate !== undefined
+            ? expiryDate
+              ? new Date(expiryDate)
+              : null
+            : existing.expiryDate,
+
+        openedDate:
+          openedDate !== undefined
+            ? openedDate
+              ? new Date(openedDate)
+              : null
+            : existing.openedDate,
+
+        notes:
+          notes !== undefined
+            ? notes?.trim() || null
+            : existing.notes,
+
+        imageUrl:
+          imageUrl !== undefined
+            ? imageUrl
+            : existing.imageUrl,
+
+        status:
+          status ||
+          (parsedQty <= 0
+            ? 'CONSUMED'
+            : existing.status),
       },
     });
 
@@ -329,45 +557,77 @@ export const updatePantryItem = async (req: Request, res: Response): Promise<voi
         entityType: 'PANTRY_ITEM',
         entityName: updated.name,
         details: {
-          message: `Zaktualizowano ${changes.join(', ')}.`,
+          message:
+            `Zaktualizowano ${changes.join(', ')}.`,
           previous: existing,
           current: updated,
         },
       });
     }
 
-    res.json({ item: updated, message: 'Produkt zaktualizowany.' });
+    res.json({
+      item: updated,
+      message: 'Produkt zaktualizowany.',
+    });
   } catch (error) {
     console.error('Błąd edycji produktu:', error);
-    res.status(500).json({ error: 'Błąd podczas aktualizacji produktu.' });
+
+    res.status(500).json({
+      error: 'Błąd podczas aktualizacji produktu.',
+    });
   }
 };
 
-export const consumePantryItem = async (req: Request, res: Response): Promise<void> => {
+export const consumePantryItem = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const householdId = req.user!.householdId!;
-    const { amount = 1, isWasted = false } = req.body;
+
+    const {
+      amount = 1,
+      isWasted = false,
+    } = req.body;
 
     const existing = await prisma.pantryItem.findFirst({
-      where: { id, householdId },
+      where: {
+        id,
+        householdId,
+      },
     });
 
     if (!existing) {
-      res.status(404).json({ error: 'Produkt nie został odnaleziony.' });
+      res.status(404).json({
+        error: 'Produkt nie został odnaleziony.',
+      });
       return;
     }
 
-    const consumeAmount = Math.min(existing.quantity, Math.max(1, parseInt(amount) || 1));
-    const remaining = existing.quantity - consumeAmount;
+    const consumeAmount = Math.min(
+      existing.quantity,
+      Math.max(
+        1,
+        parseInt(String(amount), 10) || 1
+      )
+    );
+
+    const remaining =
+      existing.quantity - consumeAmount;
 
     let updated;
+
     if (remaining <= 0) {
       updated = await prisma.pantryItem.update({
-        where: { id },
+        where: {
+          id,
+        },
         data: {
           quantity: 0,
-          status: isWasted ? 'WASTED' : 'CONSUMED',
+          status: isWasted
+            ? 'WASTED'
+            : 'CONSUMED',
         },
       });
 
@@ -376,7 +636,9 @@ export const consumePantryItem = async (req: Request, res: Response): Promise<vo
         userId: req.user!.id,
         userName: req.user!.name,
         userEmail: req.user!.email,
-        action: isWasted ? 'WYRZUCONO_PRODUKT' : 'ZUŻYTO_PRODUKT',
+        action: isWasted
+          ? 'WYRZUCONO_PRODUKT'
+          : 'ZUŻYTO_PRODUKT',
         entityType: 'PANTRY_ITEM',
         entityName: existing.name,
         details: isWasted
@@ -385,8 +647,12 @@ export const consumePantryItem = async (req: Request, res: Response): Promise<vo
       });
     } else {
       updated = await prisma.pantryItem.update({
-        where: { id },
-        data: { quantity: remaining },
+        where: {
+          id,
+        },
+        data: {
+          quantity: remaining,
+        },
       });
 
       await logActivity({
@@ -397,108 +663,217 @@ export const consumePantryItem = async (req: Request, res: Response): Promise<vo
         action: 'ZMNIEJSZONO_ILOSC',
         entityType: 'PANTRY_ITEM',
         entityName: existing.name,
-        details: `Zużyto ${consumeAmount} szt. Pozostało ${remaining} szt.`,
+        details:
+          `Zużyto ${consumeAmount} szt. ` +
+          `Pozostało ${remaining} szt.`,
       });
     }
 
     res.json({
       item: updated,
       consumedAmount: consumeAmount,
-      remainingAmount: Math.max(0, remaining),
-      message: remaining <= 0 ? 'Produkt całkowicie zużyty.' : `Zmniejszono ilość o ${consumeAmount} szt.`,
+      remainingAmount: Math.max(
+        0,
+        remaining
+      ),
+      message:
+        remaining <= 0
+          ? 'Produkt całkowicie zużyty.'
+          : `Zmniejszono ilość o ${consumeAmount} szt.`,
     });
   } catch (error) {
-    console.error('Błąd zużywania produktu:', error);
-    res.status(500).json({ error: 'Błąd podczas usuwania/zużywania produktu.' });
+    console.error(
+      'Błąd zużywania produktu:',
+      error
+    );
+
+    res.status(500).json({
+      error:
+        'Błąd podczas usuwania/zużywania produktu.',
+    });
   }
 };
 
-export const barcodeQuickRemove = async (req: Request, res: Response): Promise<void> => {
+export const barcodeQuickRemove = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const householdId = req.user!.householdId!;
-    const { barcode, amount = 1, itemId, isWasted = false } = req.body;
+    const householdId =
+      req.user!.householdId!;
+
+    const {
+      barcode,
+      amount = 1,
+      itemId,
+      isWasted = false,
+    } = req.body;
 
     if (!barcode && !itemId) {
-      res.status(400).json({ error: 'Wymagany kod kreskowy lub identyfikator produktu.' });
+      res.status(400).json({
+        error:
+          'Wymagany kod kreskowy lub identyfikator produktu.',
+      });
       return;
     }
 
     if (itemId) {
-      const item = await prisma.pantryItem.findFirst({
-        where: { id: itemId, householdId, status: 'ACTIVE' },
-      });
+      const item =
+        await prisma.pantryItem.findFirst({
+          where: {
+            id: itemId,
+            householdId,
+            status: 'ACTIVE',
+          },
+        });
+
       if (!item) {
-        res.status(404).json({ error: 'Produkt nie został odnaleziony w spiżarni.' });
+        res.status(404).json({
+          error:
+            'Produkt nie został odnaleziony w spiżarni.',
+        });
         return;
       }
 
-      const consumeQty = Math.min(item.quantity, Math.max(1, parseInt(amount) || 1));
-      const remaining = item.quantity - consumeQty;
+      const consumeQty = Math.min(
+        item.quantity,
+        Math.max(
+          1,
+          parseInt(String(amount), 10) || 1
+        )
+      );
 
-      const updated = await prisma.pantryItem.update({
-        where: { id: itemId },
-        data: {
-          quantity: Math.max(0, remaining),
-          status: remaining <= 0 ? (isWasted ? 'WASTED' : 'CONSUMED') : 'ACTIVE',
-        },
-      });
+      const remaining =
+        item.quantity - consumeQty;
+
+      const updated =
+        await prisma.pantryItem.update({
+          where: {
+            id: itemId,
+          },
+          data: {
+            quantity: Math.max(
+              0,
+              remaining
+            ),
+            status:
+              remaining <= 0
+                ? isWasted
+                  ? 'WASTED'
+                  : 'CONSUMED'
+                : 'ACTIVE',
+          },
+        });
 
       await logActivity({
         householdId,
         userId: req.user!.id,
         userName: req.user!.name,
         userEmail: req.user!.email,
-        action: remaining <= 0 ? (isWasted ? 'WYRZUCONO_PRODUKT' : 'ZUŻYTO_PRODUKT') : 'ZMNIEJSZONO_ILOSC',
+        action:
+          remaining <= 0
+            ? isWasted
+              ? 'WYRZUCONO_PRODUKT'
+              : 'ZUŻYTO_PRODUKT'
+            : 'ZMNIEJSZONO_ILOSC',
         entityType: 'PANTRY_ITEM',
         entityName: item.name,
-        details: `Szybkie usunięcie przez skaner EAN: zużyto ${consumeQty} szt. Pozostało ${Math.max(0, remaining)} szt.`,
+        details:
+          `Szybkie usunięcie przez skaner EAN: ` +
+          `zużyto ${consumeQty} szt. ` +
+          `Pozostało ${Math.max(0, remaining)} szt.`,
       });
 
       res.json({
         success: true,
         item: updated,
         consumed: consumeQty,
-        remaining: Math.max(0, remaining),
-        message: `Usunięto ${consumeQty} szt. (${item.name}).`,
+        remaining: Math.max(
+          0,
+          remaining
+        ),
+        message:
+          `Usunięto ${consumeQty} szt. ` +
+          `(${item.name}).`,
       });
+
       return;
     }
 
-    const matchingItems = await prisma.pantryItem.findMany({
-      where: {
-        householdId,
-        barcode: barcode.trim(),
-        status: 'ACTIVE',
-      },
-      orderBy: [
-        { expiryDate: 'asc' },
-        { createdAt: 'asc' },
-      ],
-    });
+    const cleanBarcode =
+      String(barcode).trim();
+
+    const matchingItems =
+      await prisma.pantryItem.findMany({
+        where: {
+          householdId,
+          barcode: cleanBarcode,
+          status: 'ACTIVE',
+        },
+        orderBy: [
+          {
+            expiryDate: 'asc',
+          },
+          {
+            createdAt: 'asc',
+          },
+        ],
+      });
 
     if (matchingItems.length === 0) {
       res.status(404).json({
-        error: 'Nie znaleziono aktywnych produktów o tym kodzie kreskowym w spiżarni.',
-        barcode,
+        error:
+          'Nie znaleziono aktywnych produktów o tym kodzie kreskowym w spiżarni.',
+        barcode: cleanBarcode,
       });
       return;
     }
 
-    let remainingToConsume = Math.max(1, parseInt(amount) || 1);
-    let affectedItems = [];
+    const requestedAmount = Math.max(
+      1,
+      parseInt(String(amount), 10) || 1
+    );
+
+    let remainingToConsume =
+      requestedAmount;
+
+    const affectedItems: Array<{
+      id: string;
+      name: string;
+      consumed: number;
+      remaining: number;
+    }> = [];
 
     for (const item of matchingItems) {
-      if (remainingToConsume <= 0) break;
+      if (remainingToConsume <= 0) {
+        break;
+      }
 
-      const take = Math.min(item.quantity, remainingToConsume);
-      const newQty = item.quantity - take;
+      const take = Math.min(
+        item.quantity,
+        remainingToConsume
+      );
+
+      const newQty =
+        item.quantity - take;
+
       remainingToConsume -= take;
 
-      const updated = await prisma.pantryItem.update({
-        where: { id: item.id },
+      await prisma.pantryItem.update({
+        where: {
+          id: item.id,
+        },
         data: {
-          quantity: Math.max(0, newQty),
-          status: newQty <= 0 ? (isWasted ? 'WASTED' : 'CONSUMED') : 'ACTIVE',
+          quantity: Math.max(
+            0,
+            newQty
+          ),
+          status:
+            newQty <= 0
+              ? isWasted
+                ? 'WASTED'
+                : 'CONSUMED'
+              : 'ACTIVE',
         },
       });
 
@@ -506,7 +881,10 @@ export const barcodeQuickRemove = async (req: Request, res: Response): Promise<v
         id: item.id,
         name: item.name,
         consumed: take,
-        remaining: Math.max(0, newQty),
+        remaining: Math.max(
+          0,
+          newQty
+        ),
       });
 
       await logActivity({
@@ -514,40 +892,77 @@ export const barcodeQuickRemove = async (req: Request, res: Response): Promise<v
         userId: req.user!.id,
         userName: req.user!.name,
         userEmail: req.user!.email,
-        action: newQty <= 0 ? (isWasted ? 'WYRZUCONO_PRODUKT' : 'ZUŻYTO_PRODUKT') : 'ZMNIEJSZONO_ILOSC',
+        action:
+          newQty <= 0
+            ? isWasted
+              ? 'WYRZUCONO_PRODUKT'
+              : 'ZUŻYTO_PRODUKT'
+            : 'ZMNIEJSZONO_ILOSC',
         entityType: 'PANTRY_ITEM',
         entityName: item.name,
-        details: `Szybkie skanowanie EAN: zużyto ${take} szt. Pozostało: ${Math.max(0, newQty)} szt.`,
+        details:
+          `Szybkie skanowanie EAN: ` +
+          `zużyto ${take} szt. ` +
+          `Pozostało: ${Math.max(0, newQty)} szt.`,
       });
     }
+
+    const consumedTotal =
+      requestedAmount -
+      remainingToConsume;
 
     res.json({
       success: true,
       affectedItems,
-      message: `Usunięto łącznie ${amount} szt. produktu "${matchingItems[0].name}".`,
+      consumed: consumedTotal,
+      remainingRequested:
+        remainingToConsume,
+      message:
+        `Usunięto łącznie ${consumedTotal} szt. ` +
+        `produktu "${matchingItems[0].name}".`,
     });
   } catch (error) {
-    console.error('Błąd szybkiego usuwania kodem kreskowym:', error);
-    res.status(500).json({ error: 'Błąd podczas szybkiego usuwania.' });
+    console.error(
+      'Błąd szybkiego usuwania kodem kreskowym:',
+      error
+    );
+
+    res.status(500).json({
+      error:
+        'Błąd podczas szybkiego usuwania.',
+    });
   }
 };
 
-export const deletePantryItem = async (req: Request, res: Response): Promise<void> => {
+export const deletePantryItem = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
-    const householdId = req.user!.householdId!;
+    const householdId =
+      req.user!.householdId!;
 
-    const existing = await prisma.pantryItem.findFirst({
-      where: { id, householdId },
-    });
+    const existing =
+      await prisma.pantryItem.findFirst({
+        where: {
+          id,
+          householdId,
+        },
+      });
 
     if (!existing) {
-      res.status(404).json({ error: 'Produkt nie został odnaleziony.' });
+      res.status(404).json({
+        error:
+          'Produkt nie został odnaleziony.',
+      });
       return;
     }
 
     await prisma.pantryItem.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     await logActivity({
@@ -558,47 +973,87 @@ export const deletePantryItem = async (req: Request, res: Response): Promise<voi
       action: 'USUNIĘTO_PRODUKT',
       entityType: 'PANTRY_ITEM',
       entityName: existing.name,
-      details: `Całkowicie usunięto produkt "${existing.name}" (${existing.quantity} szt.) ze spiżarni.`,
+      details:
+        `Całkowicie usunięto produkt ` +
+        `"${existing.name}" ` +
+        `(${existing.quantity} szt.) ze spiżarni.`,
     });
 
-    res.json({ message: 'Produkt został usunięty ze spiżarni.' });
+    res.json({
+      message:
+        'Produkt został usunięty ze spiżarni.',
+    });
   } catch (error) {
-    console.error('Błąd usuwania produktu:', error);
-    res.status(500).json({ error: 'Błąd podczas usuwania produktu.' });
+    console.error(
+      'Błąd usuwania produktu:',
+      error
+    );
+
+    res.status(500).json({
+      error:
+        'Błąd podczas usuwania produktu.',
+    });
   }
 };
 
-export const getPantryStats = async (req: Request, res: Response): Promise<void> => {
+export const getPantryStats = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const householdId = req.user!.householdId!;
+    const householdId =
+      req.user!.householdId!;
 
-    const activeItems = await prisma.pantryItem.findMany({
-      where: { householdId, status: 'ACTIVE' },
-    });
+    const activeItems =
+      await prisma.pantryItem.findMany({
+        where: {
+          householdId,
+          status: 'ACTIVE',
+        },
+      });
 
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
     const in3Days = new Date(today);
-    in3Days.setDate(in3Days.getDate() + 3);
+    in3Days.setDate(
+      in3Days.getDate() + 3
+    );
+
     const in7Days = new Date(today);
-    in7Days.setDate(in7Days.getDate() + 7);
+    in7Days.setDate(
+      in7Days.getDate() + 7
+    );
 
     let expiredCount = 0;
     let expiring3DaysCount = 0;
     let expiring7DaysCount = 0;
     let openedCount = 0;
 
-    const categoryCounts: Record<string, number> = {};
+    const categoryCounts: Record<
+      string,
+      number
+    > = {};
 
     for (const item of activeItems) {
-      categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+      categoryCounts[item.category] =
+        (categoryCounts[item.category] || 0) +
+        1;
 
       if (item.openedDate) {
         openedCount++;
       }
 
       if (item.expiryDate) {
-        const exp = new Date(item.expiryDate);
+        const exp = new Date(
+          item.expiryDate
+        );
+
         if (exp < today) {
           expiredCount++;
         } else if (exp <= in3Days) {
@@ -618,6 +1073,14 @@ export const getPantryStats = async (req: Request, res: Response): Promise<void>
       categoryCounts,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas obliczania statystyk.' });
+    console.error(
+      'Błąd obliczania statystyk:',
+      error
+    );
+
+    res.status(500).json({
+      error:
+        'Błąd podczas obliczania statystyk.',
+    });
   }
 };

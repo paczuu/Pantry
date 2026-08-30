@@ -14,7 +14,7 @@ model User {
   passwordHash String
   name         String
   avatar       String?
-  role         String      @default("MEMBER") // "ADMIN" | "MEMBER"
+  role         String      @default("MEMBER")
   householdId  String?
   household    Household?  @relation(fields: [householdId], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())
@@ -43,7 +43,7 @@ model ProductCatalog {
   name       String
   brand      String?
   category   String?
-  capacity   String?  // np. "500g", "1L", "250ml"
+  capacity   String?
   imageUrl   String?
   nutriScore String?
   source     String   @default("OPEN_FOOD_FACTS:world")
@@ -59,13 +59,9 @@ model BarcodeSourceSetting {
   householdId String
   household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
-  // np. "OPEN_FOOD_FACTS", "OPEN_BEAUTY_FACTS", "OPEN_PRODUCTS_FACTS"
+  sourceKey   String
   provider    String
-
-  // np. "pl", "de", "cz", "world".
-  // Dla providerów innych niż Open Food Facts obecnie używamy "world".
   countryCode String    @default("world")
-
   enabled     Boolean   @default(true)
   priority    Int       @default(0)
 
@@ -73,6 +69,7 @@ model BarcodeSourceSetting {
   updatedAt   DateTime  @updatedAt
 
   @@unique([householdId, provider, countryCode])
+  @@unique([householdId, sourceKey])
   @@index([householdId, priority])
 }
 
@@ -84,13 +81,13 @@ model PantryItem {
   name        String
   brand       String?
   category    String    @default("Inne")
-  quantity    Int       @default(1) // wyłącznie sztuki
-  capacity    String?   // np. "500g", "1.5L", "250ml"
+  quantity    Int       @default(1)
+  capacity    String?
   expiryDate  DateTime?
   openedDate  DateTime?
   notes       String?
   imageUrl    String?
-  status      String    @default("ACTIVE") // ACTIVE, CONSUMED, WASTED
+  status      String    @default("ACTIVE")
   addedById   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -114,8 +111,8 @@ model ShoppingItem {
   shoppingListId String
   shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
   name           String
-  quantity       Int          @default(1) // wyłącznie sztuki
-  capacity       String?      // np. "500g", "1L"
+  quantity       Int          @default(1)
+  capacity       String?
   category       String       @default("Inne")
   barcode        String?
   isChecked      Boolean      @default(false)
@@ -130,8 +127,8 @@ model Note {
   title         String
   content       String    @default("")
   isChecklist   Boolean   @default(false)
-  checklistData String?   // JSON string z elementami checklisty [{id, text, completed}]
-  color         String    @default("default") // default, emerald, blue, amber, rose, purple
+  checklistData String?
+  color         String    @default("default")
   isPinned      Boolean   @default(false)
   category      String    @default("Ogólne")
   createdById   String?
@@ -147,10 +144,10 @@ model ActivityLog {
   user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   userName    String
   userEmail   String
-  action      String     // "DODANO_PRODUKT", "ZMIENIONO_WARTOSCI", "ZMNIEJSZONO_ILOSC", "USUNIETO_PRODUKT", "PRZENIESIONO_Z_ZAKUPOW", etc.
-  entityType  String     // "PANTRY_ITEM", "SHOPPING_ITEM", "NOTE", "MEMBER"
+  action      String
+  entityType  String
   entityName  String
-  details     String     // JSON opis zmian
+  details     String
   createdAt   DateTime   @default(now())
 }
 

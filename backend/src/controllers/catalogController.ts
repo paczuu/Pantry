@@ -18,7 +18,7 @@ export const getProductByBarcode = async (
 
     const product = await lookupProductByBarcode(
       cleanBarcode,
-      req.user?.householdId
+      req.user?.householdId ?? undefined
     );
 
     let inPantryItems: any[] = [];
@@ -60,9 +60,12 @@ export const getProductByBarcode = async (
     });
   } catch (error) {
     console.error('Błąd wyszukiwania kodu EAN:', error);
+
     res
       .status(500)
-      .json({ error: 'Błąd podczas wyszukiwania kodu kreskowego.' });
+      .json({
+        error: 'Błąd podczas wyszukiwania kodu kreskowego.',
+      });
   }
 };
 
@@ -96,9 +99,9 @@ export const searchCatalog = async (
       take: 100,
     });
 
-    // Jeden kod może istnieć w cache z kilku providerów.
-    // W wyszukiwarce katalogu pokazujemy tylko jeden rekord per EAN,
-    // preferując produkt CUSTOM, a potem najnowszy cache.
+    // Ten sam EAN może być zapisany w cache z kilku źródeł.
+    // W katalogu pokazujemy jeden rekord na EAN.
+    // CUSTOM ma pierwszeństwo przed cache z zewnętrznych providerów.
     const deduplicated = new Map<string, (typeof products)[number]>();
 
     for (const product of products) {
@@ -118,9 +121,12 @@ export const searchCatalog = async (
     });
   } catch (error) {
     console.error('Błąd wyszukiwania w katalogu:', error);
+
     res
       .status(500)
-      .json({ error: 'Błąd podczas wyszukiwania w katalogu.' });
+      .json({
+        error: 'Błąd podczas wyszukiwania w katalogu.',
+      });
   }
 };
 
@@ -140,41 +146,47 @@ export const saveCustomProduct = async (
     } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ error: 'Nazwa produktu jest wymagana.' });
+      res.status(400).json({
+        error: 'Nazwa produktu jest wymagana.',
+      });
       return;
     }
 
     if (barcode && barcode.trim()) {
       const cleanBarcode = barcode.trim();
+      const catalogData = {
+        name: name.trim(),
+        brand: brand?.trim() || null,
+        category: category || 'Inne',
+        capacity: capacity?.trim() || null,
+        imageUrl: imageUrl || null,
+        nutriScore: nutriScore || null,
+      };
 
-      const existing = await prisma.productCatalog.upsert({
+      const existing = await prisma.productCatalog.findFirst({
         where: {
-          barcode_source: {
-            barcode: cleanBarcode,
-            source: 'CUSTOM',
-          },
-        },
-        update: {
-          name: name.trim(),
-          brand: brand?.trim() || null,
-          category: category || 'Inne',
-          capacity: capacity?.trim() || null,
-          imageUrl: imageUrl || null,
-          nutriScore: nutriScore || null,
-        },
-        create: {
           barcode: cleanBarcode,
-          name: name.trim(),
-          brand: brand?.trim() || null,
-          category: category || 'Inne',
-          capacity: capacity?.trim() || null,
-          imageUrl: imageUrl || null,
-          nutriScore: nutriScore || null,
           source: 'CUSTOM',
         },
       });
 
-      res.json({ product: existing });
+      const product = existing
+        ? await prisma.productCatalog.update({
+            where: { id: existing.id },
+            data: catalogData,
+          })
+        : await prisma.productCatalog.create({
+            data: {
+              barcode: cleanBarcode,
+              source: 'CUSTOM',
+              ...catalogData,
+            },
+          });
+
+      res.json({
+        product,
+      });
+
       return;
     }
 
@@ -183,9 +195,15 @@ export const saveCustomProduct = async (
         'Produkt bez kodu kreskowego nie wymaga wpisu w katalogu EAN.',
     });
   } catch (error) {
-    console.error('Błąd zapisywania produktu niestandardowego:', error);
+    console.error(
+      'Błąd zapisywania produktu niestandardowego:',
+      error
+    );
+
     res
       .status(500)
-      .json({ error: 'Błąd podczas zapisywania produktu w katalogu.' });
+      .json({
+        error: 'Błąd podczas zapisywania produktu w katalogu.',
+      });
   }
 };
