@@ -338,8 +338,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
             {activeTab === 'camera' ? (
               <>
                 {/* Kontener wideo */}
-                <div id={scannerContainerId} className="absolute inset-0 z-0 w-full h-full overflow-hidden [&_video]:!absolute [&_video]:!inset-0 [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_video]:!object-center" />
-
+                <div id={scannerContainerId} className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center [&_video]:!w-full [&_video]:!h-full [&_video]:!object-contain [&_video]:!object-center" />
+                
                 {/* Ekran sprawdzania uprawnień */}
                 {permissionState === 'checking' && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
