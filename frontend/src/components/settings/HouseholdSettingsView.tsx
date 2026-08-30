@@ -40,6 +40,7 @@ import {
   Clock,
   Palette,
   PencilLine,
+  Shield,
 } from 'lucide-react';
 
 const BARCODE_PROVIDER_OPTIONS: Array<{
@@ -87,30 +88,9 @@ const COUNTRY_OPTIONS = [
   { code: 'world', label: 'World / globalna' },
 ];
 
-const getBarcodeSourceLabel = (source: BarcodeSourceConfig): string => {
-  const provider = BARCODE_PROVIDER_OPTIONS.find(
-    (option) => option.provider === source.provider
-  );
-
-  if (!provider) return source.provider;
-
-  if (provider.supportsCountry) {
-    const country = COUNTRY_OPTIONS.find(
-      (option) => option.code === source.countryCode
-    );
-
-    return `${provider.label} — ${
-      country?.label || source.countryCode.toUpperCase()
-    }`;
-  }
-
-  return provider.label;
-};
-
 export const HouseholdSettingsView: React.FC = () => {
   const { user, isAdmin, refreshUser, joinHousehold } = useAuth();
-  const { categories, refreshSettings, refreshStats, expiryWarningDays } =
-    usePantry();
+  const { categories, refreshSettings, refreshStats, expiryWarningDays } = usePantry();
   const { showToast } = useToast();
 
   const [members, setMembers] = useState<User[]>([]);
@@ -134,9 +114,7 @@ export const HouseholdSettingsView: React.FC = () => {
   );
 
   // Źródła EAN
-  const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>(
-    []
-  );
+  const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>([]);
   const [barcodeSourcesLoading, setBarcodeSourcesLoading] = useState(true);
   const [barcodeSourcesSaving, setBarcodeSourcesSaving] = useState(false);
 
@@ -332,12 +310,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const updateBarcodeSourceCountry = (index: number, countryCode: string) => {
     setBarcodeSources((current) =>
       current.map((source, sourceIndex) =>
-        sourceIndex === index
-          ? {
-              ...source,
-              countryCode,
-            }
-          : source
+        sourceIndex === index ? { ...source, countryCode } : source
       )
     );
   };
@@ -347,7 +320,6 @@ export const HouseholdSettingsView: React.FC = () => {
       setBarcodeSourcesSaving(true);
 
       const normalized = normalizeBarcodePriorities(barcodeSources);
-
       const res = await api.updateBarcodeSources(normalized);
 
       setBarcodeSources(
@@ -373,7 +345,6 @@ export const HouseholdSettingsView: React.FC = () => {
 
     try {
       setBarcodeSourcesSaving(true);
-
       const res = await api.resetBarcodeSources();
 
       setBarcodeSources(
@@ -420,25 +391,44 @@ export const HouseholdSettingsView: React.FC = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
-  
+
     const expiresAt = (user?.household as any)?.inviteCodeExpiresAt;
-  
+
     if (!expiresAt) {
       setInviteTimeLeft(0);
       return;
     }
-  
+
     const updateTimeLeft = () => {
       const remaining = Math.max(0, new Date(expiresAt).getTime() - Date.now());
       setInviteTimeLeft(Math.ceil(remaining / 1000));
     };
-  
+
     updateTimeLeft();
-  
+
     const interval = window.setInterval(updateTimeLeft, 1000);
-  
+
     return () => window.clearInterval(interval);
   }, [isAdmin, (user?.household as any)?.inviteCodeExpiresAt]);
+
+  const handleGenerateInviteCode = async () => {
+    try {
+      const res = await api.generateHouseholdInviteCode();
+
+      await refreshUser();
+      await navigator.clipboard.writeText(res.inviteCode);
+
+      showToast(
+        'Wygenerowano kod zaproszenia ważny przez 5 minut i skopiowano go do schowka.',
+        'success'
+      );
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się wygenerować kodu zaproszenia.',
+        'error'
+      );
+    }
+  };
 
   const handleSaveHouseholdName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -519,17 +509,6 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
-  const handleCopyCode = () => {
-    if (user?.household?.inviteCode) {
-      navigator.clipboard.writeText(user.household.inviteCode);
-
-      showToast(
-        `Skopiowano kod zaproszenia: ${user.household.inviteCode}`,
-        'success'
-      );
-    }
-  };
-
   const handleUpdateRole = async (memberId: string, newRole: UserRole) => {
     try {
       await api.updateMemberRole(memberId, newRole);
@@ -572,7 +551,6 @@ export const HouseholdSettingsView: React.FC = () => {
       showToast(`Dodano kategorię "${newCategoryName}"`, 'success');
 
       setNewCategoryName('');
-
       await refreshSettings();
     } catch (e: any) {
       showToast('Błąd dodawania kategorii.', 'error');
@@ -610,383 +588,414 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
-  const handleDownloadBackup = () => {
-    window.open('/api/settings/backup', '_blank');
-
-    showToast(
-      'Pobieranie kopii zapasowej spiżarni...',
-      'info'
-    );
+  const handleDownloadBackup = async () => {
+    try {
+      const token = localStorage.getItem('spizarnia_token');
+  
+      if (!token) {
+        showToast('Brak aktywnej sesji. Zaloguj się ponownie.', 'error');
+        return;
+      }
+  
+      showToast('Przygotowywanie kopii zapasowej...', 'info');
+  
+      const response = await fetch('/api/settings/backup', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+  
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+          data.message ||
+          `Błąd pobierania kopii (${response.status})`
+        );
+      }
+  
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+  
+      let fileName = `spizarnia-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+  
+        if (fileNameMatch?.[1]) {
+          fileName = fileNameMatch[1];
+        }
+      }
+  
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+  
+      link.href = url;
+      link.download = fileName;
+  
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+  
+      window.URL.revokeObjectURL(url);
+  
+      showToast('Pobrano kopię zapasową spiżarni.', 'success');
+    } catch (e: any) {
+      showToast(
+        e.message || 'Nie udało się pobrać kopii zapasowej.',
+        'error'
+      );
+    }
   };
 
-  const sortedNavItems = [...navConfig].sort(
-    (a, b) => a.order - b.order
-  );
+  const sortedNavItems = [...navConfig].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8">
       {/* Nagłówek */}
       <div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <Home className="w-6 h-6 text-emerald-400" />
-          Gospodarstwo Domowe i Ustawienia
+          <Sliders className="w-6 h-6 text-emerald-400" />
+          Ustawienia
         </h2>
-
-        <p className="text-xs text-slate-400">
-          Zarządzaj domownikami, uprawnieniami, wyglądem aplikacji i konfiguracją gospodarstwa
+        <p className="text-xs text-slate-400 mt-1">
+          Zarządzaj aplikacją, gospodarstwem domowym i swoim interfejsem
         </p>
       </div>
 
-      {/* Instalacja Aplikacji */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/95 to-emerald-950/40 border border-emerald-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-lg shadow-emerald-950/60">
-            <Smartphone className="w-6 h-6" />
-          </div>
-
-          <div>
-            <h3 className="font-extrabold text-white text-base">
-              Instalacja Aplikacji
-            </h3>
-
-            <p className="text-xs text-slate-300">
-              Zainstaluj aplikację na telefonie (Android, iOS) lub komputerze,
-              aby mieć do niej błyskawiczny dostęp.
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsInstallModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/50 transition-all self-start sm:self-auto shrink-0"
-        >
-          Sprawdź instrukcję instalacji
-        </button>
-      </div>
-
-      {/* Kolor aplikacji */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Palette className="w-5 h-5 text-emerald-400" />
-              Kolor aplikacji
-            </h3>
-
-            <p className="text-xs text-slate-400 mt-1">
-              Wybierz główny kolor przycisków, ikon, ramek i elementów interfejsu.
-            </p>
-          </div>
-
-          {accentTheme !== 'emerald' && (
-            <button
-              type="button"
-              onClick={resetAccentTheme}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                Domyślny
-              </span>
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {ACCENT_THEMES.map((theme) => {
-            const selected = accentTheme === theme.id;
-
-            return (
-              <button
-                key={theme.id}
-                type="button"
-                onClick={() => handleAccentThemeChange(theme.id)}
-                className={`relative flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
-                  selected
-                    ? 'bg-slate-800 border-white/30 shadow-lg'
-                    : 'bg-slate-950/40 border-slate-800 hover:bg-slate-800/70 hover:border-slate-700'
-                }`}
-              >
-                <div
-                  className={`w-9 h-9 rounded-xl shrink-0 transition-transform ${
-                    selected ? 'scale-110' : ''
-                  }`}
-                  style={{
-                    backgroundColor: theme.color,
-                    boxShadow: selected
-                      ? `0 0 18px ${theme.color}55`
-                      : 'none',
-                  }}
-                />
-
-                <div className="min-w-0">
-                  <div className="text-xs sm:text-sm font-bold text-white truncate">
-                    {theme.label}
-                  </div>
-
-                  <div className="text-[10px] text-slate-500 truncate">
-                    {theme.description}
-                  </div>
-                </div>
-
-                {selected && (
-                  <div
-                    className="absolute top-2 right-2 w-2 h-2 rounded-full"
-                    style={{
-                      backgroundColor: theme.color,
-                      boxShadow: `0 0 8px ${theme.color}`,
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Personalizacja paska */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-emerald-400" />
-              Personalizacja paska nawigacji
-            </h3>
-
-            <p className="text-xs text-slate-400">
-              Usuń przyciski z dolnego paska albo zmień ich kolejność.
-              Ukryte pozycje nie pojawią się na telefonie.
-            </p>
-          </div>
-
-          <button
-            onClick={resetNavConfig}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium"
-            title="Przywróć domyślny układ"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">
-              Domyślne
-            </span>
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          {sortedNavItems.map((item, index) => {
-            if (item.id === 'audit' && !isAdmin) return null;
-
-            return (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60"
-              >
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleNavVisibility(item.id)}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      item.visible
-                        ? 'text-emerald-400 bg-emerald-500/10'
-                        : 'text-slate-500 bg-slate-900'
-                    }`}
-                    title={
-                      item.visible
-                        ? 'Ukryj ten przycisk'
-                        : 'Pokaż ten przycisk'
-                    }
-                  >
-                    {item.visible ? (
-                      <Eye className="w-4 h-4" />
-                    ) : (
-                      <EyeOff className="w-4 h-4" />
-                    )}
-                  </button>
-
-                  <span
-                    className={`text-sm font-semibold ${
-                      item.visible
-                        ? 'text-white'
-                        : 'text-slate-500 line-through'
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => moveNavItem(index, 'up')}
-                    disabled={index === 0}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => moveNavItem(index, 'down')}
-                    disabled={index === sortedNavItems.length - 1}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Kategorie */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <h3 className="font-bold text-base text-white flex items-center gap-2">
-          <Tag className="w-5 h-5 text-cyan-400" />
-          Kategorie produktów
-        </h3>
-
-        <form
-          onSubmit={handleAddCategory}
-          className="flex gap-2"
-        >
-          <input
-            type="text"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder="Wpisz nową kategorię..."
-            className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
-          />
-
-          <button
-            type="submit"
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all"
-          >
-            Dodaj
-          </button>
-        </form>
-
-        <div className="flex flex-wrap gap-2 pt-1">
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200"
-            >
-              <span>
-                {cat.name}
-              </span>
-
-              {categories.length > 1 && (
-                <button
-                  onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                  className="text-slate-500 hover:text-rose-400 ml-1"
-                >
-                  &times;
-                </button>
-              )}
+      {/* Aplikacja */}
+      <section className="space-y-3">
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/95 to-emerald-950/40 border border-emerald-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-lg shadow-emerald-950/60">
+              <Smartphone className="w-6 h-6" />
             </div>
-          ))}
+
+            <div>
+              <h3 className="font-extrabold text-white text-base">
+                Instalacja aplikacji
+              </h3>
+              <p className="text-xs text-slate-300">
+                Zainstaluj aplikację na telefonie lub komputerze, aby mieć do niej szybki dostęp.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsInstallModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/50 transition-all self-start sm:self-auto shrink-0"
+          >
+            Instrukcja instalacji
+          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Okres ostrzeżenia */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+      {/* Personalizacja */}
+      <section className="space-y-3">
         <div>
-          <h3 className="font-bold text-base text-white flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-400" />
-            Kończący się termin ważności
-          </h3>
-
-          <p className="text-xs text-slate-400 mt-1">
-            Pulpit, filtry spiżarni i alerty oznaczają produkty,
-            których termin kończy się w podanej liczbie dni.
+          <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <Palette className="w-5 h-5 text-emerald-400" />
+            Personalizacja
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Dopasuj wygląd i nawigację aplikacji
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <label className="text-xs font-semibold text-slate-300 shrink-0">
-            Liczba dni
-          </label>
+        {/* Kolor aplikacji */}
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Palette className="w-5 h-5 text-emerald-400" />
+                Kolor aplikacji
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Wybierz główny kolor przycisków, ikon, ramek i elementów interfejsu.
+              </p>
+            </div>
 
-          <input
-            type="number"
-            min={1}
-            max={90}
-            value={warningDaysInput}
-            onChange={(e) => setWarningDaysInput(e.target.value)}
-            className="w-full sm:w-28 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-          />
-
-          <button
-            type="button"
-            onClick={handleSaveExpiryWarningDays}
-            disabled={warningDaysSaving}
-            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Zapisz
-          </button>
-        </div>
-      </div>
-
-      {/* Członkowie gospodarstwa */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-        <h3 className="font-bold text-base text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-cyan-400" />
-          Członkowie gospodarstwa ({members.length})
-        </h3>
-
-        <div className="space-y-2.5">
-          {members.map((member) => {
-            const isMe = member.id === user?.id;
-            const isMemberAdmin = member.role === 'ADMIN';
-
-            return (
-              <div
-                key={member.id}
-                className="flex flex-wrap items-center justify-between p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 gap-3"
+            {accentTheme !== 'emerald' && (
+              <button
+                type="button"
+                onClick={resetAccentTheme}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sm text-slate-200">
-                    {member.name.charAt(0).toUpperCase()}
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Domyślny</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {ACCENT_THEMES.map((theme) => {
+              const selected = accentTheme === theme.id;
+
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => handleAccentThemeChange(theme.id)}
+                  className={`relative flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
+                    selected
+                      ? 'bg-slate-800 border-white/30 shadow-lg'
+                      : 'bg-slate-950/40 border-slate-800 hover:bg-slate-800/70 hover:border-slate-700'
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-xl shrink-0 transition-transform ${
+                      selected ? 'scale-110' : ''
+                    }`}
+                    style={{
+                      backgroundColor: theme.color,
+                      boxShadow: selected ? `0 0 18px ${theme.color}55` : 'none',
+                    }}
+                  />
+
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-bold text-white truncate">
+                      {theme.label}
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate">
+                      {theme.description}
+                    </div>
                   </div>
 
-                  <div>
-                    <div className="font-bold text-sm text-white flex items-center gap-2">
-                      {member.name}
+                  {selected && (
+                    <div
+                      className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: theme.color,
+                        boxShadow: `0 0 8px ${theme.color}`,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-                      {isMe && (
-                        <span className="text-[10px] text-slate-400 font-normal">
-                          (Ty)
-                        </span>
+        {/* Pasek nawigacji */}
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-emerald-400" />
+                Pasek nawigacji
+              </h3>
+              <p className="text-xs text-slate-400">
+                Ukryj wybrane pozycje albo zmień ich kolejność.
+              </p>
+            </div>
+
+            <button
+              onClick={resetNavConfig}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
+              title="Przywróć domyślny układ"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Domyślne</span>
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {sortedNavItems.map((item, index) => {
+              if (item.id === 'audit' && !isAdmin) return null;
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60"
+                >
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleNavVisibility(item.id)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        item.visible
+                          ? 'text-emerald-400 bg-emerald-500/10'
+                          : 'text-slate-500 bg-slate-900'
+                      }`}
+                      title={item.visible ? 'Ukryj ten przycisk' : 'Pokaż ten przycisk'}
+                    >
+                      {item.visible ? (
+                        <Eye className="w-4 h-4" />
+                      ) : (
+                        <EyeOff className="w-4 h-4" />
                       )}
-                    </div>
+                    </button>
 
-                    <div className="text-xs text-slate-400">
-                      {member.email}
-                    </div>
+                    <span
+                      className={`text-sm font-semibold ${
+                        item.visible ? 'text-white' : 'text-slate-500 line-through'
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => moveNavItem(index, 'up')}
+                      disabled={index === 0}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => moveNavItem(index, 'down')}
+                      disabled={index === sortedNavItems.length - 1}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-                <div className="flex items-center gap-2">
-                  {isAdmin && !isMe ? (
-                    <select
-                      value={member.role}
-                      onChange={(e) =>
-                        handleUpdateRole(
-                          member.id,
-                          e.target.value as UserRole
-                        )
-                      }
-                      className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="MEMBER">
-                        MEMBER
-                      </option>
+      {/* Gospodarstwo */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <Home className="w-5 h-5 text-emerald-400" />
+            Gospodarstwo
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Ustawienia wspólne dla spiżarni i domowników
+          </p>
+        </div>
 
-                      <option value="ADMIN">
-                        ADMIN
-                      </option>
-                    </select>
-                  ) : (
+        {/* Kategorie */}
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+          <h3 className="font-bold text-base text-white flex items-center gap-2">
+            <Tag className="w-5 h-5 text-cyan-400" />
+            Kategorie produktów
+          </h3>
+
+          <form onSubmit={handleAddCategory} className="flex gap-2">
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Wpisz nową kategorię..."
+              className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+            />
+
+            <button
+              type="submit"
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all"
+            >
+              Dodaj
+            </button>
+          </form>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200"
+              >
+                <span>{cat.name}</span>
+
+                {categories.length > 1 && (
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                    className="text-slate-500 hover:text-rose-400 ml-1"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Termin ważności */}
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <div>
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-400" />
+              Kończący się termin ważności
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Ustaw, ile dni przed końcem terminu aplikacja ma oznaczać produkt jako kończący się.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-xs font-semibold text-slate-300 shrink-0">
+              Liczba dni
+            </label>
+
+            <input
+              type="number"
+              min={1}
+              max={90}
+              value={warningDaysInput}
+              onChange={(e) => setWarningDaysInput(e.target.value)}
+              className="w-full sm:w-28 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+
+            <button
+              type="button"
+              onClick={handleSaveExpiryWarningDays}
+              disabled={warningDaysSaving}
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {warningDaysSaving ? 'Zapisywanie...' : 'Zapisz'}
+            </button>
+          </div>
+        </div>
+
+        {/* Członkowie dla zwykłego użytkownika */}
+        {!isAdmin && (
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-cyan-400" />
+              Członkowie gospodarstwa ({members.length})
+            </h3>
+
+            <div className="space-y-2.5">
+              {members.map((member) => {
+                const isMe = member.id === user?.id;
+                const isMemberAdmin = member.role === 'ADMIN';
+
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sm text-slate-200 shrink-0">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-white flex items-center gap-2">
+                          <span className="truncate">{member.name}</span>
+
+                          {isMe && (
+                            <span className="text-[10px] text-slate-400 font-normal shrink-0">
+                              (Ty)
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-slate-400 truncate">
+                          {member.email}
+                        </div>
+                      </div>
+                    </div>
+
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold ${
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 ${
                         isMemberAdmin
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                           : 'bg-slate-700 text-slate-300'
@@ -995,33 +1004,305 @@ export const HouseholdSettingsView: React.FC = () => {
                       {isMemberAdmin && (
                         <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
                       )}
-
                       {member.role}
                     </span>
-                  )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-                  {isAdmin && !isMe && (
-                    <button
-                      onClick={() =>
-                        handleRemoveMember(
-                          member.id,
-                          member.name
-                        )
-                      }
-                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        {/* Dane / dostęp */}
+        <div className={`grid grid-cols-1 gap-4 ${!isAdmin ? 'sm:grid-cols-2' : ''}`}>
+          {!isAdmin && (
+            <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+              <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-amber-400" />
+                Zmień gospodarstwo
+              </h4>
+
+              <p className="text-xs text-slate-400">
+                Dołącz do innego gospodarstwa za pomocą aktywnego kodu zaproszenia. Powrót będzie możliwy jedynie po otrzymaniu kodu od administratora.
+              </p>
+
+              <form onSubmit={handleJoinOtherHousehold} className="space-y-2">
+                <input
+                  type="text"
+                  value={inviteCodeInput}
+                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                  placeholder="Wpisz 6-znakowy kod..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-emerald-500"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!inviteCodeInput.trim()}
+                  className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40"
+                >
+                  Dołącz z kodem
+                </button>
+              </form>
+            </div>
+          )}
+
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+            <h4 className="font-bold text-sm text-white flex items-center gap-2">
+              <Download className="w-4 h-4 text-emerald-400" />
+              Kopia zapasowa danych
+            </h4>
+
+            <p className="text-xs text-slate-400">
+              Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON.
+            </p>
+
+            <button
+              onClick={handleDownloadBackup}
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
+            >
+              Pobierz kopię zapasową
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
 
+      {/* Panel administracyjny */}
       {isAdmin && (
-        <>
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                <Shield className="w-5 h-5 text-emerald-400" />
+                Panel administracyjny
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Zarządzanie gospodarstwem, użytkownikami i źródłami danych
+              </p>
+            </div>
+          </div>
+
+          {/* Ustawienia gospodarstwa */}
+          <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Home className="w-5 h-5 text-emerald-400" />
+                Ustawienia gospodarstwa
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Zarządzaj nazwą gospodarstwa oraz kodem zaproszenia.
+              </p>
+            </div>
+
+            {/* Kod zaproszenia */}
+            <div className="pt-4 border-t border-slate-800 space-y-3">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-emerald-400" />
+                  Kod zaproszenia
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Kod jest ważny przez 5 minut. Wygenerowanie nowego natychmiast unieważnia poprzedni.
+                </p>
+              </div>
+
+              {inviteTimeLeft > 0 && user?.household?.inviteCode ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex-1 flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
+                        {user.household.inviteCode}
+                      </div>
+
+                      <div className="text-[10px] text-slate-400 px-2 mt-0.5 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        Wygasa za:
+                        <span
+                          className={`font-mono font-bold ${
+                            inviteTimeLeft <= 60
+                              ? 'text-rose-400'
+                              : 'text-emerald-400'
+                          }`}
+                        >
+                          {String(Math.floor(inviteTimeLeft / 60)).padStart(2, '0')}:
+                          {String(inviteTimeLeft % 60).padStart(2, '0')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.household!.inviteCode);
+                        showToast(
+                          `Skopiowano kod zaproszenia: ${user.household!.inviteCode}`,
+                          'success'
+                        );
+                      }}
+                      className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
+                      title="Kopiuj kod zaproszenia"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateInviteCode}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Nowy kod
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGenerateInviteCode}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Wygeneruj kod
+                </button>
+              )}
+            </div>
+
+            {/* Nazwa gospodarstwa */}
+            <div className="pt-4 border-t border-slate-800">
+              <form onSubmit={handleSaveHouseholdName} className="space-y-3">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <PencilLine className="w-4 h-4 text-emerald-400" />
+                    Nazwa gospodarstwa
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Zmień nazwę widoczną dla wszystkich domowników.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={householdNameInput}
+                    onChange={(e) => setHouseholdNameInput(e.target.value)}
+                    minLength={2}
+                    maxLength={60}
+                    placeholder="np. Domowa Spiżarnia"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={
+                      householdNameSaving ||
+                      !householdNameInput.trim() ||
+                      householdNameInput.trim() === user?.household?.name
+                    }
+                    className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {householdNameSaving ? 'Zapisywanie...' : 'Zmień nazwę'}
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-slate-500">
+                  {householdNameInput.length}/60 znaków
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Zarządzanie członkami */}
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-400" />
+                Zarządzanie domownikami ({members.length})
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Zmieniaj role użytkowników lub usuwaj ich z gospodarstwa.
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              {members.map((member) => {
+                const isMe = member.id === user?.id;
+                const isMemberAdmin = member.role === 'ADMIN';
+
+                return (
+                  <div
+                    key={member.id}
+                    className="flex flex-wrap items-center justify-between p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center font-bold text-sm text-slate-200 shrink-0">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-white flex items-center gap-2">
+                          <span className="truncate">{member.name}</span>
+
+                          {isMe && (
+                            <span className="text-[10px] text-slate-400 font-normal shrink-0">
+                              (Ty)
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-slate-400 truncate">
+                          {member.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {!isMe ? (
+                        <select
+                          value={member.role}
+                          onChange={(e) =>
+                            handleUpdateRole(
+                              member.id,
+                              e.target.value as UserRole
+                            )
+                          }
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="MEMBER">MEMBER</option>
+                          <option value="ADMIN">ADMIN</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold ${
+                            isMemberAdmin
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-slate-700 text-slate-300'
+                          }`}
+                        >
+                          {isMemberAdmin && (
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          {member.role}
+                        </span>
+                      )}
+
+                      {!isMe && (
+                        <button
+                          onClick={() =>
+                            handleRemoveMember(member.id, member.name)
+                          }
+                          className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
+                          title="Usuń użytkownika"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Źródła danych EAN */}
           <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -1030,10 +1311,8 @@ export const HouseholdSettingsView: React.FC = () => {
                   <Database className="w-5 h-5 text-emerald-400" />
                   Źródła wyszukiwania EAN
                 </h3>
-
                 <p className="text-xs text-slate-400 mt-1">
-                  Skaner sprawdza źródła od góry do dołu.
-                  Produkt dodany ręcznie w aplikacji zawsze ma najwyższy priorytet.
+                  Ustaw kolejność baz używanych podczas wyszukiwania zeskanowanych produktów.
                 </p>
               </div>
 
@@ -1053,10 +1332,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
                 >
                   <Save className="w-3.5 h-3.5 inline mr-1.5" />
-
-                  {barcodeSourcesSaving
-                    ? 'Zapisywanie...'
-                    : 'Zapisz'}
+                  {barcodeSourcesSaving ? 'Zapisywanie...' : 'Zapisz'}
                 </button>
               </div>
             </div>
@@ -1068,11 +1344,9 @@ export const HouseholdSettingsView: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {barcodeSources.map((source, index) => {
-                  const providerMeta =
-                    BARCODE_PROVIDER_OPTIONS.find(
-                      (option) =>
-                        option.provider === source.provider
-                    );
+                  const providerMeta = BARCODE_PROVIDER_OPTIONS.find(
+                    (option) => option.provider === source.provider
+                  );
 
                   return (
                     <div
@@ -1093,9 +1367,7 @@ export const HouseholdSettingsView: React.FC = () => {
                               : 'bg-slate-900 border-slate-700 text-slate-500'
                           }`}
                         >
-                          {source.enabled
-                            ? 'WŁĄCZONE'
-                            : 'WYŁĄCZONE'}
+                          {source.enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
                         </button>
 
                         <div className="flex-1 min-w-0">
@@ -1110,16 +1382,14 @@ export const HouseholdSettingsView: React.FC = () => {
                               }
                               className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                             >
-                              {BARCODE_PROVIDER_OPTIONS.map(
-                                (option) => (
-                                  <option
-                                    key={option.provider}
-                                    value={option.provider}
-                                  >
-                                    {option.label}
-                                  </option>
-                                )
-                              )}
+                              {BARCODE_PROVIDER_OPTIONS.map((option) => (
+                                <option
+                                  key={option.provider}
+                                  value={option.provider}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
                             </select>
 
                             {providerMeta?.supportsCountry ? (
@@ -1133,16 +1403,14 @@ export const HouseholdSettingsView: React.FC = () => {
                                 }
                                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                               >
-                                {COUNTRY_OPTIONS.map(
-                                  (country) => (
-                                    <option
-                                      key={country.code}
-                                      value={country.code}
-                                    >
-                                      {country.label}
-                                    </option>
-                                  )
-                                )}
+                                {COUNTRY_OPTIONS.map((country) => (
+                                  <option
+                                    key={country.code}
+                                    value={country.code}
+                                  >
+                                    {country.label}
+                                  </option>
+                                ))}
                               </select>
                             ) : (
                               <div className="px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 flex items-center gap-2">
@@ -1159,12 +1427,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                         <div className="flex items-center gap-1 self-end lg:self-auto">
                           <button
-                            onClick={() =>
-                              moveBarcodeSource(
-                                index,
-                                'up'
-                              )
-                            }
+                            onClick={() => moveBarcodeSource(index, 'up')}
                             disabled={index === 0}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
                           >
@@ -1172,24 +1435,15 @@ export const HouseholdSettingsView: React.FC = () => {
                           </button>
 
                           <button
-                            onClick={() =>
-                              moveBarcodeSource(
-                                index,
-                                'down'
-                              )
-                            }
-                            disabled={
-                              index === barcodeSources.length - 1
-                            }
+                            onClick={() => moveBarcodeSource(index, 'down')}
+                            disabled={index === barcodeSources.length - 1}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
                           >
                             <ArrowDown className="w-4 h-4" />
                           </button>
 
                           <button
-                            onClick={() =>
-                              removeBarcodeSource(index)
-                            }
+                            onClick={() => removeBarcodeSource(index)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1206,9 +1460,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                 {barcodeSources.length === 0 && (
                   <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
-                    Brak skonfigurowanych źródeł.
-                    Skanowanie będzie korzystało z domyślnego
-                    Open Food Facts PL → World.
+                    Brak skonfigurowanych źródeł. Skanowanie będzie korzystało z domyślnego Open Food Facts PL → World.
                   </div>
                 )}
               </div>
@@ -1225,234 +1477,12 @@ export const HouseholdSettingsView: React.FC = () => {
               </button>
             )}
           </div>
-        </>
+        </section>
       )}
-
-      {/* Gospodarstwo i kod zaproszenia */}
-      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-        <div>
-          <div className="text-xs font-semibold text-emerald-400">
-            Gospodarstwo domowe
-          </div>
-
-          <h3 className="text-lg font-extrabold text-white">
-            {user?.household?.name || 'Moje Gospodarstwo'}
-          </h3>
-        </div>
-
-        {isAdmin && (
-          <div className="pt-4 border-t border-slate-800 space-y-3">
-            <div>
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-emerald-400" />
-                Kod zaproszenia
-              </h4>
-
-              <p className="text-[11px] text-slate-400 mt-1">
-                Kod jest ważny przez 5 minut. Wygenerowanie nowego kodu natychmiast unieważnia poprzedni.
-              </p>
-            </div>
-
-            {inviteTimeLeft > 0 && user?.household?.inviteCode ? (
-              <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <div className="flex-1 flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-2xl border border-emerald-500/40">
-                    <div className="min-w-0">
-                      <div className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest px-2">
-                        {user.household.inviteCode}
-                      </div>
-
-                      <div className="text-[10px] text-slate-400 px-2 mt-0.5 flex items-center gap-1.5">
-                        <Clock className="w-3 h-3 text-emerald-400" />
-                        Wygasa za:
-                        <span className={`font-mono font-bold ${
-                          inviteTimeLeft <= 60 ? 'text-rose-400' : 'text-emerald-400'
-                        }`}>
-                          {String(Math.floor(inviteTimeLeft / 60)).padStart(2, '0')}:
-                          {String(inviteTimeLeft % 60).padStart(2, '0')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(user.household!.inviteCode);
-                        showToast(`Skopiowano kod zaproszenia: ${user.household!.inviteCode}`, 'success');
-                      }}
-                      className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-                      title="Kopiuj kod zaproszenia"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const res = await api.generateHouseholdInviteCode();
-                        await refreshUser();
-
-                        navigator.clipboard.writeText(res.inviteCode);
-
-                        showToast(
-                          'Wygenerowano nowy kod zaproszenia ważny przez 5 minut i skopiowano go do schowka.',
-                          'success'
-                        );
-                      } catch (e: any) {
-                        showToast(e.message || 'Nie udało się wygenerować kodu zaproszenia.', 'error');
-                      }
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 shrink-0"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Nowy kod
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await api.generateHouseholdInviteCode();
-                      await refreshUser();
-
-                      navigator.clipboard.writeText(res.inviteCode);
-
-                      showToast(
-                        'Wygenerowano kod zaproszenia ważny przez 5 minut i skopiowano go do schowka.',
-                        'success'
-                      );
-                    } catch (e: any) {
-                      showToast(e.message || 'Nie udało się wygenerować kodu zaproszenia.', 'error');
-                    }
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shrink-0"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  Wygeneruj kod
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="pt-4 border-t border-slate-800">
-            <form onSubmit={handleSaveHouseholdName} className="space-y-3">
-              <div>
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <PencilLine className="w-4 h-4 text-emerald-400" />
-                  Nazwa gospodarstwa
-                </h4>
-
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Jako administrator możesz zmienić nazwę widoczną dla wszystkich domowników.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={householdNameInput}
-                  onChange={(e) => setHouseholdNameInput(e.target.value)}
-                  minLength={2}
-                  maxLength={60}
-                  placeholder="np. Domowa Spiżarnia"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-                />
-
-                <button
-                  type="submit"
-                  disabled={
-                    householdNameSaving ||
-                    !householdNameInput.trim() ||
-                    householdNameInput.trim() === user?.household?.name
-                  }
-                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  {householdNameSaving ? 'Zapisywanie...' : 'Zmień nazwę'}
-                </button>
-              </div>
-
-              <div className="text-[10px] text-slate-500">
-                {householdNameInput.length}/60 znaków
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
-
-      {/* Backup / Zmiana gospodarstwa */}
-      <div
-        className={`grid grid-cols-1 gap-4 ${
-          !isAdmin
-            ? 'sm:grid-cols-2'
-            : ''
-        }`}
-      >
-        {!isAdmin && (
-          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-            <h4 className="font-bold text-sm text-white flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-amber-400" />
-              Zmień gospodarstwo domowe
-            </h4>
-
-            <form
-              onSubmit={handleJoinOtherHousehold}
-              className="space-y-2"
-            >
-              <input
-                type="text"
-                value={inviteCodeInput}
-                onChange={(e) =>
-                  setInviteCodeInput(
-                    e.target.value.toUpperCase()
-                  )
-                }
-                placeholder="Wpisz 6-znakowy kod..."
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-emerald-500"
-              />
-
-              <button
-                type="submit"
-                disabled={!inviteCodeInput.trim()}
-                className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40"
-              >
-                Dołącz z kodem
-              </button>
-            </form>
-          </div>
-        )}
-
-        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-          <h4 className="font-bold text-sm text-white flex items-center gap-2">
-            <Download className="w-4 h-4 text-emerald-400" />
-            Kopia zapasowa danych
-          </h4>
-
-          <p className="text-xs text-slate-400">
-            Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON
-          </p>
-
-          <button
-            onClick={handleDownloadBackup}
-            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
-          >
-            Pobierz plik kopii zapasowej
-          </button>
-        </div>
-      </div>
 
       <InstallPwaModal
         isOpen={isInstallModalOpen}
-        onClose={() =>
-          setIsInstallModalOpen(false)
-        }
+        onClose={() => setIsInstallModalOpen(false)}
       />
     </div>
   );
