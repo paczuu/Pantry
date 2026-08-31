@@ -7,6 +7,7 @@ export interface User {
   avatar?: string | null;
   role: UserRole;
   isSystemAdmin?: boolean;
+  isPrimaryAdmin?: boolean;
   householdId?: string | null;
   household?: Household | null;
   createdAt?: string;
@@ -185,6 +186,7 @@ export interface SystemUser {
   avatar?: string | null;
   role: UserRole;
   isSystemAdmin: boolean;
+  isPrimaryAdmin: boolean;
   householdId?: string | null;
   household?: {
     id: string;

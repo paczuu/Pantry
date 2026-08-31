@@ -24,6 +24,18 @@ const isInviteCodeActive = (expiresAt?: Date | null): boolean => {
   return Boolean(expiresAt && expiresAt.getTime() > Date.now());
 };
 
+const getPrimaryUserId = async (): Promise<string | null> => {
+  const primaryUser = await prisma.user.findFirst({
+    orderBy: [
+      { createdAt: 'asc' },
+      { id: 'asc' },
+    ],
+    select: { id: true },
+  });
+
+  return primaryUser?.id || null;
+};
+
 const sanitizeHousehold = <T extends Record<string, any> | null>(household: T, role: string) => {
   if (!household || role === 'ADMIN') return household;
   const { inviteCode, inviteCodeExpiresAt, ...safeHousehold } = household;
@@ -193,7 +205,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (!cleanInviteCode) {
-      res.status(400).json({ error: 'Kod zaproszenia jest wymagany. Tylko pierwsze konto w pustej instalacji może zostać utworzone bez kodu.' });
+      res.status(400).json({ error: 'Kod zaproszenia jest wymagany.' });
       return;
     }
 
@@ -553,6 +565,13 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const primaryUserId = await getPrimaryUserId();
+
+    if (memberId === primaryUserId) {
+      res.status(400).json({ error: 'Konta głównego nie można usunąć.' });
+      return;
+    }
+
     await prisma.user.delete({
       where: { id: memberId },
     });
@@ -585,6 +604,13 @@ export const deleteOwnAccount = async (req: Request, res: Response): Promise<voi
 
     if (!user) {
       res.status(404).json({ error: 'Użytkownik nie został odnaleziony.' });
+      return;
+    }
+
+    const primaryUserId = await getPrimaryUserId();
+
+    if (userId === primaryUserId) {
+      res.status(400).json({ error: 'Konta głównego nie można usunąć.' });
       return;
     }
 

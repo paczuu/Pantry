@@ -23,6 +23,18 @@ const getUniqueInviteCode = async (): Promise<string> => {
   return code;
 };
 
+const getPrimaryUserId = async (): Promise<string | null> => {
+  const primaryUser = await prisma.user.findFirst({
+    orderBy: [
+      { createdAt: 'asc' },
+      { id: 'asc' },
+    ],
+    select: { id: true },
+  });
+
+  return primaryUser?.id || null;
+};
+
 export const getSystemUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const users = await prisma.user.findMany({
@@ -42,10 +54,20 @@ export const getSystemUsers = async (req: Request, res: Response): Promise<void>
         },
         createdAt: true,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
     });
 
-    res.json({ users });
+    const primaryUserId = users[0]?.id || null;
+
+    res.json({
+      users: users.map((user) => ({
+        ...user,
+        isPrimaryAdmin: user.id === primaryUserId,
+      })),
+    });
   } catch (error) {
     console.error('Błąd pobierania użytkowników systemu:', error);
     res.status(500).json({ error: 'Nie udało się pobrać użytkowników.' });
@@ -183,6 +205,18 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    const primaryUserId = await getPrimaryUserId();
+    const isPrimaryAdmin = userId === primaryUserId;
+
+    if (
+      isPrimaryAdmin &&
+      isSystemAdmin !== undefined &&
+      isSystemAdmin === false
+    ) {
+      res.status(400).json({ error: 'Kontu głównemu nie można odebrać uprawnień administratora systemu.' });
+      return;
+    }
+
     if (role !== undefined && !['ADMIN', 'MEMBER'].includes(role)) {
       res.status(400).json({ error: 'Nieprawidłowa rola użytkownika.' });
       return;
@@ -266,6 +300,13 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
 
     if (!targetUser) {
       res.status(404).json({ error: 'Użytkownik nie istnieje.' });
+      return;
+    }
+
+    const primaryUserId = await getPrimaryUserId();
+
+    if (userId === primaryUserId) {
+      res.status(400).json({ error: 'Konta głównego nie można usunąć.' });
       return;
     }
 

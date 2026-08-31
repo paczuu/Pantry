@@ -801,6 +801,11 @@ export const HouseholdSettingsView: React.FC = () => {
   };
 
   const handleSystemAdminToggle = async (targetUser: SystemUser) => {
+    if (targetUser.isPrimaryAdmin && targetUser.isSystemAdmin) {
+      showToast('Kontu głównemu nie można odebrać uprawnień administratora systemu.', 'info');
+      return;
+    }
+
     try {
       await api.updateSystemUser(targetUser.id, {
         isSystemAdmin: !targetUser.isSystemAdmin,
@@ -824,6 +829,11 @@ export const HouseholdSettingsView: React.FC = () => {
   };
 
   const handleDeleteSystemUser = async (targetUser: SystemUser) => {
+    if (targetUser.isPrimaryAdmin) {
+      showToast('Konta głównego nie można usunąć.', 'info');
+      return;
+    }
+
     if (
       !window.confirm(
         `Czy na pewno całkowicie usunąć konto "${targetUser.name}" (${targetUser.email})? Tej operacji nie można cofnąć.`
@@ -1867,6 +1877,13 @@ export const HouseholdSettingsView: React.FC = () => {
                               </span>
                             )}
 
+                            {systemUser.isPrimaryAdmin && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-extrabold">
+                                <Crown className="w-3 h-3" />
+                                KONTO GŁÓWNE
+                              </span>
+                            )}
+
                             {systemUser.isSystemAdmin && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-extrabold">
                                 <Crown className="w-3 h-3" />
@@ -1880,7 +1897,7 @@ export const HouseholdSettingsView: React.FC = () => {
                           </div>
                         </div>
 
-                        {!isMe && (
+                        {!isMe && !systemUser.isPrimaryAdmin && (
                           <button
                             type="button"
                             onClick={() => handleDeleteSystemUser(systemUser)}
@@ -1907,7 +1924,7 @@ export const HouseholdSettingsView: React.FC = () => {
                             }
                             className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                           >
-                            <option value="">Brak gospodarstwa</option>
+                            <option value="">Brak</option>
                             {systemHouseholds.map((household) => (
                               <option key={household.id} value={household.id}>
                                 {household.name}
@@ -1942,7 +1959,7 @@ export const HouseholdSettingsView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleSystemAdminToggle(systemUser)}
-                            disabled={isMe && systemUser.isSystemAdmin}
+                            disabled={(isMe && systemUser.isSystemAdmin) || (systemUser.isPrimaryAdmin && systemUser.isSystemAdmin)}
                             className={`w-full px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 ${
                               systemUser.isSystemAdmin
                                 ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
