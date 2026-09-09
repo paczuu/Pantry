@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, UserPlus, LogIn } from 'lucide-react';
+import { UserPlus, LogIn } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login, register } = useAuth();
@@ -40,12 +40,14 @@ export const LoginPage: React.FC = () => {
         {/* Logo i Nagłówek */}
         <div className="text-center space-y-2">
           <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 items-center justify-center mb-2">
-            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-emerald-400" />
-            </div>
+            <img
+              src="/favicon.png"
+              alt="Pantry"
+              className="w-10 h-10 object-contain"
+            />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent">
-            Spiżarnia
+          Pantry
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
             Inteligentne zarządzanie zapasami w kuchni, skaner kodów EAN i wspólne listy zakupów.

@@ -30,7 +30,7 @@ export const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3 text-emerald-400">
         <Loader2 className="w-10 h-10 animate-spin" />
-        <span className="text-sm font-semibold text-slate-300">Ładowanie aplikacji Spiżarnia...</span>
+        <span className="text-sm font-semibold text-slate-300">Ładowanie aplikacji Pantry...</span>
       </div>
     );
   }

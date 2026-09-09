@@ -1,5 +1,4 @@
 services:
-
   backend:
     build:
       context: ./backend
@@ -35,7 +34,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "3001:80"
+      - "3200:80"
 
     depends_on:
       - backend

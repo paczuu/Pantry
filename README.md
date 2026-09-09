@@ -1,4 +1,4 @@
-# 🥫 Spiżarnia (Smart Pantry PWA)
+# 🥫 Pantry (Smart Pantry PWA)
 
 Nowoczesna aplikacja **Progressive Web App (PWA)** z serwerem **self-hosted** do zarządzania zapasami w kuchni i spiżarni, zintegrowana z darmową bazą **Open Food Facts**, skanerem kodów kreskowych EAN, trybem szybkiego dodawania i odliczania produktów, dziennikiem zmian dla administratora, listami zakupów i notatkami.
 

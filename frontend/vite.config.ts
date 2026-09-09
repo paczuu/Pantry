@@ -11,8 +11,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/socket\.io/],
       },
       manifest: {
-        name: 'Spiżarnia - Smart Pantry',
-        short_name: 'Spiżarnia',
+        name: 'Pantry',
+        short_name: 'Pantry',
         description: 'Inteligentne zarządzanie zapasami w kuchni i spiżarni ze skanerem kodów EAN',
         theme_color: '#10b981',
         background_color: '#0f172a',

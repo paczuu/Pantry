@@ -3,10 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
 import { InstallPwaModal } from './InstallPwaModal';
 import {
-  Sparkles,
   LogOut,
-  User as UserIcon,
-  ShieldCheck,
   Smartphone,
   Settings,
 } from 'lucide-react';
@@ -33,16 +30,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
             className="flex items-center gap-3 text-left rounded-2xl -ml-1 px-1 py-0.5 hover:bg-slate-900/80 transition-colors"
             title="Przejdź do pulpitu"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-lg shadow-emerald-950/60 flex items-center justify-center">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-emerald-400" />
-              </div>
+            <div className="w-10 h-10 items-center justify-center">
+              <img
+                src="/favicon.png"
+                alt="Pantry"
+                className="w-10 h-10 object-contain"
+              />
             </div>
 
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-extrabold text-white text-base sm:text-lg tracking-tight">
-                  Spiżarnia
+                  Pantry
                 </h1>
                 {isAdmin && (
                   <span className="px-1.5 py-0.2 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-extrabold">

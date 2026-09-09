@@ -19,7 +19,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Instalacja Aplikacji Spiżarnia" maxWidth="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Instalacja Aplikacji Pantry" maxWidth="md">
       <div className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-7rem)] overflow-y-auto overscroll-contain pr-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] space-y-4 text-slate-200 text-xs sm:text-sm leading-relaxed">
 
         {/* Banner */}
@@ -81,7 +81,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
             </p>
 
             <div className="font-semibold text-emerald-400 bg-slate-900 p-2 rounded-lg border border-slate-800">
-              „Zainstaluj aplikację Spiżarnia” lub „Dodaj do ekranu głównego”
+              „Zainstaluj aplikację Pantry” lub „Dodaj do ekranu głównego”
             </div>
           </div>
         )}

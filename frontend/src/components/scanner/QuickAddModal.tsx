@@ -11,7 +11,6 @@ import {
   Calendar,
   Tag,
   Image as ImageIcon,
-  Sparkles,
   Check,
   Scale,
   PackageOpen,
