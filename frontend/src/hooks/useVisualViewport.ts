@@ -10,10 +10,17 @@ export interface VisualViewportBox {
 
 const readViewport = (): VisualViewportBox => {
   if (typeof window === 'undefined') {
-    return { offsetTop: 0, offsetLeft: 0, width: 0, height: 0, keyboardHeight: 0 };
+    return {
+      offsetTop: 0,
+      offsetLeft: 0,
+      width: 0,
+      height: 0,
+      keyboardHeight: 0,
+    };
   }
 
   const vv = window.visualViewport;
+
   if (!vv) {
     return {
       offsetTop: 0,
@@ -24,11 +31,14 @@ const readViewport = (): VisualViewportBox => {
     };
   }
 
-  const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  const keyboardHeight = Math.max(
+    0,
+    window.innerHeight - vv.height - vv.offsetTop
+  );
 
   return {
-    offsetTop: vv.offsetTop,
-    offsetLeft: vv.offsetLeft,
+    offsetTop: Math.max(0, vv.offsetTop),
+    offsetLeft: Math.max(0, vv.offsetLeft),
     width: vv.width,
     height: vv.height,
     keyboardHeight,
@@ -36,22 +46,37 @@ const readViewport = (): VisualViewportBox => {
 };
 
 export function useVisualViewport(): VisualViewportBox {
-  const [box, setBox] = useState<VisualViewportBox>(() => readViewport());
+  const [box, setBox] = useState<VisualViewportBox>(
+    () => readViewport()
+  );
 
   useEffect(() => {
-    const update = () => setBox(readViewport());
     const vv = window.visualViewport;
+
+    let frame = 0;
+
+    const update = () => {
+      cancelAnimationFrame(frame);
+
+      frame = requestAnimationFrame(() => {
+        setBox(readViewport());
+      });
+    };
 
     vv?.addEventListener('resize', update);
     vv?.addEventListener('scroll', update);
+
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
 
     update();
 
     return () => {
+      cancelAnimationFrame(frame);
+
       vv?.removeEventListener('resize', update);
       vv?.removeEventListener('scroll', update);
+
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
@@ -60,13 +85,16 @@ export function useVisualViewport(): VisualViewportBox {
   return box;
 }
 
-export function focusAndKeepVisible(el: HTMLElement | null) {
+export function focusAndKeepVisible(
+  el: HTMLElement | null
+) {
   if (!el) return;
-  el.focus({ preventScroll: true });
+
   window.setTimeout(() => {
-    el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-  }, 50);
-  window.setTimeout(() => {
-    el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-  }, 320);
+    el.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'smooth',
+    });
+  }, 100);
 }
