@@ -34,7 +34,6 @@ export const NotesView: React.FC = () => {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newChecklistText, setNewChecklistText] = useState('');
   const [color, setColor] = useState<NoteColor>('default');
-  const [category, setCategory] = useState('Ogólne');
   const [isPinned, setIsPinned] = useState(false);
   const checklistInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,7 +64,6 @@ export const NotesView: React.FC = () => {
     setChecklistItems([]);
     setNewChecklistText('');
     setColor('default');
-    setCategory('Ogólne');
     setIsPinned(false);
     setIsModalOpen(true);
   };
@@ -84,7 +82,6 @@ export const NotesView: React.FC = () => {
     setChecklistItems(items);
     setNewChecklistText('');
     setColor(note.color);
-    setCategory(note.category);
     setIsPinned(note.isPinned);
     setIsModalOpen(true);
   };
@@ -148,7 +145,7 @@ export const NotesView: React.FC = () => {
         isChecklist,
         checklistData: isChecklist ? JSON.stringify(checklistItems) : null,
         color,
-        category,
+        category: editingNote?.category || 'Ogólne',
         isPinned,
       };
 
@@ -194,7 +191,6 @@ export const NotesView: React.FC = () => {
     (n) =>
       n.title.toLowerCase().includes(search.toLowerCase()) ||
       n.content.toLowerCase().includes(search.toLowerCase()) ||
-      n.category.toLowerCase().includes(search.toLowerCase()) ||
       (n.checklistData && n.checklistData.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -352,10 +348,7 @@ export const NotesView: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-2.5 border-t border-white/5 text-[11px] text-slate-400">
-                  <span className="bg-black/25 px-2 py-0.5 rounded-md font-semibold">
-                    {note.category}
-                  </span>
+                <div className="flex items-center justify-end pt-2.5 border-t border-white/5 text-[11px] text-slate-400">
                   <span>{new Date(note.createdAt).toLocaleDateString('pl-PL')}</span>
                 </div>
               </div>
@@ -471,47 +464,31 @@ export const NotesView: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Kategoria</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-              >
-                <option value="Ogólne">Ogólne</option>
-                <option value="Mrożonki">Mrożonki</option>
-                <option value="Plany posiłków">Plany posiłków</option>
-                <option value="Wskazówki">Wskazówki</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Kolor kafelka</label>
-              <div className="flex items-center gap-2 pt-1">
-                {(['default', 'emerald', 'blue', 'amber', 'rose', 'purple'] as NoteColor[]).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={`w-6 h-6 rounded-full border-2 transition-transform ${
-                      color === c ? 'scale-125 border-white ring-2 ring-emerald-500' : 'border-transparent opacity-80'
-                    } ${
-                      c === 'emerald'
-                        ? 'bg-emerald-500'
-                        : c === 'blue'
-                        ? 'bg-blue-500'
-                        : c === 'amber'
-                        ? 'bg-amber-500'
-                        : c === 'rose'
-                        ? 'bg-rose-500'
-                        : c === 'purple'
-                        ? 'bg-purple-500'
-                        : 'bg-slate-700'
-                    }`}
-                  />
-                ))}
-              </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Kolor kafelka</label>
+            <div className="flex items-center gap-2 pt-1">
+              {(['default', 'emerald', 'blue', 'amber', 'rose', 'purple'] as NoteColor[]).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                    color === c ? 'scale-125 border-white ring-2 ring-emerald-500' : 'border-transparent opacity-80'
+                  } ${
+                    c === 'emerald'
+                      ? 'bg-emerald-500'
+                      : c === 'blue'
+                      ? 'bg-blue-500'
+                      : c === 'amber'
+                      ? 'bg-amber-500'
+                      : c === 'rose'
+                      ? 'bg-rose-500'
+                      : c === 'purple'
+                      ? 'bg-purple-500'
+                      : 'bg-slate-700'
+                  }`}
+                />
+              ))}
             </div>
           </div>
 
