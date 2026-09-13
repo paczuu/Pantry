@@ -6,11 +6,13 @@ import { ProductCatalogItem, PantryItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { X, Flashlight, Keyboard, PlusCircle, MinusCircle, Search, Loader2, Camera, ShieldAlert, Sparkles } from 'lucide-react';
+
 interface BarcodeScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultMode?: 'ADD' | 'REMOVE';
 }
+
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClose, defaultMode = 'ADD' }) => {
   const { showToast, playBeep, vibrate } = useToast();
   const [mode, setMode] = useState<'ADD' | 'REMOVE'>(defaultMode);
@@ -19,20 +21,26 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [permissionState, setPermissionState] = useState<'granted' | 'prompt' | 'denied' | 'checking'>('prompt');
+  const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
+  const [selectedCameraIndex, setSelectedCameraIndex] = useState(0);
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+
   // Submodals
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isQuickRemoveOpen, setIsQuickRemoveOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [scannedProduct, setScannedProduct] = useState<ProductCatalogItem | null>(null);
   const [inPantryItems, setInPantryItems] = useState<PantryItem[]>([]);
+
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'spizarnia-fullscreen-barcode-reader';
   const lastScannedTimeRef = useRef<number>(0);
   const scannerStartingRef = useRef(false);
+
   useEffect(() => { setMode(defaultMode); }, [defaultMode, isOpen]);
+
   const stopScanner = useCallback(async () => {
     const scanner = html5QrCodeRef.current;
     html5QrCodeRef.current = null;
@@ -47,21 +55,44 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     } catch (e) { console.warn('Błąd zatrzymywania skanera:', e); }
     try { scanner.clear(); } catch (e) {}
   }, []);
+
+  const loadCameras = useCallback(async () => {
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        setCameras(devices);
+        const backCamIdx = devices.findIndex((d) => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('tył') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'));
+        setSelectedCameraIndex(backCamIdx !== -1 ? backCamIdx : 0);
+      } else {
+        setCameras([]);
+      }
+      return devices || [];
+    } catch (e) {
+      console.warn('Nie udało się pobrać listy kamer:', e);
+      setCameras([]);
+      return [];
+    }
+  }, []);
+
   // Sprawdź status uprawnień przy otwarciu, ale nie próbuj wymuszać systemowego promptu bez kliknięcia użytkownika.
   const checkInitialPermission = useCallback(async () => {
     if (!isOpen) return;
     setCameraError(null);
+
     if (!navigator.mediaDevices?.getUserMedia) {
       setPermissionState('denied');
       setCameraError('Twoja przeglądarka nie obsługuje dostępu do aparatu.');
       return;
     }
+
     setPermissionState('checking');
+
     try {
       if (navigator.permissions?.query) {
         try {
           const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
           if (status.state === 'granted') {
+            await loadCameras();
             setPermissionState('granted');
             return;
           }
@@ -78,7 +109,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     } catch (e) {
       setPermissionState('prompt');
     }
-  }, [isOpen]);
+  }, [isOpen, loadCameras]);
+
   useEffect(() => {
     if (isOpen) {
       setActiveTab('camera');
@@ -92,18 +124,22 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
       setCameraError(null);
     }
   }, [isOpen, checkInitialPermission, stopScanner]);
+
   // Bezpośrednie getUserMedia po kliknięciu użytkownika - to właśnie wywołuje systemową prośbę o dostęp do kamery.
   const handleRequestPermissionClick = async () => {
     try {
       setCameraError(null);
       setPermissionState('checking');
+
       if (!navigator.mediaDevices?.getUserMedia) {
         setPermissionState('denied');
         setCameraError('Twoja przeglądarka nie obsługuje dostępu do aparatu.');
         return;
       }
+
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
       stream.getTracks().forEach((track) => track.stop());
+      await loadCameras();
       setPermissionState('granted');
     } catch (err: any) {
       console.warn('Odrzucono dostęp do kamery:', err);
@@ -126,16 +162,20 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
       }
     }
   };
+
   const handleBarcodeScanned = useCallback(async (barcode: string) => {
     const now = Date.now();
     if (now - lastScannedTimeRef.current < 2000 || isProcessing) return;
     lastScannedTimeRef.current = now;
     if (soundEnabled) playBeep(950, 'sine', 0.15);
     vibrate([60, 40, 60]);
+
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return;
     setIsProcessing(true);
+
     await stopScanner();
+
     try {
       const res = await api.lookupBarcode(cleanBarcode);
       setScannedBarcode(cleanBarcode);
@@ -156,31 +196,40 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
       setIsProcessing(false);
     }
   }, [isProcessing, mode, playBeep, showToast, soundEnabled, vibrate, stopScanner]);
+
   // Uruchom skaner dopiero po zgodzie i dopiero gdy kontener istnieje w DOM.
   useEffect(() => {
     let cancelled = false;
+
     const startScanner = async () => {
       if (!isOpen || activeTab !== 'camera' || isQuickAddOpen || isQuickRemoveOpen || permissionState !== 'granted' || scannerStartingRef.current) return;
       const containerElem = document.getElementById(scannerContainerId);
       if (!containerElem) return;
+
       scannerStartingRef.current = true;
       setCameraError(null);
+
       try {
         await stopScanner();
         if (cancelled) return;
+
         const qrScanner = new Html5Qrcode(scannerContainerId, {
           formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.ITF],
           verbose: false,
           experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         });
+
         html5QrCodeRef.current = qrScanner;
-        const cameraConfig = { facingMode: { ideal: 'environment' } };
+        const cameraId = cameras[selectedCameraIndex]?.id;
+        const cameraConfig = {facingMode: { exact: 'environment' }};
+
         await qrScanner.start(
           cameraConfig,
           { fps: 20, qrbox: (viewfinderWidth, viewfinderHeight) => ({ width: Math.floor(viewfinderWidth * 0.95), height: Math.floor(viewfinderHeight * 0.72) }) },
           (decodedText) => { if (!cancelled) handleBarcodeScanned(decodedText); },
           () => {}
         );
+
         if (!cancelled) setIsScanning(true);
       } catch (err: any) {
         if (!cancelled) {
@@ -197,13 +246,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
         scannerStartingRef.current = false;
       }
     };
+
     const timer = window.setTimeout(startScanner, 100);
+
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
       stopScanner();
     };
-  }, [isOpen, activeTab, isQuickAddOpen, isQuickRemoveOpen, permissionState, handleBarcodeScanned, stopScanner]);
+  }, [isOpen, activeTab, selectedCameraIndex, isQuickAddOpen, isQuickRemoveOpen, cameras, permissionState, handleBarcodeScanned, stopScanner]);
+
   const processBarcode = async (barcode: string) => {
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return;
@@ -228,7 +280,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
       setIsProcessing(false);
     }
   };
+
   const handleManualSubmit = (e: React.FormEvent) => { e.preventDefault(); if (!manualCode.trim()) return; processBarcode(manualCode.trim()); };
+
+  const switchCamera = () => { if (cameras.length > 1) setSelectedCameraIndex((prev) => (prev + 1) % cameras.length); };
+
   const toggleTorch = async () => {
     try {
       if (html5QrCodeRef.current && isScanning) {
@@ -239,11 +295,14 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
       showToast('Latarka nie jest dostępna na tym urządzeniu.', 'info');
     }
   };
+
   const handleClose = async () => {
     await stopScanner();
     onClose();
   };
+
   if (!isOpen) return null;
+
   return (
     <>
       {/* Pełnoekranowy widok skanera */}
@@ -262,6 +321,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
                 Szybkie Zużycie
               </button>
             </div>
+
             {/* Przyciski Akcji: Latarka, Zamknij */}
             <div className="flex items-center gap-2">
               <button type="button" onClick={toggleTorch} disabled={!isScanning} className={`p-2.5 rounded-2xl backdrop-blur-md border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${isTorchOn ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-lg shadow-amber-500/50' : 'bg-slate-900/80 border-slate-700 text-slate-200'}`} title="Latarka">
@@ -272,12 +332,14 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
               </button>
             </div>
           </div>
+
           {/* Główny Obszar Kamery / Uprawnień */}
           <div className="relative z-0 w-full h-full flex items-center justify-center bg-black overflow-hidden">
             {activeTab === 'camera' ? (
               <>
                 {/* Kontener wideo */}
                 <div id={scannerContainerId} className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center [&_video]:!w-full [&_video]:!h-full [&_video]:!object-contain [&_video]:!object-center" />
+                
                 {/* Ekran sprawdzania uprawnień */}
                 {permissionState === 'checking' && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
@@ -288,6 +350,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
                     </div>
                   </div>
                 )}
+
                 {/* Ekran Prośby o Uprawnienia do Kamery */}
                 {permissionState === 'prompt' && !cameraError && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-5">
@@ -309,6 +372,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
                     </div>
                   </div>
                 )}
+
                 {/* Ekran błędu / zablokowanych uprawnień */}
                 {(permissionState === 'denied' || cameraError) && permissionState !== 'checking' && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
@@ -332,6 +396,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
                     </div>
                   </div>
                 )}
+
                 {/* Pełnoekranowa ramka i laserowy skaner */}
                 {isScanning && !cameraError && permissionState === 'granted' && (
                   <div className="absolute z-20 inset-x-6 sm:inset-x-24 top-1/2 -translate-y-1/2 h-64 sm:h-72 border-2 border-emerald-500/70 rounded-3xl pointer-events-none flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.25)]">
@@ -360,6 +425,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
                 </form>
               </div>
             )}
+
             {/* Spinner przetwarzania */}
             {isProcessing && (
               <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center gap-3 text-white z-50">
@@ -368,6 +434,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
               </div>
             )}
           </div>
+
           {/* Dolny Pasek Nawigacyjny Skanera */}
           <div className="absolute bottom-0 inset-x-0 z-40 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col items-center gap-3">
             <p className="text-xs text-slate-300 font-medium text-center drop-shadow-md">{mode === 'ADD' ? '⚡ Skieruj aparat na kod kreskowy, aby dodać lub zwiększyć ilość' : '⚡ Zeskanuj kod EAN, aby natychmiast odliczyć sztuki ze spiżarni'}</p>
@@ -379,8 +446,10 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
           </div>
         </div>
       )}
+
       {/* Modal Dodawania Produktu */}
       <QuickAddModal isOpen={isQuickAddOpen} onClose={() => { setIsQuickAddOpen(false); onClose(); }} initialProduct={scannedProduct} barcode={scannedBarcode} onSuccess={() => { setIsQuickAddOpen(false); onClose(); }} />
+
       {/* Modal Szybkiego Usuwania */}
       <QuickRemoveModal isOpen={isQuickRemoveOpen} onClose={() => { setIsQuickRemoveOpen(false); onClose(); }} barcode={scannedBarcode} inPantryItems={inPantryItems} productCatalog={scannedProduct} onSuccess={() => { setIsQuickRemoveOpen(false); onClose(); }} />
     </>
