@@ -8,7 +8,6 @@ import {
   Minus,
   Plus,
   MoreVertical,
-  Edit2,
   Utensils,
   Trash2,
   ShoppingCart,
@@ -33,7 +32,8 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleIncrement = async () => {
+  const handleIncrement = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setIsUpdating(true);
     try {
       await api.updatePantryItem(item.id, { quantity: item.quantity + 1 });
@@ -45,7 +45,8 @@ export const PantryCard: React.FC<PantryCardProps> = ({
     }
   };
 
-  const handleDecrement = async () => {
+  const handleDecrement = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (item.quantity <= 1) {
       if (window.confirm(`Czy na pewno chcesz zużyć ostatnią sztukę "${item.name}"?`)) {
         await consumeItem(item.id, 1, false);
@@ -55,7 +56,8 @@ export const PantryCard: React.FC<PantryCardProps> = ({
     }
   };
 
-  const handleAddToShoppingList = async () => {
+  const handleAddToShoppingList = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
       const listsRes = await api.getShoppingLists();
       if (!listsRes.lists || listsRes.lists.length === 0) {
@@ -77,14 +79,16 @@ export const PantryCard: React.FC<PantryCardProps> = ({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (window.confirm(`Czy na pewno chcesz całkowicie usunąć "${item.name}" ze spiżarni?`)) {
       await deleteItem(item.id);
       setShowMenu(false);
     }
   };
 
-  const handleWasted = async () => {
+  const handleWasted = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (window.confirm(`Czy oznaczyć "${item.name}" jako zmarnowane/wyrzucone?`)) {
       await consumeItem(item.id, item.quantity, true);
       setShowMenu(false);
@@ -112,7 +116,8 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   if (viewMode === 'list') {
     return (
       <div
-        className={`relative flex items-center justify-between p-3 sm:p-4 rounded-2xl transition-all gap-3 border ${
+        onClick={() => onEdit(item)}
+        className={`relative flex items-center justify-between p-3 sm:p-4 rounded-2xl transition-all gap-3 border cursor-pointer select-none ${
           isExpired
             ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/20'
             : isExpiringWarning
@@ -175,7 +180,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
         </div>
 
         {/* Prawa strona: Szybka edycja ilości (sztuki) + Menu opcji */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
           {/* Stepper ilości */}
           <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 shadow-inner">
             <button
@@ -201,7 +206,10 @@ export const PantryCard: React.FC<PantryCardProps> = ({
           {/* Menu dodatkowych opcji */}
           <div className="relative">
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
               className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
             >
               <MoreVertical className="w-4 h-4" />
@@ -209,14 +217,17 @@ export const PantryCard: React.FC<PantryCardProps> = ({
 
             {showMenu && (
               <>
-                <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-1.5 z-30 text-xs animate-slide-up">
-                  <button
-                    onClick={() => { onEdit(item); setShowMenu(false); }}
-                    className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
-                  >
-                    <Edit2 className="w-3.5 h-3.5 text-cyan-400" /> Edytuj produkt
-                  </button>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                  }}
+                />
+                <div
+                  className="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-1.5 z-30 text-xs animate-slide-up"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     onClick={handleAddToShoppingList}
                     className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
@@ -248,7 +259,8 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   // WIDOK SIATKI (GRID)
   return (
     <div
-      className={`relative group border rounded-2xl p-4 transition-all shadow-lg flex flex-col justify-between ${
+      onClick={() => onEdit(item)}
+      className={`relative group border rounded-2xl p-4 transition-all shadow-lg flex flex-col justify-between cursor-pointer select-none ${
         isExpired
           ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/20'
           : isExpiringWarning
@@ -300,9 +312,12 @@ export const PantryCard: React.FC<PantryCardProps> = ({
         </div>
 
         {/* Menu rozwijane */}
-        <div className="relative">
+        <div className="relative" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
             className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
             <MoreVertical className="w-4 h-4" />
@@ -310,14 +325,17 @@ export const PantryCard: React.FC<PantryCardProps> = ({
 
           {showMenu && (
             <>
-              <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-1 z-30 text-xs animate-slide-up">
-                <button
-                  onClick={() => { onEdit(item); setShowMenu(false); }}
-                  className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
-                >
-                  <Edit2 className="w-3.5 h-3.5 text-cyan-400" /> Edytuj
-                </button>
+              <div
+                className="fixed inset-0 z-20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(false);
+                }}
+              />
+              <div
+                className="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-1 z-30 text-xs animate-slide-up"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   onClick={handleAddToShoppingList}
                   className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
@@ -353,7 +371,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
       </div>
 
       {/* Dół: Licznik ilości w sztukach i szybkie zużycie */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-800/80">
+      <div className="flex items-center justify-between pt-3 border-t border-slate-800/80" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 shadow-inner">
           <button
             onClick={handleDecrement}
@@ -376,7 +394,10 @@ export const PantryCard: React.FC<PantryCardProps> = ({
         </div>
 
         <button
-          onClick={() => consumeItem(item.id, 1, false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            consumeItem(item.id, 1, false);
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all active:scale-95"
           title="Szybkie zużycie 1 sztuki"
         >

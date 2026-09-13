@@ -8,7 +8,6 @@ import { useLiveRefresh } from '../../contexts/RealtimeContext';
 import {
   Plus,
   Trash2,
-  Clock,
   ShoppingBag,
   Minus,
   Check,
@@ -181,17 +180,6 @@ export const ShoppingListsView: React.FC = () => {
     }
   };
 
-  const handleAddExpiring = async () => {
-    if (!activeList) return;
-    try {
-      const res = await api.addExpiringToShoppingList(activeList.id);
-      showToast(res.message, 'success');
-      await fetchLists();
-    } catch (e: any) {
-      showToast('Błąd dodawania kończących się produktów.', 'error');
-    }
-  };
-
   const handleClearChecked = async () => {
     if (!activeList) return;
     try {
@@ -274,16 +262,6 @@ export const ShoppingListsView: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Dodaj kończące się ze spiżarni */}
-              <button
-                onClick={handleAddExpiring}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 text-xs font-semibold transition-all"
-                title="Dodaj produkty z krótkim terminem ze spiżarni"
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                + Kończące się w spiżarni
-              </button>
-
               {checkedCount > 0 && (
                 <button
                   onClick={handleClearChecked}

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="theme-color" content="#10b981" />
+    <meta name="theme-color" content="#020617" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Pantry" />
@@ -118,26 +118,6 @@
             'data-accent-theme',
             savedTheme
           );
-
-          var themeColors = {
-            emerald: '#10b981',
-            blue: '#3b82f6',
-            violet: '#8b5cf6',
-            rose: '#f43f5e',
-            amber: '#f59e0b',
-            cyan: '#06b6d4'
-          };
-
-          var themeMeta = document.querySelector(
-            'meta[name="theme-color"]'
-          );
-
-          if (themeMeta) {
-            themeMeta.setAttribute(
-              'content',
-              themeColors[savedTheme] || themeColors.emerald
-            );
-          }
         } catch (error) {
           document.documentElement.setAttribute(
             'data-accent-theme',
@@ -154,7 +134,7 @@
     <title>Pantry - Inteligentne Zarządzanie produktami</title>
   </head>
 
-  <body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-emerald-500 selection:text-white pb-20 md:pb-0 font-sans">
+  <body class="bg-slate-950 text-slate-100 min-h-[100dvh] antialiased selection:bg-emerald-500 selection:text-white font-sans overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

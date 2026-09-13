@@ -11,7 +11,6 @@ import {
   Plus,
   Pin,
   Trash2,
-  Edit2,
   Search,
   CheckSquare,
   FileText,
@@ -106,7 +105,8 @@ export const NotesView: React.FC = () => {
     setChecklistItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const handleToggleCardChecklistItem = async (note: Note, itemId: string) => {
+  const handleToggleCardChecklistItem = async (e: React.MouseEvent, note: Note, itemId: string) => {
+    e.stopPropagation();
     let items: ChecklistItem[] = [];
     try {
       items = JSON.parse(note.checklistData || '[]');
@@ -118,7 +118,6 @@ export const NotesView: React.FC = () => {
       i.id === itemId ? { ...i, completed: !i.completed } : i
     );
 
-    // Optymistyczna zmiana
     setNotes((prev) =>
       prev.map((n) =>
         n.id === note.id
@@ -168,7 +167,8 @@ export const NotesView: React.FC = () => {
     }
   };
 
-  const handleTogglePin = async (note: Note) => {
+  const handleTogglePin = async (e: React.MouseEvent, note: Note) => {
+    e.stopPropagation();
     try {
       await api.updateNote(note.id, { isPinned: !note.isPinned });
       await fetchNotes();
@@ -177,7 +177,8 @@ export const NotesView: React.FC = () => {
     }
   };
 
-  const handleDeleteNote = async (id: string) => {
+  const handleDeleteNote = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (window.confirm('Czy na pewno chcesz usunąć tę notatkę?')) {
       try {
         await api.deleteNote(id);
@@ -273,7 +274,8 @@ export const NotesView: React.FC = () => {
             return (
               <div
                 key={note.id}
-                className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between shadow-lg relative group ${getColorClasses(
+                onClick={() => handleOpenEdit(note)}
+                className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between shadow-lg relative group cursor-pointer select-none hover:scale-[1.01] hover:border-slate-700 ${getColorClasses(
                   note.color
                 )}`}
               >
@@ -297,9 +299,9 @@ export const NotesView: React.FC = () => {
                       <LiveEditorsBadge entityType="note" entityId={note.id} className="mt-1" />
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => handleTogglePin(note)}
+                        onClick={(e) => handleTogglePin(e, note)}
                         className={`p-1.5 rounded-xl transition-colors ${
                           note.isPinned
                             ? 'text-amber-400 bg-amber-500/10'
@@ -310,14 +312,7 @@ export const NotesView: React.FC = () => {
                         <Pin className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleOpenEdit(note)}
-                        className="p-1.5 text-slate-500 hover:text-white rounded-xl transition-colors"
-                        title="Edytuj"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
+                        onClick={(e) => handleDeleteNote(e, note.id)}
                         className="p-1.5 text-slate-500 hover:text-rose-400 rounded-xl transition-colors"
                         title="Usuń"
                       >
@@ -332,7 +327,7 @@ export const NotesView: React.FC = () => {
                       {items.map((item) => (
                         <div
                           key={item.id}
-                          onClick={() => handleToggleCardChecklistItem(note, item.id)}
+                          onClick={(e) => handleToggleCardChecklistItem(e, note, item.id)}
                           className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer select-none py-1 hover:text-white transition-colors"
                         >
                           <div
@@ -369,11 +364,11 @@ export const NotesView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Dodawania/Edycji Notatki */}
+      {/* Modal Dodawania/Edycji Notatki (Styl Google Keep) */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingNote ? 'Edytuj' : 'Nowa notatka / lista zadań'}
+        title={editingNote ? 'Edytuj notatkę' : 'Nowa notatka / lista zadań'}
         maxWidth="lg"
       >
         <form onSubmit={handleSaveNote} className="space-y-4">
@@ -409,12 +404,12 @@ export const NotesView: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="np. Mój dzień, Przygotowanie do imprezy..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-white text-base font-bold focus:outline-none focus:border-emerald-500"
               autoFocus
             />
           </div>
 
-          {/* Formularz Listy zadań */}
+          {/* Formularz Listy zadań lub Duże pole tekstowe (Google Keep style) */}
           {isChecklist ? (
             <div className="space-y-3">
               <label className="block text-xs font-semibold text-slate-300">Elementy listy</label>
@@ -433,31 +428,31 @@ export const NotesView: React.FC = () => {
                     }
                   }}
                   placeholder="Wpisz punkt i naciśnij Enter lub Dodaj..."
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
                 />
                 <button
                   type="button"
                   onClick={handleAddChecklistItem}
-                  className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400"
+                  className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400 transition-colors"
                 >
                   Dodaj
                 </button>
               </div>
 
-              {/* Lista pozycji w modalu */}
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pt-1">
+              {/* Lista pozycji w modalu z wygodnym przewijaniem */}
+              <div className="space-y-1.5 max-h-[45vh] overflow-y-auto pt-1 pr-1">
                 {checklistItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs"
                   >
-                    <span className="text-white truncate flex-1">{item.text}</span>
+                    <span className="text-white truncate flex-1 font-medium">{item.text}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveChecklistItem(item.id)}
-                      className="text-slate-500 hover:text-rose-400 p-1"
+                      className="text-slate-400 hover:text-rose-400 p-1 rounded-lg transition-colors"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -467,11 +462,11 @@ export const NotesView: React.FC = () => {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Treść notatki</label>
               <textarea
-                rows={6}
+                rows={10}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Wpisz treść, informacje lub wskazówki..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 font-sans"
+                placeholder="Wpisz treść notatki..."
+                className="w-full min-h-[260px] sm:min-h-[320px] max-h-[55vh] p-4 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 font-sans leading-relaxed resize-y overflow-y-auto shadow-inner"
               />
             </div>
           )}

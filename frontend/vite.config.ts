@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Pantry',
         short_name: 'Pantry',
         description: 'Inteligentne zarządzanie zapasami w kuchni i spiżarni ze skanerem kodów EAN',
-        theme_color: '#10b981',
-        background_color: '#0f172a',
+        theme_color: '#020617',
+        background_color: '#020617',
         display: 'standalone',
         orientation: 'portrait-primary',
         icons: [

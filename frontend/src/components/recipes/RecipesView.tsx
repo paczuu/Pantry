@@ -10,7 +10,6 @@ import {
   ChefHat,
   Plus,
   Trash2,
-  Edit2,
   Search,
   Eye,
   EyeOff,
@@ -21,6 +20,12 @@ import {
   Loader2,
   Star,
   ShoppingCart,
+  Share2,
+  LayoutGrid,
+  List,
+  Copy,
+  Download,
+  Check,
 } from 'lucide-react';
 
 type RecipeWithExtras = Recipe & {
@@ -131,6 +136,133 @@ const compressRecipeImage = async (file: File): Promise<string> => {
   return result;
 };
 
+// Funkcja generowania karty przepisu jako obrazu PNG
+const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> => {
+  const canvas = document.createElement('canvas');
+  const width = 800;
+  const padding = 36;
+  const ctx = canvas.getContext('2d')!;
+
+  const items = parseIngredients(recipe.ingredients);
+  let estimatedHeight = 220 + items.length * 28 + 120;
+  if (recipe.instructions) {
+    const lines = Math.ceil(recipe.instructions.length / 55);
+    estimatedHeight += lines * 26 + 60;
+  }
+  if (recipe.notes) {
+    estimatedHeight += 80;
+  }
+  if (recipe.imageUrl) {
+    estimatedHeight += 340;
+  }
+  estimatedHeight = Math.max(550, Math.min(2000, estimatedHeight));
+
+  canvas.width = width;
+  canvas.height = estimatedHeight;
+
+  // Tło gradientowe
+  const gradient = ctx.createLinearGradient(0, 0, width, estimatedHeight);
+  gradient.addColorStop(0, '#020617');
+  gradient.addColorStop(1, '#0f172a');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, estimatedHeight);
+
+  // Ramka
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(8, 8, width - 16, estimatedHeight - 16);
+
+  let curY = padding + 15;
+
+  // Rysowanie zdjęcia jeśli istnieje
+  if (recipe.imageUrl) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((res) => {
+        img.onload = res;
+        img.onerror = res;
+        img.src = recipe.imageUrl!;
+      });
+      if (img.width > 0) {
+        const imgH = 300;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(padding, curY, width - padding * 2, imgH, 16);
+        ctx.clip();
+        ctx.drawImage(img, padding, curY, width - padding * 2, imgH);
+        ctx.restore();
+        curY += imgH + 25;
+      }
+    } catch {}
+  }
+
+  // Tytuł
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px Inter, system-ui, sans-serif';
+  ctx.fillText(recipe.name, padding, curY);
+  curY += 34;
+
+  // Ocena i Liczba składników
+  ctx.fillStyle = '#10b981';
+  ctx.font = 'bold 16px Inter, system-ui, sans-serif';
+  ctx.fillText(`★ Ocena: ${recipe.rating || 5}/10   •   Składniki: ${items.length}`, padding, curY);
+  curY += 34;
+
+  // Składniki
+  if (items.length > 0) {
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 17px Inter, system-ui, sans-serif';
+    ctx.fillText('SKŁADNIKI:', padding, curY);
+    curY += 26;
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = '15px Inter, system-ui, sans-serif';
+    for (const ing of items) {
+      if (curY > estimatedHeight - 140) break;
+      ctx.fillText(`• ${ing}`, padding + 8, curY);
+      curY += 24;
+    }
+    curY += 15;
+  }
+
+  // Instrukcje
+  if (recipe.instructions && curY < estimatedHeight - 100) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 17px Inter, system-ui, sans-serif';
+    ctx.fillText('PRZEPIS:', padding, curY);
+    curY += 26;
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '15px Inter, system-ui, sans-serif';
+    const words = recipe.instructions.split(' ');
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      if (ctx.measureText(testLine).width > width - padding * 2 - 20) {
+        ctx.fillText(currentLine, padding + 8, curY);
+        curY += 24;
+        currentLine = word;
+        if (curY > estimatedHeight - 60) break;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine && curY <= estimatedHeight - 50) {
+      ctx.fillText(currentLine, padding + 8, curY);
+    }
+  }
+
+  // Stopka
+  ctx.fillStyle = '#64748b';
+  ctx.font = '13px Inter, system-ui, sans-serif';
+  ctx.fillText('Pantry • Przepis', padding, estimatedHeight - 18);
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob || new Blob()), 'image/png');
+  });
+};
+
 export const RecipesView: React.FC = () => {
   const { showToast } = useToast();
 
@@ -138,6 +270,22 @@ export const RecipesView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+
+  // Widok: pełny (karty) lub kompaktowy
+  const [viewMode, setViewMode] = useState<'full' | 'compact'>(() => {
+    try {
+      return (localStorage.getItem('pantry_recipes_view_mode') as 'full' | 'compact') || 'full';
+    } catch {
+      return 'full';
+    }
+  });
+
+  const handleToggleViewMode = (mode: 'full' | 'compact') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('pantry_recipes_view_mode', mode);
+    } catch {}
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<RecipeWithExtras | null>(null);
@@ -150,6 +298,12 @@ export const RecipesView: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
+
+  // Udostępnianie
+  const [sharingRecipe, setSharingRecipe] = useState<RecipeWithExtras | null>(null);
+  const [isSharingImage, setIsSharingImage] = useState(false);
+
+  // Lista zakupów z przepisu
   const [shoppingRecipeId, setShoppingRecipeId] = useState<string | null>(null);
   const [shoppingRecipe, setShoppingRecipe] = useState<RecipeWithExtras | null>(null);
   const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
@@ -276,7 +430,8 @@ export const RecipesView: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (!window.confirm('Czy na pewno chcesz usunąć ten przepis?')) return;
     try {
       await api.deleteRecipe(id);
@@ -284,6 +439,95 @@ export const RecipesView: React.FC = () => {
       setRecipes((prev) => prev.filter((recipe) => recipe.id !== id));
     } catch {
       showToast('Błąd usuwania przepisu.', 'error');
+    }
+  };
+
+  // Udostępnianie jako tekst
+  const formatRecipeText = (recipe: RecipeWithExtras): string => {
+    const items = parseIngredients(recipe.ingredients);
+    let text = `🍽️ ${recipe.name} (Ocena: ${recipe.rating || 5}/10 ⭐)\n\n`;
+
+    if (items.length > 0) {
+      text += `📋 Składniki:\n${items.map((i) => `• ${i}`).join('\n')}\n\n`;
+    }
+
+    if (recipe.instructions) {
+      text += `👨‍🍳 Sposób przygotowania:\n${recipe.instructions}\n\n`;
+    }
+
+    if (recipe.notes) {
+      text += `💡 Uwagi:\n${recipe.notes}\n\n`;
+    }
+
+    text += `— Przepis z aplikacji Pantry`;
+    return text;
+  };
+
+  const handleCopyText = async (recipe: RecipeWithExtras) => {
+    try {
+      const text = formatRecipeText(recipe);
+      await navigator.clipboard.writeText(text);
+      showToast('Skopiowano treść przepisu do schowka.', 'success');
+      setSharingRecipe(null);
+    } catch {
+      showToast('Nie udało się skopiować tekstu.', 'error');
+    }
+  };
+
+  const handleShareNativeText = async (recipe: RecipeWithExtras) => {
+    const text = formatRecipeText(recipe);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Przepis: ${recipe.name}`,
+          text,
+        });
+        setSharingRecipe(null);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          handleCopyText(recipe);
+        }
+      }
+    } else {
+      handleCopyText(recipe);
+    }
+  };
+
+  const handleShareImage = async (recipe: RecipeWithExtras) => {
+    try {
+      setIsSharingImage(true);
+      const blob = await generateRecipeImageBlob(recipe);
+      const fileName = `przepis-${normalizeText(recipe.name) || 'pantry'}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Przepis: ${recipe.name}`,
+          });
+          setSharingRecipe(null);
+          return;
+        } catch (e: any) {
+          if (e.name === 'AbortError') return;
+        }
+      }
+
+      // Pobieranie pliku graficznego
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Pobrano grafikę z przepisem.', 'success');
+      setSharingRecipe(null);
+    } catch (e) {
+      showToast('Błąd generowania grafiki.', 'error');
+    } finally {
+      setIsSharingImage(false);
     }
   };
 
@@ -325,7 +569,8 @@ export const RecipesView: React.FC = () => {
     }
   };
 
-  const handlePrepareShoppingList = async (recipe: RecipeWithExtras) => {
+  const handlePrepareShoppingList = async (e: React.MouseEvent, recipe: RecipeWithExtras) => {
+    e.stopPropagation();
     const recipeIngredients = parseIngredients(recipe.ingredients);
 
     if (recipeIngredients.length === 0) {
@@ -397,13 +642,43 @@ export const RecipesView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          Dodaj przepis
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Przełącznik widoku: Pełny vs Kompaktowy */}
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-1 shadow-md">
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode('full')}
+              className={`p-2 rounded-xl transition-all ${
+                viewMode === 'full'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Widok pełny (karty)"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode('compact')}
+              className={`p-2 rounded-xl transition-all ${
+                viewMode === 'compact'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Widok kompaktowy"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Dodaj przepis
+          </button>
+        </div>
       </div>
 
       <div className="relative">
@@ -427,7 +702,69 @@ export const RecipesView: React.FC = () => {
             Kliknij „Dodaj przepis”, aby zapisać nazwę, zdjęcie, składniki, treść, ocenę i opcjonalne uwagi.
           </p>
         </div>
+      ) : viewMode === 'compact' ? (
+        /* Widok Kompaktowy */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredRecipes.map((recipe) => {
+            const items = parseIngredients(recipe.ingredients);
+
+            return (
+              <div
+                key={recipe.id}
+                onClick={() => handleOpenEdit(recipe)}
+                className="rounded-2xl border border-slate-800 bg-slate-900/80 hover:bg-slate-900 hover:border-slate-700/80 shadow-md p-3 flex items-center gap-3 cursor-pointer select-none transition-all hover:scale-[1.01]"
+              >
+                {/* Zdjęcie miniatura */}
+                <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                  {recipe.imageUrl ? (
+                    <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <ChefHat className="w-6 h-6 text-orange-400/80" />
+                  )}
+                </div>
+
+                {/* Informacje: Nazwa, Składniki, Ocena */}
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-extrabold text-white text-sm truncate leading-snug">{recipe.name}</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {items.length} {items.length === 1 ? 'składnik' : 'składników'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-amber-500/15 border border-amber-500/30 text-[10px] font-extrabold text-amber-300">
+                      <Star className="w-2.5 h-2.5 fill-current" />
+                      {recipe.rating || 5}/10
+                    </span>
+                  </div>
+                </div>
+
+                {/* Akcje: Udostępnij & Usuń */}
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSharingRecipe(recipe);
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Udostępnij przepis"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDelete(e, recipe.id)}
+                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Usuń"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
+        /* Widok Pełny (Karty) */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredRecipes.map((recipe) => {
             const items = parseIngredients(recipe.ingredients);
@@ -437,7 +774,8 @@ export const RecipesView: React.FC = () => {
             return (
               <article
                 key={recipe.id}
-                className="rounded-3xl border border-slate-800 bg-slate-900/80 shadow-lg overflow-hidden flex flex-col"
+                onClick={() => handleOpenEdit(recipe)}
+                className="rounded-3xl border border-slate-800 bg-slate-900/80 hover:bg-slate-900 hover:border-slate-700/80 shadow-lg overflow-hidden flex flex-col cursor-pointer select-none transition-all hover:scale-[1.01]"
               >
                 {recipe.imageUrl && (
                   <div className="w-full aspect-[16/9] bg-slate-950 overflow-hidden">
@@ -461,20 +799,25 @@ export const RecipesView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => handleOpenEdit(recipe)}
-                        className="p-1.5 text-slate-500 hover:text-white rounded-xl transition-colors"
-                        title="Edytuj"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSharingRecipe(recipe);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-xl hover:bg-slate-800 transition-colors"
+                        title="Udostępnij przepis"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Share2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(recipe.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-xl transition-colors"
+                        type="button"
+                        onClick={(e) => handleDelete(e, recipe.id)}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-slate-800 transition-colors"
                         title="Usuń"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -504,10 +847,13 @@ export const RecipesView: React.FC = () => {
                   )}
 
                   {recipe.notes && (
-                    <div className="pt-1 border-t border-white/5">
+                    <div className="pt-1 border-t border-white/5" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={() => setExpandedNotes((prev) => ({ ...prev, [recipe.id]: !prev[recipe.id] }))}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedNotes((prev) => ({ ...prev, [recipe.id]: !prev[recipe.id] }));
+                        }}
                         className="text-[11px] font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1.5"
                       >
                         {notesVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -523,7 +869,7 @@ export const RecipesView: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => handlePrepareShoppingList(recipe)}
+                    onClick={(e) => handlePrepareShoppingList(e, recipe)}
                     disabled={isCreatingList || items.length === 0}
                     className="mt-auto w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-colors disabled:opacity-40"
                   >
@@ -537,6 +883,101 @@ export const RecipesView: React.FC = () => {
         </div>
       )}
 
+      {/* Modal Udostępniania Przepisu */}
+      <Modal
+        isOpen={!!sharingRecipe}
+        onClose={() => {
+          if (isSharingImage) return;
+          setSharingRecipe(null);
+        }}
+        title="Udostępnij przepis"
+        maxWidth="md"
+      >
+        {sharingRecipe && (
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                {sharingRecipe.imageUrl ? (
+                  <img src={sharingRecipe.imageUrl} alt={sharingRecipe.name} className="w-full h-full object-cover" />
+                ) : (
+                  <ChefHat className="w-6 h-6 text-orange-400" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-extrabold text-white text-sm truncate">{sharingRecipe.name}</div>
+                <div className="text-xs text-slate-400">
+                  {parseIngredients(sharingRecipe.ingredients).length} składników • Ocena: {sharingRecipe.rating || 5}/10
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleShareNativeText(sharingRecipe)}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700/90 border border-slate-700 text-left transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">Udostępnij jako tekst</div>
+                    <div className="text-[11px] text-slate-400">Prześlij przez WhatsApp, SMS lub Messenger</div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyText(sharingRecipe)}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700/90 border border-slate-700 text-left transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
+                    <Copy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">Kopiuj tekst do schowka</div>
+                    <div className="text-[11px] text-slate-400">Kopiuj sformatowaną listę i treść</div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleShareImage(sharingRecipe)}
+                disabled={isSharingImage}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700/90 border border-slate-700 text-left transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-400">
+                    {isSharingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">
+                      {isSharingImage ? 'Generowanie grafiki...' : 'Pobierz / Udostępnij jako grafikę (PNG)'}
+                    </div>
+                    <div className="text-[11px] text-slate-400">Estetyczna karta przepisu ze zdjęciem i składnikami</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSharingRecipe(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
+              >
+                Zamknij
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Tworzenia / Edycji Przepisu */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
