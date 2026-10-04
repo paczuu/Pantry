@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Smartphone, Download, Share, CheckCircle, Monitor } from 'lucide-react';
 
 interface InstallPwaModalProps {
@@ -10,6 +11,7 @@ interface InstallPwaModalProps {
 
 export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClose }) => {
   const { isInstallable, isInstalled, isIOS, installPwa } = usePwaInstall();
+  const { t, language } = useLanguage();
 
   const handleInstallClick = async () => {
     const success = await installPwa();
@@ -19,7 +21,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Instalacja Aplikacji Pantry" maxWidth="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('pwa.modalTitle')} maxWidth="md">
       <div className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-7rem)] overflow-y-auto overscroll-contain pr-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] space-y-4 text-slate-200 text-xs sm:text-sm leading-relaxed">
 
         {/* Banner */}
@@ -28,9 +30,13 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
             <Smartphone className="w-6 h-6" />
           </div>
           <div>
-            <h4 className="font-bold text-white text-base">Zainstaluj jako aplikację natywną</h4>
+            <h4 className="font-bold text-white text-base">
+              {language === 'en' ? 'Install as a native app' : 'Zainstaluj jako aplikację natywną'}
+            </h4>
             <p className="text-xs text-slate-300">
-              Szybki dostęp z ekranu telefonu, brak pasków przeglądarki i błyskawiczne działanie.
+              {language === 'en'
+                ? 'Quick access from home screen, no browser address bars, and instant performance.'
+                : 'Szybki dostęp z ekranu telefonu, brak pasków przeglądarki i błyskawiczne działanie.'}
             </p>
           </div>
         </div>
@@ -38,12 +44,14 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
         {isInstalled ? (
           <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center gap-2 font-semibold text-xs">
             <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-            Aplikacja jest już zainstalowana na Twoim urządzeniu!
+            {language === 'en' ? 'The application is already installed on your device!' : 'Aplikacja jest już zainstalowana na Twoim urządzeniu!'}
           </div>
         ) : isInstallable ? (
           <div className="space-y-3">
             <p className="text-slate-300 text-xs">
-              Twoja przeglądarka obsługuje bezpośrednią 1-kliknięciową instalację aplikacji:
+              {language === 'en'
+                ? 'Your browser supports direct 1-click app installation:'
+                : 'Twoja przeglądarka obsługuje bezpośrednią 1-kliknięciową instalację aplikacji:'}
             </p>
 
             <button
@@ -52,36 +60,38 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
               className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-2 transition-all active:scale-98"
             >
               <Download className="w-4 h-4" />
-              Zainstaluj teraz na tym urządzeniu
+              {t('pwa.installNativeBtn')}
             </button>
           </div>
         ) : isIOS ? (
           <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2.5">
             <h5 className="font-bold text-white text-xs flex items-center gap-1.5">
               <Share className="w-4 h-4 text-cyan-400" />
-              Instrukcja dla systemu iOS (iPhone / iPad w Safari):
+              {t('pwa.iosTitle')}
             </h5>
 
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-300">
-              <li>Otwórz tę stronę w przeglądarce <strong>Safari</strong>.</li>
-              <li>Kliknij ikonę udostępniania <strong className="text-white">Udostępnij (Share)</strong> na dolnym pasku Safari.</li>
-              <li>Przewiń w dół i wybierz <strong className="text-emerald-400">„Do ekranu początkowego” (Add to Home Screen)</strong>.</li>
-              <li>Kliknij <strong className="text-white">„Dodaj”</strong> w prawym górnym rogu.</li>
+              <li>{language === 'en' ? <>Open this page in <strong>Safari</strong> browser.</> : <>Otwórz tę stronę w przeglądarce <strong>Safari</strong>.</>}</li>
+              <li>{t('pwa.iosStep1')}</li>
+              <li>{t('pwa.iosStep2')}</li>
+              <li>{language === 'en' ? <>Click <strong className="text-white">„Add”</strong> in top right corner.</> : <>Kliknij <strong className="text-white">„Dodaj”</strong> w prawym górnym rogu.</>}</li>
             </ol>
           </div>
         ) : (
           <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2 text-xs text-slate-300">
             <h5 className="font-bold text-white flex items-center gap-1.5">
               <Monitor className="w-4 h-4 text-emerald-400" />
-              Instalacja ręczna:
+              {language === 'en' ? 'Manual installation:' : 'Instalacja ręczna:'}
             </h5>
 
             <p>
-              W menu przeglądarki wybierz opcję instalacji aplikacji lub dodania jej do ekranu głównego.
+              {language === 'en'
+                ? 'From browser menu, select Install App or Add to Home Screen.'
+                : 'W menu przeglądarki wybierz opcję instalacji aplikacji lub dodania jej do ekranu głównego.'}
             </p>
 
             <div className="font-semibold text-emerald-400 bg-slate-900 p-2 rounded-lg border border-slate-800">
-              „Zainstaluj aplikację Pantry” lub „Dodaj do ekranu głównego”
+              {language === 'en' ? '„Install Pantry App” or „Add to Home Screen”' : '„Zainstaluj aplikację Pantry” lub „Dodaj do ekranu głównego”'}
             </div>
           </div>
         )}

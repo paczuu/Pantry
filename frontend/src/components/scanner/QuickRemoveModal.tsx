@@ -3,6 +3,7 @@ import { Modal } from '../common/Modal';
 import { PantryItem, ProductCatalogItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { ExpiryBadge } from '../common/ExpiryBadge';
 import { Minus, Plus, Trash2, Utensils, CheckCircle } from 'lucide-react';
 
@@ -25,10 +26,11 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
 }) => {
   const { barcodeQuickRemove } = usePantry();
   const { showToast } = useToast();
+  const { t, language } = useLanguage();
 
   const totalInPantry = inPantryItems.reduce((acc, item) => acc + item.quantity, 0);
   const primaryItem = inPantryItems[0];
-  const productName = primaryItem?.name || productCatalog?.name || 'Produkt';
+  const productName = primaryItem?.name || productCatalog?.name || (language === 'en' ? 'Product' : 'Produkt');
 
   const [amount, setAmount] = useState<number>(1);
   const [selectedItemId, setSelectedItemId] = useState<string>('ALL');
@@ -45,7 +47,12 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
 
   const handleConfirm = async () => {
     if (amount <= 0) {
-      showToast('Wybierz ilość do usunięcia.', 'error');
+      showToast(
+        language === 'en'
+          ? 'Select quantity to remove.'
+          : 'Wybierz ilość do usunięcia.',
+        'error'
+      );
       return;
     }
 
@@ -70,7 +77,16 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Szybkie zużycie / usuwanie (Skaner EAN)" maxWidth="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        language === 'en'
+          ? 'Quick Consume / Remove (Barcode EAN)'
+          : 'Szybkie zużycie / usuwanie (Skaner EAN)'
+      }
+      maxWidth="md"
+    >
       <div className="space-y-4">
         {/* Podsumowanie produktu */}
         <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700">
@@ -91,9 +107,11 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
             </div>
 
             <div className="text-right shrink-0">
-              <div className="text-xs text-slate-400 font-medium">Stan w spiżarni:</div>
+              <div className="text-xs text-slate-400 font-medium">
+                {language === 'en' ? 'Pantry stock:' : 'Stan w spiżarni:'}
+              </div>
               <div className="text-xl font-extrabold text-emerald-400">
-                {totalInPantry} <span className="text-sm font-semibold">szt.</span>
+                {totalInPantry} <span className="text-sm font-semibold">{t('common.pcs')}</span>
               </div>
             </div>
           </div>
@@ -102,7 +120,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
           {inPantryItems.length > 0 && (
             <div className="mt-3 pt-3 border-t border-slate-700/60 space-y-2">
               <div className="text-xs font-semibold text-slate-300">
-                Dostępne partie ({inPantryItems.length}):
+                {language === 'en' ? `Available batches (${inPantryItems.length}):` : `Dostępne partie (${inPantryItems.length}):`}
               </div>
               <div className="space-y-1.5 max-h-36 overflow-y-auto">
                 {inPantryItems.map((item) => (
@@ -116,7 +134,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-200 font-bold">{item.quantity} szt.</span>
+                      <span className="text-slate-200 font-bold">{item.quantity} {t('common.pcs')}</span>
                       {item.capacity && <span className="text-slate-400">({item.capacity})</span>}
                     </div>
                     <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
@@ -130,7 +148,9 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
         {/* Wybór ilości do usunięcia */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-slate-300">
-            Ile sztuk chcesz usunąć / odliczyć?
+            {language === 'en'
+              ? 'How many pieces do you want to remove / deduct?'
+              : 'Ile sztuk chcesz usunąć / odliczyć?'}
           </label>
 
           <div className="flex items-center justify-center gap-3">
@@ -173,7 +193,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
                 amount === 1 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
               }`}
             >
-              1 szt.
+              1 {t('common.pcs')}
             </button>
             {totalInPantry >= 2 && (
               <button
@@ -183,7 +203,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
                   amount === 2 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
                 }`}
               >
-                2 szt.
+                2 {t('common.pcs')}
               </button>
             )}
             {totalInPantry >= 5 && (
@@ -194,7 +214,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
                   amount === 5 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
                 }`}
               >
-                5 szt.
+                5 {t('common.pcs')}
               </button>
             )}
             <button
@@ -204,7 +224,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
                 amount === totalInPantry ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
               }`}
             >
-              Wszystko ({totalInPantry})
+              {language === 'en' ? `All (${totalInPantry})` : `Wszystko (${totalInPantry})`}
             </button>
           </div>
         </div>
@@ -221,7 +241,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
             }`}
           >
             <Utensils className="w-4 h-4" />
-            Zużyto / Zjedzono
+            {t('scanner.consumedBtn')}
           </button>
 
           <button
@@ -234,7 +254,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
             }`}
           >
             <Trash2 className="w-4 h-4" />
-            Wyrzucono / Zepsute
+            {t('scanner.wastedBtn')}
           </button>
         </div>
 
@@ -245,7 +265,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-medium text-sm transition-colors"
           >
-            Anuluj
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
@@ -258,7 +278,9 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
             }`}
           >
             {isWasted ? <Trash2 className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-            {isSubmitting ? 'Usuwanie...' : `Usuń ${amount} szt.`}
+            {isSubmitting
+              ? (language === 'en' ? 'Removing...' : 'Usuwanie...')
+              : `${language === 'en' ? 'Remove' : 'Usuń'} ${amount} ${t('common.pcs')}`}
           </button>
         </div>
       </div>

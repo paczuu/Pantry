@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api';
 import { User, UserRole, NavItemConfig, SystemUser, SystemHousehold } from '../../types';
 import { InstallPwaModal } from '../common/InstallPwaModal';
@@ -45,57 +46,71 @@ import {
   UserCog,
   Building2,
   Crown,
+  Languages,
 } from 'lucide-react';
 
 const BARCODE_PROVIDER_OPTIONS: Array<{
   provider: BarcodeProviderKey;
   label: string;
-  description: string;
+  description: { pl: string; en: string };
   supportsCountry: boolean;
 }> = [
   {
     provider: 'OPEN_FOOD_FACTS',
     label: 'Open Food Facts',
-    description: 'Żywność, napoje i dane żywieniowe.',
+    description: {
+      pl: 'Żywność, napoje i dane żywieniowe.',
+      en: 'Food, beverages, and nutrition data.',
+    },
     supportsCountry: true,
   },
   {
     provider: 'OPEN_BEAUTY_FACTS',
     label: 'Open Beauty Facts',
-    description: 'Kosmetyki i produkty pielęgnacyjne.',
+    description: {
+      pl: 'Kosmetyki i produkty pielęgnacyjne.',
+      en: 'Cosmetics and personal care products.',
+    },
     supportsCountry: false,
   },
   {
     provider: 'OPEN_PRODUCTS_FACTS',
     label: 'Open Products Facts',
-    description: 'Pozostałe produkty konsumenckie.',
+    description: {
+      pl: 'Pozostałe produkty konsumenckie.',
+      en: 'Other consumer goods & items.',
+    },
     supportsCountry: false,
   },
   {
     provider: 'OPEN_PET_FOOD_FACTS',
     label: 'Open Pet Food Facts',
-    description: 'Karma i produkty dla zwierząt.',
+    description: {
+      pl: 'Karma i produkty dla zwierząt.',
+      en: 'Pet food and animal supplies.',
+    },
     supportsCountry: false,
   },
 ];
 
 const COUNTRY_OPTIONS = [
-  { code: 'pl', label: 'Polska' },
-  { code: 'de', label: 'Niemcy' },
-  { code: 'cz', label: 'Czechy' },
-  { code: 'sk', label: 'Słowacja' },
-  { code: 'fr', label: 'Francja' },
-  { code: 'es', label: 'Hiszpania' },
-  { code: 'it', label: 'Włochy' },
-  { code: 'uk', label: 'Wielka Brytania' },
-  { code: 'us', label: 'USA' },
-  { code: 'world', label: 'World / globalna' },
+  { code: 'pl', label: { pl: 'Polska', en: 'Poland' } },
+  { code: 'de', label: { pl: 'Niemcy', en: 'Germany' } },
+  { code: 'cz', label: { pl: 'Czechy', en: 'Czech Republic' } },
+  { code: 'sk', label: { pl: 'Słowacja', en: 'Slovakia' } },
+  { code: 'fr', label: { pl: 'Francja', en: 'France' } },
+  { code: 'es', label: { pl: 'Hiszpania', en: 'Spain' } },
+  { code: 'it', label: { pl: 'Włochy', en: 'Italy' } },
+  { code: 'uk', label: { pl: 'Wielka Brytania', en: 'United Kingdom' } },
+  { code: 'us', label: { pl: 'USA', en: 'USA' } },
+  { code: 'world', label: { pl: 'World / globalna', en: 'World / global' } },
 ];
 
 export const HouseholdSettingsView: React.FC = () => {
   const { user, isAdmin, refreshUser, joinHousehold } = useAuth();
   const { categories, refreshSettings, refreshStats, expiryWarningDays } = usePantry();
   const { showToast } = useToast();
+  const { language, setLanguage, t, tCategory } = useLanguage();
 
   const [members, setMembers] = useState<User[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -135,7 +150,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const saveNavConfig = (newConfig: NavItemConfig[]) => {
     setNavConfig(newConfig);
     persistNavConfig(newConfig);
-    showToast('Zapisano układ paska nawigacyjnego.', 'success');
+    showToast(t('settings.navBarSavedToast'), 'success');
   };
 
   const toggleNavVisibility = (id: string) => {
@@ -173,9 +188,10 @@ export const HouseholdSettingsView: React.FC = () => {
     applyAccentTheme(themeId);
 
     const selectedTheme = ACCENT_THEMES.find((theme) => theme.id === themeId);
+    const themeName = selectedTheme ? (selectedTheme.label[language] || selectedTheme.label.pl) : themeId;
 
     showToast(
-      `Ustawiono kolor aplikacji: ${selectedTheme?.label || themeId}.`,
+      `${t('settings.accentThemeSaved')} ${themeName}.`,
       'success'
     );
   };
@@ -194,7 +210,7 @@ export const HouseholdSettingsView: React.FC = () => {
       );
     } catch (e: any) {
       console.error('Błąd pobierania źródeł EAN:', e);
-      showToast(e.message || 'Nie udało się pobrać źródeł EAN.', 'error');
+      showToast(e.message || (language === 'pl' ? 'Nie udało się pobrać źródeł EAN.' : 'Failed to fetch EAN sources.'), 'error');
     } finally {
       setBarcodeSourcesLoading(false);
     }
@@ -284,11 +300,7 @@ export const HouseholdSettingsView: React.FC = () => {
       );
 
       if (!candidate) {
-        showToast(
-          'Masz już podstawowe źródła. Zmień kraj w jednym z wpisów Open Food Facts, aby dodać kolejne.',
-          'info'
-        );
-
+        showToast(t('settings.sourcesAlreadyConfigured'), 'info');
         return current;
       }
 
@@ -335,20 +347,16 @@ export const HouseholdSettingsView: React.FC = () => {
         [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
       );
 
-      showToast('Zapisano źródła wyszukiwania EAN.', 'success');
+      showToast(t('settings.sourcesSaved'), 'success');
     } catch (e: any) {
-      showToast(e.message || 'Nie udało się zapisać źródeł EAN.', 'error');
+      showToast(e.message || t('common.error'), 'error');
     } finally {
       setBarcodeSourcesSaving(false);
     }
   };
 
   const resetBarcodeSources = async () => {
-    if (
-      !window.confirm(
-        'Przywrócić domyślne źródła EAN: Open Food Facts PL → World?'
-      )
-    ) {
+    if (!window.confirm(t('settings.sourcesResetConfirm'))) {
       return;
     }
 
@@ -360,12 +368,9 @@ export const HouseholdSettingsView: React.FC = () => {
         [...(res.sources || [])].sort((a, b) => a.priority - b.priority)
       );
 
-      showToast('Przywrócono domyślne źródła EAN.', 'success');
+      showToast(t('settings.sourcesResetSuccess'), 'success');
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się przywrócić ustawień EAN.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     } finally {
       setBarcodeSourcesSaving(false);
     }
@@ -433,15 +438,9 @@ export const HouseholdSettingsView: React.FC = () => {
       await refreshUser();
       await navigator.clipboard.writeText(res.inviteCode);
 
-      showToast(
-        'Wygenerowano kod zaproszenia ważny przez 5 minut i skopiowano go do schowka.',
-        'success'
-      );
+      showToast(t('settings.inviteCodeGenerated'), 'success');
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się wygenerować kodu zaproszenia.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
@@ -453,22 +452,22 @@ export const HouseholdSettingsView: React.FC = () => {
     const cleanName = householdNameInput.trim();
 
     if (!cleanName) {
-      showToast('Nazwa gospodarstwa nie może być pusta.', 'warning');
+      showToast(t('settings.householdNameEmptyError'), 'warning');
       return;
     }
 
     if (cleanName.length < 2) {
-      showToast('Nazwa gospodarstwa musi mieć co najmniej 2 znaki.', 'warning');
+      showToast(t('settings.householdNameShortError'), 'warning');
       return;
     }
 
     if (cleanName.length > 60) {
-      showToast('Nazwa gospodarstwa może mieć maksymalnie 60 znaków.', 'warning');
+      showToast(t('settings.householdNameLongError'), 'warning');
       return;
     }
 
     if (cleanName === user?.household?.name) {
-      showToast('Nazwa gospodarstwa nie została zmieniona.', 'info');
+      showToast(t('settings.householdNameUnchanged'), 'info');
       return;
     }
 
@@ -482,14 +481,13 @@ export const HouseholdSettingsView: React.FC = () => {
       await refreshUser();
 
       showToast(
-        `Zmieniono nazwę gospodarstwa na "${cleanName}".`,
+        language === 'pl'
+          ? `Zmieniono nazwę gospodarstwa na "${cleanName}".`
+          : `Household name changed to "${cleanName}".`,
         'success'
       );
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się zmienić nazwy gospodarstwa.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     } finally {
       setHouseholdNameSaving(false);
     }
@@ -511,14 +509,13 @@ export const HouseholdSettingsView: React.FC = () => {
       await refreshStats();
 
       showToast(
-        `Alert o końcu terminu: ${days} ${days === 1 ? 'dzień' : 'dni'}.`,
+        `${t('settings.warningDaysSaved')} ${days} ${
+          days === 1 ? t('settings.daySingular') : t('settings.daysPlural')
+        }.`,
         'success'
       );
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się zapisać okresu ważności.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     } finally {
       setWarningDaysSaving(false);
     }
@@ -528,29 +525,29 @@ export const HouseholdSettingsView: React.FC = () => {
     try {
       await api.updateMemberRole(memberId, newRole);
 
-      showToast('Zaktualizowano uprawnienia domownika.', 'success');
+      showToast(t('settings.roleUpdatedToast'), 'success');
 
       await fetchMembers();
       await refreshUser();
     } catch (e: any) {
-      showToast(e.message || 'Błąd aktualizacji roli.', 'error');
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
   const handleRemoveMember = async (memberId: string, name: string) => {
     if (
       window.confirm(
-        `Czy na pewno chcesz usunąć użytkownika "${name}" z gospodarstwa?`
+        t('settings.kickMemberConfirm').replace('{name}', name)
       )
     ) {
       try {
         await api.removeMember(memberId);
 
-        showToast('Usunięto członka z gospodarstwa.', 'info');
+        showToast(t('settings.memberRemovedToast'), 'info');
 
         await fetchMembers();
       } catch (e: any) {
-        showToast(e.message || 'Błąd usuwania członka.', 'error');
+        showToast(e.message || t('common.error'), 'error');
       }
     }
   };
@@ -563,25 +560,28 @@ export const HouseholdSettingsView: React.FC = () => {
     try {
       await api.addCategory(newCategoryName.trim());
 
-      showToast(`Dodano kategorię "${newCategoryName}"`, 'success');
+      showToast(
+        `${t('settings.categoryAddedToast')} "${newCategoryName}"`,
+        'success'
+      );
 
       setNewCategoryName('');
       await refreshSettings();
     } catch (e: any) {
-      showToast('Błąd dodawania kategorii.', 'error');
+      showToast(t('common.error'), 'error');
     }
   };
 
   const handleDeleteCategory = async (id: string, name: string) => {
-    if (window.confirm(`Czy na pewno usunąć kategorię "${name}"?`)) {
+    if (window.confirm(t('settings.deleteCategoryConfirm').replace('{name}', tCategory(name)))) {
       try {
         await api.deleteCategory(id);
 
-        showToast('Kategoria usunięta.', 'info');
+        showToast(t('settings.categoryDeletedToast'), 'info');
 
         await refreshSettings();
       } catch (e: any) {
-        showToast('Błąd usuwania kategorii.', 'error');
+        showToast(t('common.error'), 'error');
       }
     }
   };
@@ -591,11 +591,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
     if (!inviteCodeInput.trim()) return;
 
-    if (
-      window.confirm(
-        'Dołączenie do innego gospodarstwa spowoduje opuszczenie obecnego. Kontynuować?'
-      )
-    ) {
+    if (window.confirm(t('settings.joinConfirm'))) {
       try {
         await joinHousehold(inviteCodeInput.trim());
         setInviteCodeInput('');
@@ -606,61 +602,58 @@ export const HouseholdSettingsView: React.FC = () => {
   const handleDownloadBackup = async () => {
     try {
       const token = localStorage.getItem('spizarnia_token');
-  
+
       if (!token) {
-        showToast('Brak aktywnej sesji. Zaloguj się ponownie.', 'error');
+        showToast(language === 'pl' ? 'Brak aktywnej sesji. Zaloguj się ponownie.' : 'No active session. Please log in again.', 'error');
         return;
       }
-  
-      showToast('Przygotowywanie kopii zapasowej...', 'info');
-  
+
+      showToast(t('settings.preparingBackup'), 'info');
+
       const response = await fetch('/api/settings/backup', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-  
+
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(
           data.error ||
           data.message ||
-          `Błąd pobierania kopii (${response.status})`
+          (language === 'pl' ? `Błąd pobierania kopii (${response.status})` : `Backup download failed (${response.status})`)
         );
       }
-  
+
       const blob = await response.blob();
       const contentDisposition = response.headers.get('Content-Disposition');
-  
-      let fileName = `spizarnia-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  
+
+      let fileName = `pantry-backup-${new Date().toISOString().slice(0, 10)}.json`;
+
       if (contentDisposition) {
         const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
-  
+
         if (fileNameMatch?.[1]) {
           fileName = fileNameMatch[1];
         }
       }
-  
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-  
+
       link.href = url;
       link.download = fileName;
-  
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-  
+
       window.URL.revokeObjectURL(url);
-  
-      showToast('Pobrano kopię zapasową spiżarni.', 'success');
+
+      showToast(t('settings.backupDownloadedToast'), 'success');
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się pobrać kopii zapasowej.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
@@ -668,7 +661,7 @@ export const HouseholdSettingsView: React.FC = () => {
     if (!isAdmin) return;
 
     if (!file.name.toLowerCase().endsWith('.json')) {
-      showToast('Wybierz plik kopii zapasowej w formacie JSON.', 'error');
+      showToast(language === 'pl' ? 'Wybierz plik kopii zapasowej w formacie JSON.' : 'Select a JSON backup file.', 'error');
       return;
     }
 
@@ -678,15 +671,11 @@ export const HouseholdSettingsView: React.FC = () => {
       const content = await file.text();
       backup = JSON.parse(content);
     } catch {
-      showToast('Wybrany plik nie zawiera poprawnego JSON.', 'error');
+      showToast(language === 'pl' ? 'Wybrany plik nie zawiera poprawnego JSON.' : 'Selected file does not contain valid JSON.', 'error');
       return;
     }
 
-    if (
-      !window.confirm(
-        'Przywrócenie kopii usunie aktualną spiżarnię, listy zakupów, notatki, przepisy i kategorie, a następnie zastąpi je danymi z pliku. Konta użytkowników i ustawienia gospodarstwa pozostaną bez zmian. Kontynuować?'
-      )
-    ) {
+    if (!window.confirm(t('settings.restoreConfirm'))) {
       return;
     }
 
@@ -701,14 +690,15 @@ export const HouseholdSettingsView: React.FC = () => {
       await fetchMembers();
 
       showToast(
-        `Przywrócono kopię: ${res.restored.pantryItems} produktów, ${res.restored.shoppingLists} list, ${res.restored.notes} notatek i ${res.restored.recipes} przepisów.`,
+        t('settings.restoreSuccessToast')
+          .replace('{items}', String(res.restored.pantryItems))
+          .replace('{lists}', String(res.restored.shoppingLists))
+          .replace('{notes}', String(res.restored.notes))
+          .replace('{recipes}', String(res.restored.recipes)),
         'success'
       );
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się przywrócić kopii zapasowej.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     } finally {
       setBackupRestoring(false);
     }
@@ -728,10 +718,7 @@ export const HouseholdSettingsView: React.FC = () => {
       setSystemUsers(usersRes.users || []);
       setSystemHouseholds(householdsRes.households || []);
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się pobrać danych administracyjnych.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     } finally {
       setSystemLoading(false);
     }
@@ -743,7 +730,7 @@ export const HouseholdSettingsView: React.FC = () => {
     const name = newSystemHouseholdName.trim();
 
     if (name.length < 2) {
-      showToast('Nazwa gospodarstwa musi mieć co najmniej 2 znaki.', 'error');
+      showToast(t('settings.householdNameShortError'), 'error');
       return;
     }
 
@@ -758,14 +745,11 @@ export const HouseholdSettingsView: React.FC = () => {
       }
 
       showToast(
-        `Utworzono gospodarstwo "${res.household.name}". Kod zaproszenia został skopiowany.`,
+        t('settings.householdCreatedToast').replace('{name}', res.household.name),
         'success'
       );
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się utworzyć gospodarstwa.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
@@ -776,9 +760,9 @@ export const HouseholdSettingsView: React.FC = () => {
     try {
       await api.updateSystemUser(targetUser.id, { role });
       await fetchSystemAdminData();
-      showToast('Zmieniono rolę użytkownika.', 'success');
+      showToast(t('settings.userRoleChangedToast'), 'success');
     } catch (e: any) {
-      showToast(e.message || 'Nie udało się zmienić roli.', 'error');
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
@@ -791,18 +775,15 @@ export const HouseholdSettingsView: React.FC = () => {
         householdId: householdId || null,
       });
       await fetchSystemAdminData();
-      showToast('Zmieniono gospodarstwo użytkownika.', 'success');
+      showToast(t('settings.userHouseholdChangedToast'), 'success');
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się zmienić gospodarstwa.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
   const handleSystemAdminToggle = async (targetUser: SystemUser) => {
     if (targetUser.isPrimaryAdmin && targetUser.isSystemAdmin) {
-      showToast('Kontu głównemu nie można odebrać uprawnień administratora systemu.', 'info');
+      showToast(t('settings.primaryAdminCannotRevoke'), 'info');
       return;
     }
 
@@ -816,27 +797,26 @@ export const HouseholdSettingsView: React.FC = () => {
 
       showToast(
         targetUser.isSystemAdmin
-          ? 'Odebrano uprawnienia administratora systemu.'
-          : 'Nadano uprawnienia administratora systemu.',
+          ? t('settings.systemAdminRevokedToast')
+          : t('settings.systemAdminGrantedToast'),
         'success'
       );
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się zmienić uprawnień systemowych.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
   const handleDeleteSystemUser = async (targetUser: SystemUser) => {
     if (targetUser.isPrimaryAdmin) {
-      showToast('Konta głównego nie można usunąć.', 'info');
+      showToast(t('settings.primaryAdminCannotBeDeleted'), 'info');
       return;
     }
 
     if (
       !window.confirm(
-        `Czy na pewno całkowicie usunąć konto "${targetUser.name}" (${targetUser.email})? Tej operacji nie można cofnąć.`
+        t('settings.deleteUserConfirm')
+          .replace('{name}', targetUser.name)
+          .replace('{email}', targetUser.email)
       )
     ) {
       return;
@@ -846,12 +826,9 @@ export const HouseholdSettingsView: React.FC = () => {
       await api.deleteSystemUser(targetUser.id);
       await fetchSystemAdminData();
       await fetchMembers();
-      showToast('Konto użytkownika zostało usunięte z bazy.', 'success');
+      showToast(t('settings.userDeletedToast'), 'success');
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się usunąć użytkownika.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
@@ -863,14 +840,13 @@ export const HouseholdSettingsView: React.FC = () => {
       await fetchSystemAdminData();
 
       showToast(
-        `Wygenerowano kod ${res.inviteCode} dla "${household.name}" i skopiowano go do schowka.`,
+        t('settings.generateCodeSuccess')
+          .replace('{code}', res.inviteCode)
+          .replace('{name}', household.name),
         'success'
       );
     } catch (e: any) {
-      showToast(
-        e.message || 'Nie udało się wygenerować kodu.',
-        'error'
-      );
+      showToast(e.message || t('common.error'), 'error');
     }
   };
 
@@ -882,10 +858,10 @@ export const HouseholdSettingsView: React.FC = () => {
       <div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
           <Sliders className="w-6 h-6 text-emerald-400" />
-          Ustawienia
+          {t('settings.title')}
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          Zarządzaj aplikacją, gospodarstwem domowym i swoim interfejsem
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -899,10 +875,10 @@ export const HouseholdSettingsView: React.FC = () => {
 
             <div>
               <h3 className="font-extrabold text-white text-base">
-                Instalacja aplikacji
+                {t('settings.installApp')}
               </h3>
               <p className="text-xs text-slate-300">
-                Zainstaluj aplikację na telefonie lub komputerze, aby mieć do niej szybki dostęp.
+                {t('settings.installAppDesc')}
               </p>
             </div>
           </div>
@@ -911,7 +887,7 @@ export const HouseholdSettingsView: React.FC = () => {
             onClick={() => setIsInstallModalOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/50 transition-all self-start sm:self-auto shrink-0"
           >
-            Instrukcja instalacji
+            {t('settings.installGuideBtn')}
           </button>
         </div>
       </section>
@@ -921,11 +897,74 @@ export const HouseholdSettingsView: React.FC = () => {
         <div>
           <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Palette className="w-5 h-5 text-emerald-400" />
-            Personalizacja
+            {t('settings.personalization')}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Dopasuj wygląd i nawigację aplikacji
+            {t('settings.personalizationDesc')}
           </p>
+        </div>
+
+        {/* Język aplikacji / Application Language */}
+        <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+          <div>
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <Languages className="w-5 h-5 text-emerald-400" />
+              {t('settings.languageTitle')}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              {t('settings.languageDesc')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setLanguage('en');
+                showToast(t('settings.langSetEnToast'), 'success');
+              }}
+              className={`relative flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all ${
+                language === 'en'
+                  ? 'bg-slate-800 border-emerald-500/50 shadow-lg ring-1 ring-emerald-500/30'
+                  : 'bg-slate-950/40 border-slate-800 hover:bg-slate-800/70 hover:border-slate-700'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/60 flex items-center justify-center text-xl shrink-0">
+                🇬🇧
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-white">{t('settings.langEnglish')}</div>
+                <div className="text-xs text-slate-400">{t('settings.langEnglishSub')}</div>
+              </div>
+              {language === 'en' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLanguage('pl');
+                showToast(t('settings.langSetPlToast'), 'success');
+              }}
+              className={`relative flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all ${
+                language === 'pl'
+                  ? 'bg-slate-800 border-emerald-500/50 shadow-lg ring-1 ring-emerald-500/30'
+                  : 'bg-slate-950/40 border-slate-800 hover:bg-slate-800/70 hover:border-slate-700'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/60 flex items-center justify-center text-xl shrink-0">
+                🇵🇱
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-white">{t('settings.langPolish')}</div>
+                <div className="text-xs text-slate-400">{t('settings.langPolishSub')}</div>
+              </div>
+              {language === 'pl' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Kolor aplikacji */}
@@ -934,10 +973,10 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Palette className="w-5 h-5 text-emerald-400" />
-                Kolor aplikacji
+                {t('settings.accentColorTitle')}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Wybierz główny kolor przycisków, ikon, ramek i elementów interfejsu.
+                {t('settings.accentColorDesc')}
               </p>
             </div>
 
@@ -948,7 +987,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Domyślny</span>
+                <span className="hidden sm:inline">{t('settings.defaultThemeBtn')}</span>
               </button>
             )}
           </div>
@@ -980,10 +1019,10 @@ export const HouseholdSettingsView: React.FC = () => {
 
                   <div className="min-w-0">
                     <div className="text-xs sm:text-sm font-bold text-white truncate">
-                      {theme.label}
+                      {theme.label[language] || theme.label.pl}
                     </div>
                     <div className="text-[10px] text-slate-500 truncate">
-                      {theme.description}
+                      {theme.description[language] || theme.description.pl}
                     </div>
                   </div>
 
@@ -1008,26 +1047,27 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-emerald-400" />
-                Pasek nawigacji
+                {t('settings.navBarTitle')}
               </h3>
               <p className="text-xs text-slate-400">
-                Ukryj wybrane pozycje albo zmień ich kolejność.
+                {t('settings.navBarDesc')}
               </p>
             </div>
 
             <button
               onClick={resetNavConfig}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
-              title="Przywróć domyślny układ"
+              title={t('settings.navBarResetTooltip')}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Domyślne</span>
+              <span className="hidden sm:inline">{t('settings.navBarResetBtn')}</span>
             </button>
           </div>
 
           <div className="space-y-2">
             {sortedNavItems.map((item, index) => {
               if (item.id === 'audit' && !isAdmin) return null;
+              const localizedLabel = (t as any)(`nav.${item.id}`) || item.label;
 
               return (
                 <div
@@ -1042,7 +1082,7 @@ export const HouseholdSettingsView: React.FC = () => {
                           ? 'text-emerald-400 bg-emerald-500/10'
                           : 'text-slate-500 bg-slate-900'
                       }`}
-                      title={item.visible ? 'Ukryj ten przycisk' : 'Pokaż ten przycisk'}
+                      title={item.visible ? t('settings.navHideItem') : t('settings.navShowItem')}
                     >
                       {item.visible ? (
                         <Eye className="w-4 h-4" />
@@ -1056,7 +1096,7 @@ export const HouseholdSettingsView: React.FC = () => {
                         item.visible ? 'text-white' : 'text-slate-500 line-through'
                       }`}
                     >
-                      {item.label}
+                      {localizedLabel}
                     </span>
                   </div>
 
@@ -1089,10 +1129,10 @@ export const HouseholdSettingsView: React.FC = () => {
         <div>
           <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Home className="w-5 h-5 text-emerald-400" />
-            Gospodarstwo
+            {t('settings.householdSection')}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Ustawienia wspólne dla spiżarni i domowników
+            {t('settings.householdSectionDesc')}
           </p>
         </div>
 
@@ -1100,7 +1140,7 @@ export const HouseholdSettingsView: React.FC = () => {
         <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
           <h3 className="font-bold text-base text-white flex items-center gap-2">
             <Tag className="w-5 h-5 text-cyan-400" />
-            Kategorie produktów
+            {t('settings.categoriesTitle')}
           </h3>
 
           <form onSubmit={handleAddCategory} className="flex gap-2">
@@ -1108,7 +1148,7 @@ export const HouseholdSettingsView: React.FC = () => {
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Wpisz nową kategorię..."
+              placeholder={t('settings.categoryNamePlaceholder')}
               className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
             />
 
@@ -1116,7 +1156,7 @@ export const HouseholdSettingsView: React.FC = () => {
               type="submit"
               className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-all"
             >
-              Dodaj
+              {t('settings.addCategory')}
             </button>
           </form>
 
@@ -1126,7 +1166,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 key={cat.id}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200"
               >
-                <span>{cat.name}</span>
+                <span>{tCategory(cat.name)}</span>
 
                 {categories.length > 1 && (
                   <button
@@ -1146,16 +1186,16 @@ export const HouseholdSettingsView: React.FC = () => {
           <div>
             <h3 className="font-bold text-base text-white flex items-center gap-2">
               <Clock className="w-5 h-5 text-amber-400" />
-              Kończący się termin ważności
+              {t('settings.expiryWarningDaysTitle')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Ustaw, ile dni przed końcem terminu aplikacja ma oznaczać produkt jako kończący się.
+              {t('settings.expiryWarningDaysDesc')}
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <label className="text-xs font-semibold text-slate-300 shrink-0">
-              Liczba dni
+              {t('settings.warningDaysInputLabel')}
             </label>
 
             <input
@@ -1174,7 +1214,7 @@ export const HouseholdSettingsView: React.FC = () => {
               className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
             >
               <Save className="w-3.5 h-3.5" />
-              {warningDaysSaving ? 'Zapisywanie...' : 'Zapisz'}
+              {warningDaysSaving ? t('settings.savingBtn') : t('settings.saveWarningDays')}
             </button>
           </div>
         </div>
@@ -1184,7 +1224,7 @@ export const HouseholdSettingsView: React.FC = () => {
           <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-cyan-400" />
-              Członkowie gospodarstwa ({members.length})
+              {t('settings.membersTitleCount')} ({members.length})
             </h3>
 
             <div className="space-y-2.5">
@@ -1208,7 +1248,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                           {isMe && (
                             <span className="text-[10px] text-slate-400 font-normal shrink-0">
-                              (Ty)
+                              {t('settings.youBadge')}
                             </span>
                           )}
                         </div>
@@ -1244,11 +1284,11 @@ export const HouseholdSettingsView: React.FC = () => {
             <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
               <h4 className="font-bold text-sm text-white flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-amber-400" />
-                Zmień gospodarstwo
+                {t('settings.changeHouseholdTitle')}
               </h4>
 
               <p className="text-xs text-slate-400">
-                Dołącz do innego gospodarstwa za pomocą aktywnego kodu zaproszenia. Powrót będzie możliwy jedynie po otrzymaniu kodu od administratora.
+                {t('settings.changeHouseholdDesc')}
               </p>
 
               <form onSubmit={handleJoinOtherHousehold} className="space-y-2">
@@ -1256,7 +1296,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   type="text"
                   value={inviteCodeInput}
                   onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
-                  placeholder="Wpisz 6-znakowy kod..."
+                  placeholder={t('settings.inviteCodePlaceholder')}
                   className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono tracking-wider focus:outline-none focus:border-emerald-500"
                 />
 
@@ -1265,7 +1305,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   disabled={!inviteCodeInput.trim()}
                   className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40"
                 >
-                  Dołącz z kodem
+                  {t('settings.joinWithCodeBtn')}
                 </button>
               </form>
             </div>
@@ -1280,10 +1320,10 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
                 <Shield className="w-5 h-5 text-emerald-400" />
-                Panel administracyjny
+                {t('settings.adminPanelTitle')}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Zarządzanie gospodarstwem, użytkownikami i źródłami danych
+                {t('settings.adminPanelDesc')}
               </p>
             </div>
           </div>
@@ -1293,10 +1333,10 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Home className="w-5 h-5 text-emerald-400" />
-                Ustawienia gospodarstwa
+                {t('settings.householdName')}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Zarządzaj nazwą gospodarstwa oraz kodem zaproszenia.
+                {t('settings.householdSectionDesc')}
               </p>
             </div>
 
@@ -1305,10 +1345,10 @@ export const HouseholdSettingsView: React.FC = () => {
               <div>
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-emerald-400" />
-                  Kod zaproszenia
+                  {t('settings.inviteCode')}
                 </h4>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Kod jest ważny przez 5 minut. Wygenerowanie nowego natychmiast unieważnia poprzedni.
+                  {t('settings.inviteCodeNotice')}
                 </p>
               </div>
 
@@ -1322,7 +1362,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                       <div className="text-[10px] text-slate-400 px-2 mt-0.5 flex items-center gap-1.5">
                         <Clock className="w-3 h-3 text-emerald-400" />
-                        Wygasa za:
+                        {t('settings.expiresNotice')}
                         <span
                           className={`font-mono font-bold ${
                             inviteTimeLeft <= 60
@@ -1341,12 +1381,12 @@ export const HouseholdSettingsView: React.FC = () => {
                       onClick={() => {
                         navigator.clipboard.writeText(user.household!.inviteCode);
                         showToast(
-                          `Skopiowano kod zaproszenia: ${user.household!.inviteCode}`,
+                          `${t('settings.inviteCodeCopySuccess')} ${user.household!.inviteCode}`,
                           'success'
                         );
                       }}
                       className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-                      title="Kopiuj kod zaproszenia"
+                      title={t('settings.copyInviteTooltip')}
                     >
                       <Copy className="w-4 h-4" />
                     </button>
@@ -1358,7 +1398,7 @@ export const HouseholdSettingsView: React.FC = () => {
                     className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 shrink-0"
                   >
                     <RotateCcw className="w-4 h-4" />
-                    Nowy kod
+                    {t('settings.newCodeBtn')}
                   </button>
                 </div>
               ) : (
@@ -1368,7 +1408,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2"
                 >
                   <KeyRound className="w-4 h-4" />
-                  Wygeneruj kod
+                  {t('settings.generateCodeBtn')}
                 </button>
               )}
             </div>
@@ -1379,10 +1419,10 @@ export const HouseholdSettingsView: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
                     <PencilLine className="w-4 h-4 text-emerald-400" />
-                    Nazwa gospodarstwa
+                    {t('settings.householdName')}
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Zmień nazwę widoczną dla wszystkich domowników.
+                    {t('settings.householdNameNotice')}
                   </p>
                 </div>
 
@@ -1393,7 +1433,7 @@ export const HouseholdSettingsView: React.FC = () => {
                     onChange={(e) => setHouseholdNameInput(e.target.value)}
                     minLength={2}
                     maxLength={60}
-                    placeholder="np. Domowa Spiżarnia"
+                    placeholder={t('settings.householdNamePlaceholder')}
                     className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
                   />
 
@@ -1407,12 +1447,12 @@ export const HouseholdSettingsView: React.FC = () => {
                     className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    {householdNameSaving ? 'Zapisywanie...' : 'Zmień nazwę'}
+                    {householdNameSaving ? t('settings.savingBtn') : t('settings.changeNameBtn')}
                   </button>
                 </div>
 
                 <div className="text-[10px] text-slate-500">
-                  {householdNameInput.length}/60 znaków
+                  {householdNameInput.length}/60 {t('settings.charCount')}
                 </div>
               </form>
             </div>
@@ -1423,10 +1463,10 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-emerald-400" />
-                Zarządzanie domownikami ({members.length})
+                {t('settings.manageMembersTitle')} ({members.length})
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Zmieniaj role użytkowników lub usuwaj ich z gospodarstwa.
+                {t('settings.manageMembersDesc')}
               </p>
             </div>
 
@@ -1451,7 +1491,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                           {isMe && (
                             <span className="text-[10px] text-slate-400 font-normal shrink-0">
-                              (Ty)
+                              {t('settings.youBadge')}
                             </span>
                           )}
                         </div>
@@ -1498,7 +1538,7 @@ export const HouseholdSettingsView: React.FC = () => {
                             handleRemoveMember(member.id, member.name)
                           }
                           className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
-                          title="Usuń użytkownika"
+                          title={t('settings.kickMember')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1516,10 +1556,10 @@ export const HouseholdSettingsView: React.FC = () => {
               <div>
                 <h3 className="font-bold text-base text-white flex items-center gap-2">
                   <Database className="w-5 h-5 text-emerald-400" />
-                  Źródła wyszukiwania EAN
+                  {t('settings.barcodeSourcesTitle')}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Ustaw kolejność baz używanych podczas wyszukiwania zeskanowanych produktów.
+                  {t('settings.barcodeSourcesDesc')}
                 </p>
               </div>
 
@@ -1530,7 +1570,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold disabled:opacity-40"
                 >
                   <RotateCcw className="w-3.5 h-3.5 inline mr-1.5" />
-                  Domyślne
+                  {t('settings.defaultSourcesBtn')}
                 </button>
 
                 <button
@@ -1539,14 +1579,14 @@ export const HouseholdSettingsView: React.FC = () => {
                   className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
                 >
                   <Save className="w-3.5 h-3.5 inline mr-1.5" />
-                  {barcodeSourcesSaving ? 'Zapisywanie...' : 'Zapisz'}
+                  {barcodeSourcesSaving ? t('settings.savingSources') : t('settings.saveSources')}
                 </button>
               </div>
             </div>
 
             {barcodeSourcesLoading ? (
               <div className="text-xs text-slate-400 py-3">
-                Ładowanie źródeł EAN...
+                {t('settings.loadingSources')}
               </div>
             ) : (
               <div className="space-y-2">
@@ -1574,7 +1614,7 @@ export const HouseholdSettingsView: React.FC = () => {
                               : 'bg-slate-900 border-slate-700 text-slate-500'
                           }`}
                         >
-                          {source.enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'}
+                          {source.enabled ? t('settings.sourceEnabled') : t('settings.sourceDisabled')}
                         </button>
 
                         <div className="flex-1 min-w-0">
@@ -1615,20 +1655,20 @@ export const HouseholdSettingsView: React.FC = () => {
                                     key={country.code}
                                     value={country.code}
                                   >
-                                    {country.label}
+                                    {country.label[language] || country.label.pl}
                                   </option>
                                 ))}
                               </select>
                             ) : (
                               <div className="px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 flex items-center gap-2">
                                 <Globe2 className="w-3.5 h-3.5" />
-                                Baza globalna
+                                {t('settings.globalDatabase')}
                               </div>
                             )}
                           </div>
 
                           <p className="text-[11px] text-slate-500 mt-1.5">
-                            {providerMeta?.description}
+                            {providerMeta?.description[language] || providerMeta?.description.pl}
                           </p>
                         </div>
 
@@ -1659,7 +1699,7 @@ export const HouseholdSettingsView: React.FC = () => {
                       </div>
 
                       <div className="mt-2 text-[10px] text-slate-600">
-                        Priorytet {index + 1}
+                        {t('settings.priorityLabel')} {index + 1}
                       </div>
                     </div>
                   );
@@ -1667,7 +1707,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                 {barcodeSources.length === 0 && (
                   <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
-                    Brak skonfigurowanych źródeł. Skanowanie będzie korzystało z domyślnego Open Food Facts PL → World.
+                    {t('settings.noSourcesFound')}
                   </div>
                 )}
               </div>
@@ -1680,7 +1720,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 className="w-full py-2.5 rounded-xl border border-dashed border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-slate-300 hover:text-emerald-300 text-xs font-bold transition-colors"
               >
                 <Plus className="w-4 h-4 inline mr-1.5" />
-                Dodaj źródło
+                {t('settings.addSourceBtn')}
               </button>
             )}
           </div>
@@ -1689,18 +1729,18 @@ export const HouseholdSettingsView: React.FC = () => {
           <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
             <h4 className="font-bold text-sm text-white flex items-center gap-2">
               <Download className="w-4 h-4 text-emerald-400" />
-              Kopia zapasowa danych
+              {t('settings.backupDataTitle')}
             </h4>
 
             <p className="text-xs text-slate-400">
-              Pobierz pełną bazę spiżarni, list zakupów i notatek w formacie JSON.
+              {t('settings.backupDataDesc')}
             </p>
 
             <button
               onClick={handleDownloadBackup}
               className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors"
             >
-              Pobierz kopię zapasową
+              {t('settings.exportBackup')}
             </button>
           </div>
 
@@ -1709,15 +1749,15 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Upload className="w-5 h-5 text-amber-400" />
-                Przywróć kopię zapasową
+                {t('settings.restoreBackupTitle')}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Wczytaj wcześniej pobrany plik JSON. Aktualna spiżarnia, listy zakupów, notatki, przepisy i kategorie zostaną zastąpione danymi z kopii.
+                {t('settings.restoreBackupDesc')}
               </p>
             </div>
 
             <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
-              Konta użytkowników, hasła, nazwa gospodarstwa i kod zaproszenia nie są przywracane z pliku.
+              {t('settings.restoreWarning')}
             </div>
 
             <label className={`w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-2 ${
@@ -1726,7 +1766,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300 cursor-pointer'
             }`}>
               <Upload className="w-4 h-4" />
-              {backupRestoring ? 'Przywracanie kopii...' : 'Wybierz plik i przywróć kopię'}
+              {backupRestoring ? t('settings.restoringBackup') : t('settings.chooseFileAndRestore')}
               <input
                 type="file"
                 accept="application/json,.json"
@@ -1750,15 +1790,15 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
-                Administracja systemem
+                {t('settings.adminSystemSection')}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Zarządzaj wszystkimi użytkownikami i gospodarstwami w tej instalacji
+                {t('settings.adminSystemSectionDesc')}
               </p>
             </div>
 
             <span className="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-extrabold">
-              SYSTEM ADMIN
+              {t('settings.systemAdminBadge')}
             </span>
           </div>
 
@@ -1766,10 +1806,10 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-amber-400" />
-                Gospodarstwa ({systemHouseholds.length})
+                {t('settings.systemHouseholdsTitle')} ({systemHouseholds.length})
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Tylko administrator systemu może utworzyć nowe gospodarstwo.
+                {t('settings.systemHouseholdsDesc')}
               </p>
             </div>
 
@@ -1780,7 +1820,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 onChange={(e) => setNewSystemHouseholdName(e.target.value)}
                 minLength={2}
                 maxLength={60}
-                placeholder="Nazwa nowego gospodarstwa..."
+                placeholder={t('settings.newHouseholdPlaceholder')}
                 className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               />
               <button
@@ -1789,7 +1829,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-40"
               >
                 <Plus className="w-4 h-4" />
-                Utwórz gospodarstwo
+                {t('settings.createHouseholdBtn')}
               </button>
             </form>
 
@@ -1810,11 +1850,14 @@ export const HouseholdSettingsView: React.FC = () => {
                         {household.name}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        {household.memberCount} {household.memberCount === 1 ? 'użytkownik' : 'użytkowników'}
+                        {household.memberCount}{' '}
+                        {household.memberCount === 1
+                          ? t('settings.usersCountSingular')
+                          : t('settings.usersCountPlural')}
                       </div>
                       {codeActive && (
                         <div className="text-[10px] text-emerald-400 font-mono mt-1">
-                          Kod: {household.inviteCode}
+                          {t('settings.codeLabel')} {household.inviteCode}
                         </div>
                       )}
                     </div>
@@ -1825,7 +1868,7 @@ export const HouseholdSettingsView: React.FC = () => {
                       className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
-                      {codeActive ? 'Nowy kod' : 'Wygeneruj kod'}
+                      {codeActive ? t('settings.newCodeBtn') : t('settings.generateCodeBtn')}
                     </button>
                   </div>
                 );
@@ -1833,7 +1876,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
               {!systemLoading && systemHouseholds.length === 0 && (
                 <div className="p-4 rounded-2xl border border-dashed border-slate-700 text-center text-xs text-slate-500">
-                  Brak gospodarstw.
+                  {t('settings.noHouseholds')}
                 </div>
               )}
             </div>
@@ -1843,16 +1886,16 @@ export const HouseholdSettingsView: React.FC = () => {
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <UserCog className="w-5 h-5 text-amber-400" />
-                Wszyscy użytkownicy ({systemUsers.length})
+                {t('settings.allUsersTitle')} ({systemUsers.length})
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Zmieniaj gospodarstwo, rolę i uprawnienia systemowe lub całkowicie usuwaj konta.
+                {t('settings.allUsersDesc')}
               </p>
             </div>
 
             {systemLoading ? (
               <div className="text-xs text-slate-400 py-3">
-                Ładowanie użytkowników...
+                {t('settings.loadingUsers')}
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -1873,21 +1916,21 @@ export const HouseholdSettingsView: React.FC = () => {
 
                             {isMe && (
                               <span className="text-[10px] text-slate-400">
-                                (Ty)
+                                {t('settings.youBadge')}
                               </span>
                             )}
 
                             {systemUser.isPrimaryAdmin && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-extrabold">
                                 <Crown className="w-3 h-3" />
-                                KONTO GŁÓWNE
+                                {t('settings.primaryAccountBadge')}
                               </span>
                             )}
 
                             {systemUser.isSystemAdmin && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-extrabold">
                                 <Crown className="w-3 h-3" />
-                                SYSTEM ADMIN
+                                {t('settings.systemAdminBadge')}
                               </span>
                             )}
                           </div>
@@ -1904,7 +1947,7 @@ export const HouseholdSettingsView: React.FC = () => {
                             className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            Usuń konto
+                            {t('settings.deleteAccountBtn')}
                           </button>
                         )}
                       </div>
@@ -1912,7 +1955,7 @@ export const HouseholdSettingsView: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="block text-[10px] text-slate-500 mb-1">
-                            Gospodarstwo
+                            {t('settings.householdLabel')}
                           </label>
                           <select
                             value={systemUser.householdId || ''}
@@ -1924,7 +1967,7 @@ export const HouseholdSettingsView: React.FC = () => {
                             }
                             className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                           >
-                            <option value="">Brak</option>
+                            <option value="">{t('settings.noHouseholdOption')}</option>
                             {systemHouseholds.map((household) => (
                               <option key={household.id} value={household.id}>
                                 {household.name}
@@ -1935,7 +1978,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                         <div>
                           <label className="block text-[10px] text-slate-500 mb-1">
-                            Rola w gospodarstwie
+                            {t('settings.householdRoleLabel')}
                           </label>
                           <select
                             value={systemUser.role}
@@ -1954,7 +1997,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                         <div>
                           <label className="block text-[10px] text-slate-500 mb-1">
-                            Uprawnienia systemowe
+                            {t('settings.systemPermissionsLabel')}
                           </label>
                           <button
                             type="button"
@@ -1968,8 +2011,8 @@ export const HouseholdSettingsView: React.FC = () => {
                           >
                             <Shield className="w-3.5 h-3.5" />
                             {systemUser.isSystemAdmin
-                              ? 'Administrator systemu'
-                              : 'Nadaj system admin'}
+                              ? t('settings.systemAdminRoleBtn')
+                              : t('settings.grantSystemAdminBtn')}
                           </button>
                         </div>
                       </div>

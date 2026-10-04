@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingList, ShoppingItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
 import { useLiveRefresh } from '../../contexts/RealtimeContext';
@@ -17,6 +18,7 @@ import {
 
 export const ShoppingListsView: React.FC = () => {
   const { showToast, playBeep } = useToast();
+  const { t, language } = useLanguage();
 
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [activeListId, setActiveListId] = useState<string>('');
@@ -62,26 +64,46 @@ export const ShoppingListsView: React.FC = () => {
 
     try {
       const res = await api.createShoppingList({ name: newListName.trim() });
-      showToast(`Utworzono listę "${res.list.name}"`, 'success');
+      showToast(
+        language === 'en'
+          ? `Created list "${res.list.name}"`
+          : `Utworzono listę "${res.list.name}"`,
+        'success'
+      );
       setNewListName('');
       setIsNewListModalOpen(false);
       await fetchLists();
       setActiveListId(res.list.id);
     } catch (err: any) {
-      showToast('Błąd tworzenia listy.', 'error');
+      showToast(
+        language === 'en' ? 'Error creating list.' : 'Błąd tworzenia listy.',
+        'error'
+      );
     }
   };
 
   const handleDeleteList = async (id: string, name: string) => {
-    if (window.confirm(`Czy na pewno chcesz usunąć całą listę "${name}"?`)) {
+    if (
+      window.confirm(
+        language === 'en'
+          ? `Are you sure you want to delete the shopping list "${name}"?`
+          : `Czy na pewno chcesz usunąć całą listę "${name}"?`
+      )
+    ) {
       try {
         await api.deleteShoppingList(id);
-        showToast('Lista została usunięta.', 'info');
+        showToast(
+          language === 'en' ? 'Shopping list deleted.' : 'Lista została usunięta.',
+          'info'
+        );
         const remaining = lists.filter((l) => l.id !== id);
         setLists(remaining);
         if (remaining.length > 0) setActiveListId(remaining[0].id);
       } catch (err: any) {
-        showToast('Błąd usuwania listy.', 'error');
+        showToast(
+          language === 'en' ? 'Error deleting list.' : 'Błąd usuwania listy.',
+          'error'
+        );
       }
     }
   };
@@ -110,7 +132,10 @@ export const ShoppingListsView: React.FC = () => {
       setShowCapInput(false);
       playBeep(750, 'sine', 0.08);
     } catch (err: any) {
-      showToast('Błąd dodawania pozycji.', 'error');
+      showToast(
+        language === 'en' ? 'Error adding item.' : 'Błąd dodawania pozycji.',
+        'error'
+      );
     }
   };
 
@@ -184,10 +209,18 @@ export const ShoppingListsView: React.FC = () => {
     if (!activeList) return;
     try {
       await api.clearCheckedItems(activeList.id);
-      showToast('Wyczyszczono kupione artykuły.', 'info');
+      showToast(
+        language === 'en'
+          ? 'Cleared bought items.'
+          : 'Wyczyszczono kupione artykuły.',
+        'info'
+      );
       await fetchLists();
     } catch (e: any) {
-      showToast('Błąd czyszczenia listy.', 'error');
+      showToast(
+        language === 'en' ? 'Error clearing list.' : 'Błąd czyszczenia listy.',
+        'error'
+      );
     }
   };
 
@@ -201,10 +234,12 @@ export const ShoppingListsView: React.FC = () => {
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-emerald-400" />
-            Listy Zakupów
+            {t('shopping.title')}
           </h2>
           <p className="text-xs text-slate-400">
-            Planuj zakupy i oznaczaj kupione produkty
+            {language === 'en'
+              ? 'Plan groceries and check off bought items'
+              : 'Planuj zakupy i oznaczaj kupione produkty'}
           </p>
         </div>
 
@@ -213,7 +248,7 @@ export const ShoppingListsView: React.FC = () => {
           className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all self-start sm:self-auto"
         >
           <ListPlus className="w-4 h-4" />
-          Nowa lista
+          {t('shopping.createList')}
         </button>
       </div>
 
@@ -256,8 +291,10 @@ export const ShoppingListsView: React.FC = () => {
               </h3>
               <div className="text-xs text-slate-400">
                 {checkedCount === totalCount && totalCount > 0
-                  ? '🎉 Wszystkie artykuły kupione!'
-                  : `Kupiono: ${checkedCount} z ${totalCount} artykułów`}
+                  ? (language === 'en' ? '🎉 All items bought!' : '🎉 Wszystkie artykuły kupione!')
+                  : (language === 'en'
+                    ? `Bought: ${checkedCount} of ${totalCount} items`
+                    : `Kupiono: ${checkedCount} z ${totalCount} artykułów`)}
               </div>
             </div>
 
@@ -267,7 +304,7 @@ export const ShoppingListsView: React.FC = () => {
                   onClick={handleClearChecked}
                   className="px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs transition-colors"
                 >
-                  Wyczyść kupione
+                  {t('shopping.clearChecked')}
                 </button>
               )}
 
@@ -275,7 +312,7 @@ export const ShoppingListsView: React.FC = () => {
                 <button
                   onClick={() => handleDeleteList(activeList.id, activeList.name)}
                   className="p-2 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-slate-800 transition-colors"
-                  title="Usuń listę"
+                  title={language === 'en' ? 'Delete list' : 'Usuń listę'}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -291,7 +328,7 @@ export const ShoppingListsView: React.FC = () => {
                 required
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                placeholder="Wpisz np. Chleb razowy, Jajka..."
+                placeholder={t('shopping.addItemPlaceholder')}
                 className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               />
 
@@ -304,7 +341,7 @@ export const ShoppingListsView: React.FC = () => {
                   onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))}
                   className="w-12 text-center bg-transparent text-white text-sm font-bold focus:outline-none"
                 />
-                <span className="text-xs text-slate-400 pr-2 font-medium">szt.</span>
+                <span className="text-xs text-slate-400 pr-2 font-medium">{t('common.pcs')}</span>
               </div>
 
               <button
@@ -324,7 +361,9 @@ export const ShoppingListsView: React.FC = () => {
                   className="text-[11px] text-slate-400 hover:text-emerald-400 font-medium flex items-center gap-1"
                 >
                   <Scale className="w-3 h-3" />
-                  + Dodaj gramaturę / pojemność (np. 500g, 1L)
+                  {language === 'en'
+                    ? '+ Add net weight / volume (e.g. 500g, 1L)'
+                    : '+ Dodaj gramaturę / pojemność (np. 500g, 1L)'}
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
@@ -332,7 +371,7 @@ export const ShoppingListsView: React.FC = () => {
                     type="text"
                     value={newItemCapacity}
                     onChange={(e) => setNewItemCapacity(e.target.value)}
-                    placeholder="Pojemność / waga (np. 500g, 1L)"
+                    placeholder={language === 'en' ? 'Net weight / volume (e.g. 500g, 1L)' : 'Pojemność / waga (np. 500g, 1L)'}
                     className="w-56 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                   />
                   <button
@@ -340,7 +379,7 @@ export const ShoppingListsView: React.FC = () => {
                     onClick={() => { setNewItemCapacity(''); setShowCapInput(false); }}
                     className="text-xs text-slate-500 hover:text-rose-400"
                   >
-                    Anuluj
+                    {t('common.cancel')}
                   </button>
                 </div>
               )}
@@ -351,7 +390,9 @@ export const ShoppingListsView: React.FC = () => {
           <div className="space-y-2">
             {activeList.items.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-sm">
-                Lista jest pusta. Wpisz produkt powyżej lub kliknij "+ Kończące się w spiżarni".
+                {language === 'en'
+                  ? 'List is empty. Type a product name above to add items.'
+                  : 'Lista jest pusta. Wpisz produkt powyżej, aby dodać.'}
               </div>
             ) : (
               activeList.items.map((item) => (
@@ -405,7 +446,7 @@ export const ShoppingListsView: React.FC = () => {
                         <Minus className="w-3 h-3" />
                       </button>
                       <span className="px-2 text-xs font-bold text-slate-200 min-w-[2.2rem] text-center">
-                        {item.quantity} <span className="text-[10px] text-slate-400 font-normal">szt.</span>
+                        {item.quantity} <span className="text-[10px] text-slate-400 font-normal">{t('common.pcs')}</span>
                       </span>
                       <button
                         onClick={() => handleUpdateItemQty(item, item.quantity + 1)}
@@ -428,20 +469,22 @@ export const ShoppingListsView: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="py-12 text-center text-slate-400">Ładowanie list zakupów...</div>
+        <div className="py-12 text-center text-slate-400">{t('common.loading')}</div>
       )}
 
       {/* Modal Nowej Listy */}
-      <Modal isOpen={isNewListModalOpen} onClose={() => setIsNewListModalOpen(false)} title="Utwórz nową listę zakupów" maxWidth="sm">
+      <Modal isOpen={isNewListModalOpen} onClose={() => setIsNewListModalOpen(false)} title={t('shopping.createList')} maxWidth="sm">
         <form onSubmit={handleCreateList} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nazwa listy *</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              {language === 'en' ? 'List name *' : 'Nazwa listy *'}
+            </label>
             <input
               type="text"
               required
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
-              placeholder="np. Biedronka, Cotygodniowe, Impreza"
+              placeholder={t('shopping.listNamePlaceholder')}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               autoFocus
             />
@@ -453,13 +496,13 @@ export const ShoppingListsView: React.FC = () => {
               onClick={() => setIsNewListModalOpen(false)}
               className="px-3 py-2 text-slate-400 hover:text-white text-xs font-semibold"
             >
-              Anuluj
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400 transition-colors"
             >
-              Utwórz listę
+              {t('shopping.addListBtn')}
             </button>
           </div>
         </form>

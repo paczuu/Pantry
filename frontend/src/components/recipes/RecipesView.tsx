@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Recipe } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
 import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
@@ -139,7 +140,7 @@ const compressRecipeImage = async (file: File): Promise<string> => {
 };
 
 // Funkcja generowania wysokiej jakości karty przepisu jako obrazu PNG (High-DPI)
-const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> => {
+const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' | 'en' = 'pl'): Promise<Blob> => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
 
@@ -276,8 +277,10 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
   // Ocena i Liczba składników
   ctx.fillStyle = '#10b981';
   ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  const ratingText = `★ Ocena: ${recipe.rating || 5}/10`;
-  const countText = `Składniki: ${items.length}`;
+  const ratingLabel = language === 'en' ? 'Rating' : 'Ocena';
+  const countLabel = language === 'en' ? 'Ingredients' : 'Składniki';
+  const ratingText = `★ ${ratingLabel}: ${recipe.rating || 5}/10`;
+  const countText = `${countLabel}: ${items.length}`;
   ctx.fillText(`${ratingText}   •   ${countText}`, padding, curY + 20);
   curY += 45;
 
@@ -294,7 +297,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
   if (items.length > 0) {
     ctx.fillStyle = '#34d399';
     ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('📋 SKŁADNIKI', padding, curY + 24);
+    ctx.fillText(language === 'en' ? '📋 INGREDIENTS' : '📋 SKŁADNIKI', padding, curY + 24);
     curY += 45;
 
     ctx.fillStyle = '#e2e8f0';
@@ -313,7 +316,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
   if (instructionLines.length > 0) {
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('👨‍🍳 SPOSÓB PRZYGOTOWANIA', padding, curY + 24);
+    ctx.fillText(language === 'en' ? '👨‍🍳 PREPARATION / INSTRUCTIONS' : '👨‍🍳 SPOSÓB PRZYGOTOWANIA', padding, curY + 24);
     curY += 45;
 
     ctx.fillStyle = '#f8fafc';
@@ -329,7 +332,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
   if (notesLines.length > 0) {
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('💡 UWAGI I WSKAZÓWKI', padding, curY + 22);
+    ctx.fillText(language === 'en' ? '💡 NOTES & TIPS' : '💡 UWAGI I WSKAZÓWKI', padding, curY + 22);
     curY += 38;
 
     const boxH = notesLines.length * 34 + 30;
@@ -354,7 +357,13 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
   // Stopka
   ctx.fillStyle = '#64748b';
   ctx.font = '20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('Aplikacja Pantry • Twoja domowa spiżarnia & przepisy', padding, totalHeight - 25);
+  ctx.fillText(
+    language === 'en'
+      ? 'Pantry App • Your smart home pantry & recipe book'
+      : 'Aplikacja Pantry • Twoja domowa spiżarnia & przepisy',
+    padding,
+    totalHeight - 25
+  );
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob || new Blob()), 'image/png');
@@ -363,6 +372,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
 
 export const RecipesView: React.FC = () => {
   const { showToast } = useToast();
+  const { t, language } = useLanguage();
 
   const [recipes, setRecipes] = useState<RecipeWithExtras[]>([]);
   const [search, setSearch] = useState('');
@@ -524,9 +534,20 @@ export const RecipesView: React.FC = () => {
       setIsImageProcessing(true);
       const compressed = await compressRecipeImage(file);
       setImageUrl(compressed);
-      showToast('Zdjęcie zostało przygotowane.', 'success');
+      showToast(
+        language === 'en'
+          ? 'Image processed successfully.'
+          : 'Zdjęcie zostało przygotowane.',
+        'success'
+      );
     } catch (error: any) {
-      showToast(error?.message || 'Nie udało się przygotować zdjęcia.', 'error');
+      showToast(
+        error?.message ||
+          (language === 'en'
+            ? 'Failed to process image.'
+            : 'Nie udało się przygotować zdjęcia.'),
+        'error'
+      );
     } finally {
       setIsImageProcessing(false);
       if (cameraInputRef.current) cameraInputRef.current.value = '';
@@ -545,7 +566,12 @@ export const RecipesView: React.FC = () => {
     if (!name.trim()) return;
 
     if (isImageProcessing) {
-      showToast('Poczekaj na zakończenie przetwarzania zdjęcia.', 'info');
+      showToast(
+        language === 'en'
+          ? 'Please wait for image processing to complete.'
+          : 'Poczekaj na zakończenie przetwarzania zdjęcia.',
+        'info'
+      );
       return;
     }
 
@@ -561,52 +587,77 @@ export const RecipesView: React.FC = () => {
 
       if (editingRecipe) {
         await api.updateRecipe(editingRecipe.id, payload);
-        showToast('Przepis zaktualizowany.', 'success');
+        showToast(
+          language === 'en' ? 'Recipe updated.' : 'Przepis zaktualizowany.',
+          'success'
+        );
       } else {
         await api.createRecipe(payload);
-        showToast('Zapisano nowy przepis.', 'success');
+        showToast(
+          language === 'en' ? 'Recipe saved.' : 'Zapisano nowy przepis.',
+          'success'
+        );
       }
 
       setIsModalOpen(false);
       resetForm();
       await fetchRecipes();
     } catch (error: any) {
-      showToast(error?.message || 'Błąd zapisywania przepisu.', 'error');
+      showToast(
+        error?.message ||
+          (language === 'en'
+            ? 'Error saving recipe.'
+            : 'Błąd zapisywania przepisu.'),
+        'error'
+      );
     }
   };
 
   const handleDeleteInModal = async () => {
     if (!editingRecipe) return;
-    if (!window.confirm(`Czy na pewno chcesz usunąć przepis „${editingRecipe.name}”?`)) return;
+    if (
+      !window.confirm(
+        language === 'en'
+          ? `Are you sure you want to delete the recipe "${editingRecipe.name}"?`
+          : `Czy na pewno chcesz usunąć przepis „${editingRecipe.name}”?`
+      )
+    )
+      return;
     try {
       await api.deleteRecipe(editingRecipe.id);
-      showToast('Przepis usunięty.', 'info');
+      showToast(
+        language === 'en' ? 'Recipe deleted.' : 'Przepis usunięty.',
+        'info'
+      );
       setRecipes((prev) => prev.filter((r) => r.id !== editingRecipe.id));
       setIsModalOpen(false);
       resetForm();
     } catch {
-      showToast('Błąd usuwania przepisu.', 'error');
+      showToast(
+        language === 'en' ? 'Error deleting recipe.' : 'Błąd usuwania przepisu.',
+        'error'
+      );
     }
   };
 
   // Udostępnianie jako tekst
   const formatRecipeText = (recipe: RecipeWithExtras): string => {
     const items = parseIngredients(recipe.ingredients);
-    let text = `🍽️ ${recipe.name} (Ocena: ${recipe.rating || 5}/10 ⭐)\n\n`;
+    let text = `🍽️ ${recipe.name} (${language === 'en' ? 'Rating' : 'Ocena'}: ${recipe.rating || 5}/10 ⭐)\n\n`;
 
     if (items.length > 0) {
-      text += `📋 Składniki:\n${items.map((i) => `• ${i}`).join('\n')}\n\n`;
+      text += `${language === 'en' ? '📋 Ingredients:' : '📋 Składniki:'}\n${items.map((i) => `• ${i}`).join('\n')}\n\n`;
     }
 
     if (recipe.instructions) {
-      text += `👨‍🍳 Sposób przygotowania:\n${recipe.instructions}\n\n`;
+      text += `${language === 'en' ? '👨‍🍳 Instructions:' : '👨‍🍳 Sposób przygotowania:'}\n${recipe.instructions}\n\n`;
     }
 
     if (recipe.notes) {
-      text += `💡 Uwagi:\n${recipe.notes}\n\n`;
+      text += `${language === 'en' ? '💡 Notes:' : '💡 Uwagi:'}\n${recipe.notes}\n\n`;
     }
 
-    text += `— Przepis z aplikacji Pantry`;
+    text += language === 'en' ? `— Recipe from Pantry App` : `— Przepis z aplikacji Pantry`;
     return text;
   };
 
@@ -614,10 +665,20 @@ export const RecipesView: React.FC = () => {
     try {
       const text = formatRecipeText(recipe);
       await navigator.clipboard.writeText(text);
-      showToast('Skopiowano treść przepisu do schowka.', 'success');
+      showToast(
+        language === 'en'
+          ? 'Copied recipe to clipboard.'
+          : 'Skopiowano treść przepisu do schowka.',
+        'success'
+      );
       setSharingRecipe(null);
     } catch {
-      showToast('Nie udało się skopiować tekstu.', 'error');
+      showToast(
+        language === 'en'
+          ? 'Failed to copy text.'
+          : 'Nie udało się skopiować tekstu.',
+        'error'
+      );
     }
   };
 
@@ -626,7 +687,7 @@ export const RecipesView: React.FC = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Przepis: ${recipe.name}`,
+          title: `${language === 'en' ? 'Recipe' : 'Przepis'}: ${recipe.name}`,
           text,
         });
         setSharingRecipe(null);
@@ -643,15 +704,15 @@ export const RecipesView: React.FC = () => {
   const handleShareImage = async (recipe: RecipeWithExtras) => {
     try {
       setIsSharingImage(true);
-      const blob = await generateRecipeImageBlob(recipe);
-      const fileName = `przepis-${normalizeText(recipe.name) || 'pantry'}.png`;
+      const blob = await generateRecipeImageBlob(recipe, language);
+      const fileName = `recipe-${normalizeText(recipe.name) || 'pantry'}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
             files: [file],
-            title: `Przepis: ${recipe.name}`,
+            title: `${language === 'en' ? 'Recipe' : 'Przepis'}: ${recipe.name}`,
           });
           setSharingRecipe(null);
           return;
@@ -669,10 +730,20 @@ export const RecipesView: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('Pobrano grafikę z przepisem.', 'success');
+      showToast(
+        language === 'en'
+          ? 'Downloaded recipe image!'
+          : 'Pobrano grafikę z przepisem.',
+        'success'
+      );
       setSharingRecipe(null);
     } catch (e) {
-      showToast('Błąd generowania grafiki.', 'error');
+      showToast(
+        language === 'en'
+          ? 'Error generating image.'
+          : 'Błąd generowania grafiki.',
+        'error'
+      );
     } finally {
       setIsSharingImage(false);
     }
@@ -680,7 +751,12 @@ export const RecipesView: React.FC = () => {
 
   const createShoppingListFromRecipe = async (recipe: RecipeWithExtras, itemsToAdd: string[]) => {
     if (itemsToAdd.length === 0) {
-      showToast('Wszystkie składniki tego przepisu masz już w spiżarni.', 'info');
+      showToast(
+        language === 'en'
+          ? 'All ingredients for this recipe are already in your pantry.'
+          : 'Wszystkie składniki tego przepisu masz już w spiżarni.',
+        'info'
+      );
       return;
     }
 
@@ -688,7 +764,8 @@ export const RecipesView: React.FC = () => {
 
     try {
       setShoppingRecipeId(recipe.id);
-      const listRes = await api.createShoppingList({ name: `Przepis: ${recipe.name}` });
+      const listName = `${language === 'en' ? 'Recipe' : 'Przepis'}: ${recipe.name}`;
+      const listRes = await api.createShoppingList({ name: listName });
       createdListId = listRes.list.id;
 
       for (const ingredient of itemsToAdd) {
@@ -699,7 +776,12 @@ export const RecipesView: React.FC = () => {
         });
       }
 
-      showToast(`Utworzono listę zakupów „Przepis: ${recipe.name}” z ${itemsToAdd.length} pozycjami.`, 'success');
+      showToast(
+        language === 'en'
+          ? `Created shopping list "${listName}" with ${itemsToAdd.length} items.`
+          : `Utworzono listę zakupów „${listName}” z ${itemsToAdd.length} pozycjami.`,
+        'success'
+      );
       setIsShoppingChoiceOpen(false);
       setShoppingRecipe(null);
       setAvailableIngredients([]);
@@ -710,7 +792,13 @@ export const RecipesView: React.FC = () => {
           await api.deleteShoppingList(createdListId);
         } catch {}
       }
-      showToast(error?.message || 'Nie udało się utworzyć listy zakupów.', 'error');
+      showToast(
+        error?.message ||
+          (language === 'en'
+            ? 'Failed to create shopping list.'
+            : 'Nie udało się utworzyć listy zakupów.'),
+        'error'
+      );
     } finally {
       setShoppingRecipeId(null);
     }
@@ -721,7 +809,12 @@ export const RecipesView: React.FC = () => {
     const recipeIngredients = parseIngredients(recipe.ingredients);
 
     if (recipeIngredients.length === 0) {
-      showToast('Ten przepis nie ma składników do dodania na listę zakupów.', 'info');
+      showToast(
+        language === 'en'
+          ? 'This recipe has no ingredients to add to shopping list.'
+          : 'Ten przepis nie ma składników do dodania na listę zakupów.',
+        'info'
+      );
       return;
     }
 
@@ -760,7 +853,13 @@ export const RecipesView: React.FC = () => {
       setMissingIngredients(missing);
       setIsShoppingChoiceOpen(true);
     } catch (error: any) {
-      showToast(error?.message || 'Nie udało się sprawdzić składników w spiżarni.', 'error');
+      showToast(
+        error?.message ||
+          (language === 'en'
+            ? 'Failed to check pantry items.'
+            : 'Nie udało się sprawdzić składników w spiżarni.'),
+        'error'
+      );
     } finally {
       setShoppingRecipeId(null);
     }
@@ -781,11 +880,13 @@ export const RecipesView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <ChefHat className="w-6 h-6 text-orange-400" />
-            Przepisy
+            <ChefHat className="w-6 h-6 text-emerald-400" />
+            {t('recipes.title')}
           </h2>
           <p className="text-xs text-slate-400">
-            Zapisuj przepisy, listę składników, zdjęcia, ocenę i opcjonalne uwagi
+            {language === 'en'
+              ? 'Save recipes, ingredients list, photos, rating, and notes'
+              : 'Zapisuj przepisy, listę składników, zdjęcia, ocenę i opcjonalne uwagi'}
           </p>
         </div>
 
@@ -800,7 +901,7 @@ export const RecipesView: React.FC = () => {
                   ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="Widok pełny (karty)"
+              title={t('recipes.viewFull')}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -812,7 +913,7 @@ export const RecipesView: React.FC = () => {
                   ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="Widok kompaktowy"
+              title={t('recipes.viewCompact')}
             >
               <List className="w-4 h-4" />
             </button>
@@ -823,7 +924,7 @@ export const RecipesView: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            Dodaj przepis
+            {t('recipes.addRecipe')}
           </button>
         </div>
       </div>
@@ -834,19 +935,19 @@ export const RecipesView: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Szukaj po nazwie, składnikach lub treści przepisu..."
+          placeholder={t('recipes.searchPlaceholder')}
           className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
         />
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-slate-500 text-sm">Ładowanie przepisów...</div>
+        <div className="py-16 text-center text-slate-500 text-sm">{t('common.loading')}</div>
       ) : filteredRecipes.length === 0 ? (
         <div className="py-16 text-center text-slate-500 text-sm bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6 space-y-2">
           <ChefHat className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-bold text-white">Brak przepisów</h3>
+          <h3 className="text-base font-bold text-white">{t('recipes.emptyTitle')}</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Kliknij „Dodaj przepis”, aby zapisać nazwę, zdjęcie, składniki, treść, ocenę i opcjonalne uwagi.
+            {t('recipes.emptyDesc')}
           </p>
         </div>
       ) : viewMode === 'compact' ? (
@@ -875,7 +976,7 @@ export const RecipesView: React.FC = () => {
                   <h4 className="font-extrabold text-white text-sm truncate leading-snug">{recipe.name}</h4>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[11px] text-slate-400 font-medium">
-                      {items.length} {items.length === 1 ? 'składnik' : 'składników'}
+                      {items.length} {language === 'en' ? (items.length === 1 ? 'ingredient' : 'ingredients') : (items.length === 1 ? 'składnik' : 'składników')}
                     </span>
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-amber-500/15 border border-amber-500/30 text-[10px] font-extrabold text-amber-300">
                       <Star className="w-2.5 h-2.5 fill-current" />
@@ -893,7 +994,7 @@ export const RecipesView: React.FC = () => {
                       setSharingRecipe(recipe);
                     }}
                     className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
-                    title="Udostępnij przepis"
+                    title={t('recipes.shareTitle')}
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
@@ -929,7 +1030,7 @@ export const RecipesView: React.FC = () => {
                       <LiveEditorsBadge entityType="recipe" entityId={recipe.id} className="mt-1" />
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <p className="text-[11px] text-slate-500">
-                          {items.length} {items.length === 1 ? 'składnik' : 'składników'}
+                          {items.length} {language === 'en' ? (items.length === 1 ? 'ingredient' : 'ingredients') : (items.length === 1 ? 'składnik' : 'składników')}
                         </p>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] font-bold text-amber-300">
                           <Star className="w-3 h-3 fill-current" />
@@ -946,7 +1047,7 @@ export const RecipesView: React.FC = () => {
                           setSharingRecipe(recipe);
                         }}
                         className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-xl hover:bg-slate-800 transition-colors"
-                        title="Udostępnij przepis"
+                        title={t('recipes.shareTitle')}
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
@@ -957,7 +1058,7 @@ export const RecipesView: React.FC = () => {
                     <div>
                       <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-400 mb-1.5 flex items-center gap-1.5">
                         <ListChecks className="w-3.5 h-3.5" />
-                        Składniki
+                        {t('recipes.ingredientsLabel')}
                       </div>
                       <ul className="space-y-1">
                         {items.map((item, index) => (
@@ -972,7 +1073,7 @@ export const RecipesView: React.FC = () => {
 
                   {recipe.instructions && (
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Przepis</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{t('recipes.instructionsLabel')}</div>
                       <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">{recipe.instructions}</p>
                     </div>
                   )}
@@ -988,7 +1089,7 @@ export const RecipesView: React.FC = () => {
                         className="text-[11px] font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1.5"
                       >
                         {notesVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        {notesVisible ? 'Ukryj uwagi' : 'Pokaż uwagi'}
+                        {notesVisible ? t('recipes.hideNotes') : t('recipes.showNotes')}
                       </button>
                       {notesVisible && (
                         <p className="mt-2 text-xs text-amber-100/90 whitespace-pre-line bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3">
@@ -1005,7 +1106,9 @@ export const RecipesView: React.FC = () => {
                     className="mt-auto w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-colors disabled:opacity-40"
                   >
                     {isCreatingList ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <ShoppingCart className="w-4 h-4 text-emerald-400" />}
-                    {isCreatingList ? 'Sprawdzanie składników...' : 'Utwórz listę zakupów'}
+                    {isCreatingList
+                      ? (language === 'en' ? 'Checking pantry...' : 'Sprawdzanie składników...')
+                      : t('recipes.makeShoppingList')}
                   </button>
                 </div>
               </article>
@@ -1021,7 +1124,7 @@ export const RecipesView: React.FC = () => {
           if (isSharingImage) return;
           setSharingRecipe(null);
         }}
-        title="Udostępnij przepis"
+        title={t('recipes.shareTitle')}
         maxWidth="md"
       >
         {sharingRecipe && (
@@ -1037,7 +1140,7 @@ export const RecipesView: React.FC = () => {
               <div className="min-w-0 flex-1">
                 <div className="font-extrabold text-white text-sm truncate">{sharingRecipe.name}</div>
                 <div className="text-xs text-slate-400">
-                  {parseIngredients(sharingRecipe.ingredients).length} składników • Ocena: {sharingRecipe.rating || 5}/10
+                  {parseIngredients(sharingRecipe.ingredients).length} {language === 'en' ? 'ingredients' : 'składników'} • {language === 'en' ? 'Rating' : 'Ocena'}: {sharingRecipe.rating || 5}/10
                 </div>
               </div>
             </div>
@@ -1053,8 +1156,12 @@ export const RecipesView: React.FC = () => {
                     <Share2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-white text-xs sm:text-sm">Udostępnij jako tekst</div>
-                    <div className="text-[11px] text-slate-400">Prześlij przez WhatsApp, SMS lub Messenger</div>
+                    <div className="font-bold text-white text-xs sm:text-sm">{t('recipes.shareAsText')}</div>
+                    <div className="text-[11px] text-slate-400">
+                      {language === 'en'
+                        ? 'Share via WhatsApp, SMS, or Messenger'
+                        : 'Prześlij przez WhatsApp, SMS lub Messenger'}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -1069,8 +1176,10 @@ export const RecipesView: React.FC = () => {
                     <Copy className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-white text-xs sm:text-sm">Kopiuj tekst do schowka</div>
-                    <div className="text-[11px] text-slate-400">Kopiuj sformatowaną listę i treść</div>
+                    <div className="font-bold text-white text-xs sm:text-sm">{t('recipes.shareAsText')}</div>
+                    <div className="text-[11px] text-slate-400">
+                      {language === 'en' ? 'Copy formatted recipe text to clipboard' : 'Kopiuj sformatowaną listę i treść'}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -1087,9 +1196,13 @@ export const RecipesView: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-bold text-white text-xs sm:text-sm">
-                      {isSharingImage ? 'Generowanie grafiki...' : 'Pobierz / Udostępnij jako grafikę (PNG)'}
+                      {isSharingImage ? t('recipes.generatingImage') : t('recipes.shareAsImage')}
                     </div>
-                    <div className="text-[11px] text-slate-400">Estetyczna karta przepisu ze zdjęciem i składnikami</div>
+                    <div className="text-[11px] text-slate-400">
+                      {language === 'en'
+                        ? 'High-DPI recipe card with photo and ingredients'
+                        : 'Estetyczna karta przepisu ze zdjęciem i składnikami'}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -1101,7 +1214,7 @@ export const RecipesView: React.FC = () => {
                 onClick={() => setSharingRecipe(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
               >
-                Zamknij
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -1115,7 +1228,7 @@ export const RecipesView: React.FC = () => {
           if (isImageProcessing) return;
           setIsModalOpen(false);
         }}
-        title={editingRecipe ? 'Edytuj przepis' : 'Nowy przepis'}
+        title={editingRecipe ? (language === 'en' ? 'Edit Recipe' : 'Edytuj przepis') : t('recipes.addRecipe')}
         maxWidth="lg"
         isDirty={isDirty}
         headerActions={
@@ -1126,7 +1239,7 @@ export const RecipesView: React.FC = () => {
               disabled={isImageProcessing}
               className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              Anuluj
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -1135,20 +1248,20 @@ export const RecipesView: React.FC = () => {
               className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
             >
               {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-              {editingRecipe ? 'Zapisz' : 'Utwórz'}
+              {editingRecipe ? t('common.save') : (language === 'en' ? 'Create' : 'Utwórz')}
             </button>
           </div>
         }
       >
         <form id="recipe-edit-form" onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nazwa *</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">{t('recipes.recipeNameLabel')}</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="np. Zupa pomidorowa"
+              placeholder={language === 'en' ? 'e.g. Spaghetti Bolognese' : 'np. Zupa pomidorowa'}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               autoFocus={!editingRecipe}
             />
@@ -1156,7 +1269,7 @@ export const RecipesView: React.FC = () => {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold text-slate-300">Ocena przepisu</label>
+              <label className="block text-xs font-semibold text-slate-300">{t('recipes.ratingLabel')}</label>
               <span className="text-xs font-extrabold text-emerald-400">
                 {rating}/10
               </span>
@@ -1179,7 +1292,7 @@ export const RecipesView: React.FC = () => {
                           ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
                           : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-white hover:border-slate-600'
                     }`}
-                    title={`Ocena ${value}/10`}
+                    title={`${language === 'en' ? 'Rating' : 'Ocena'} ${value}/10`}
                   >
                     {value}
                   </button>
@@ -1188,13 +1301,13 @@ export const RecipesView: React.FC = () => {
             </div>
 
             <div className="flex justify-between text-[10px] text-slate-500 px-0.5">
-              <span>Słaby</span>
-              <span>Świetny</span>
+              <span>{t('recipes.ratingPoor')}</span>
+              <span>{t('recipes.ratingGreat')}</span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">Zdjęcie przepisu</label>
+            <label className="block text-xs font-semibold text-slate-300">{t('recipes.recipePhoto')}</label>
             <input
               ref={cameraInputRef}
               type="file"
@@ -1214,13 +1327,13 @@ export const RecipesView: React.FC = () => {
             {imageUrl ? (
               <div className="space-y-2">
                 <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-950 border border-slate-700">
-                  <img src={imageUrl} alt="Podgląd zdjęcia przepisu" className="w-full h-full object-cover" />
+                  <img src={imageUrl} alt="Recipe preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={handleRemoveImage}
                     disabled={isImageProcessing}
                     className="absolute top-2 right-2 p-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-rose-400 transition-colors disabled:opacity-50"
-                    title="Usuń zdjęcie"
+                    title={t('recipes.removePhoto')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1234,7 +1347,7 @@ export const RecipesView: React.FC = () => {
                     className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
                   >
                     {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5 text-emerald-400" />}
-                    {isImageProcessing ? 'Przetwarzanie...' : 'Zrób zdjęcie'}
+                    {isImageProcessing ? (language === 'en' ? 'Processing...' : 'Przetwarzanie...') : t('recipes.takePhoto')}
                   </button>
                   <button
                     type="button"
@@ -1243,7 +1356,7 @@ export const RecipesView: React.FC = () => {
                     className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
                   >
                     <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
-                    Wybierz z galerii
+                    {t('recipes.chooseGallery')}
                   </button>
                   <button
                     type="button"
@@ -1251,7 +1364,7 @@ export const RecipesView: React.FC = () => {
                     disabled={isImageProcessing}
                     className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs disabled:opacity-50 transition-colors"
                   >
-                    Usuń
+                    {t('recipes.removePhoto')}
                   </button>
                 </div>
               </div>
@@ -1260,13 +1373,17 @@ export const RecipesView: React.FC = () => {
                 {isImageProcessing ? (
                   <div className="flex flex-col items-center gap-2 py-4">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                    <span className="text-xs font-bold text-slate-300">Przetwarzanie zdjęcia...</span>
+                    <span className="text-xs font-bold text-slate-300">
+                      {language === 'en' ? 'Processing image...' : 'Przetwarzanie zdjęcia...'}
+                    </span>
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center gap-2 text-slate-400">
                       <ImagePlus className="w-6 h-6 text-emerald-400" />
-                      <span className="text-xs font-bold text-slate-300">Dodaj zdjęcie do przepisu</span>
+                      <span className="text-xs font-bold text-slate-300">
+                        {language === 'en' ? 'Add photo to recipe' : 'Dodaj zdjęcie do przepisu'}
+                      </span>
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-sm">
                       <button
@@ -1275,7 +1392,7 @@ export const RecipesView: React.FC = () => {
                         className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Camera className="w-4 h-4 text-emerald-400" />
-                        Zrób zdjęcie
+                        {t('recipes.takePhoto')}
                       </button>
                       <button
                         type="button"
@@ -1283,22 +1400,24 @@ export const RecipesView: React.FC = () => {
                         className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <ImageIcon className="w-4 h-4 text-slate-300" />
-                        Wybierz z galerii
+                        {t('recipes.chooseGallery')}
                       </button>
                     </div>
-                    <span className="text-[10px] text-slate-500">JPG, PNG, WEBP • maks. 15 MB</span>
+                    <span className="text-[10px] text-slate-500">JPG, PNG, WEBP • max 15 MB</span>
                   </>
                 )}
               </div>
             )}
 
             <p className="text-[10px] text-slate-500">
-              Zdjęcie zostanie automatycznie zmniejszone i skompresowane przed zapisaniem.
+              {language === 'en'
+                ? 'Photo will be automatically resized and compressed before saving.'
+                : 'Zdjęcie zostanie automatycznie zmniejszone i skompresowane przed zapisaniem.'}
             </p>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">Lista składników</label>
+            <label className="block text-xs font-semibold text-slate-300">{t('recipes.ingredientsLabel')}</label>
             <div className="flex gap-2">
               <input
                 ref={ingredientInputRef}
@@ -1312,7 +1431,7 @@ export const RecipesView: React.FC = () => {
                     handleAddIngredient();
                   }
                 }}
-                placeholder="Wpisz składnik i naciśnij Enter"
+                placeholder={t('recipes.ingredientPlaceholder')}
                 className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
               />
               <button
@@ -1320,7 +1439,7 @@ export const RecipesView: React.FC = () => {
                 onClick={handleAddIngredient}
                 className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400"
               >
-                Dodaj
+                {t('recipes.addIngredientBtn')}
               </button>
             </div>
             <div className="space-y-1.5 overflow-y-auto">
@@ -1343,12 +1462,12 @@ export const RecipesView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Przepis</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">{t('recipes.instructionsLabel')}</label>
             <textarea
               rows={6}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Kroki przygotowania..."
+              placeholder={t('recipes.instructionsPlaceholder')}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
@@ -1360,14 +1479,14 @@ export const RecipesView: React.FC = () => {
               className="text-xs font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1.5"
             >
               <StickyNote className="w-3.5 h-3.5" />
-              {showNotesField ? 'Ukryj pole uwag' : 'Pokaż ukryte pole: uwagi'}
+              {showNotesField ? t('recipes.hideNotes') : t('recipes.showNotes')}
             </button>
             {showNotesField && (
               <textarea
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Prywatne uwagi, warianty, wskazówki..."
+                placeholder={t('recipes.notesPlaceholder')}
                 className="mt-2 w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-amber-500/30 text-white text-sm focus:outline-none focus:border-amber-400"
               />
             )}
@@ -1382,7 +1501,7 @@ export const RecipesView: React.FC = () => {
                 className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold text-xs flex items-center gap-1.5 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Usuń ten przepis
+                {language === 'en' ? 'Delete this recipe' : 'Usuń ten przepis'}
               </button>
             </div>
           )}
@@ -1396,22 +1515,26 @@ export const RecipesView: React.FC = () => {
           setIsShoppingChoiceOpen(false);
           setShoppingRecipe(null);
         }}
-        title="Składniki już w spiżarni"
+        title={language === 'en' ? 'Ingredients already in Pantry' : 'Składniki już w spiżarni'}
         maxWidth="md"
       >
         <div className="space-y-4">
           <div>
             <p className="text-sm text-slate-200">
-              Część składników przepisu „{shoppingRecipe?.name}” wygląda na dostępną w spiżarni.
+              {language === 'en'
+                ? `Some ingredients for "${shoppingRecipe?.name}" appear to be in your pantry.`
+                : `Część składników przepisu „${shoppingRecipe?.name}” wygląda na dostępną w spiżarni.`}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Wybierz, czy dodać na listę wszystkie składniki, czy tylko te, których nie znaleziono w spiżarni.
+              {language === 'en'
+                ? 'Choose whether to add all ingredients or only the missing ones.'
+                : 'Wybierz, czy dodać na listę wszystkie składniki, czy tylko te, których nie znaleziono w spiżarni.'}
             </p>
           </div>
 
           <div className="p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
             <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-400 mb-2">
-              Znalezione w spiżarni ({availableIngredients.length})
+              {t('recipes.ingredientsAvailable')} ({availableIngredients.length})
             </div>
             <div className="flex flex-wrap gap-1.5">
               {availableIngredients.map((ingredient, index) => (
@@ -1423,7 +1546,7 @@ export const RecipesView: React.FC = () => {
           </div>
 
           <div className="text-xs text-slate-400">
-            Brakujące składniki: <span className="font-bold text-white">{missingIngredients.length}</span>
+            {t('recipes.ingredientsMissing')}: <span className="font-bold text-white">{missingIngredients.length}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
@@ -1433,7 +1556,7 @@ export const RecipesView: React.FC = () => {
               disabled={!shoppingRecipe || shoppingRecipeId !== null || missingIngredients.length === 0}
               className="px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
             >
-              Tylko brakujące ({missingIngredients.length})
+              {language === 'en' ? `Missing only (${missingIngredients.length})` : `Tylko brakujące (${missingIngredients.length})`}
             </button>
             <button
               type="button"
@@ -1441,7 +1564,9 @@ export const RecipesView: React.FC = () => {
               disabled={!shoppingRecipe || shoppingRecipeId !== null}
               className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold disabled:opacity-40"
             >
-              Dodaj wszystkie ({shoppingRecipe ? parseIngredients(shoppingRecipe.ingredients).length : 0})
+              {language === 'en'
+                ? `Add all (${shoppingRecipe ? parseIngredients(shoppingRecipe.ingredients).length : 0})`
+                : `Dodaj wszystkie (${shoppingRecipe ? parseIngredients(shoppingRecipe.ingredients).length : 0})`}
             </button>
           </div>
 
@@ -1454,7 +1579,7 @@ export const RecipesView: React.FC = () => {
             disabled={shoppingRecipeId !== null}
             className="w-full py-2 text-xs text-slate-500 hover:text-white disabled:opacity-40"
           >
-            Anuluj
+            {t('common.cancel')}
           </button>
         </div>
       </Modal>

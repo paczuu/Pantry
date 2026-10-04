@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PantryItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { ExpiryBadge } from '../common/ExpiryBadge';
 import { api } from '../../services/api';
 import {
@@ -29,6 +30,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
 }) => {
   const { consumeItem, deleteItem, refreshPantry, expiryWarningDays } = usePantry();
   const { showToast } = useToast();
+  const { t, tCategory, language } = useLanguage();
   const [showMenu, setShowMenu] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -39,7 +41,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
       await api.updatePantryItem(item.id, { quantity: item.quantity + 1 });
       await refreshPantry();
     } catch (e: any) {
-      showToast('Błąd aktualizacji ilości.', 'error');
+      showToast(t('common.error'), 'error');
     } finally {
       setIsUpdating(false);
     }
@@ -48,7 +50,10 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   const handleDecrement = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (item.quantity <= 1) {
-      if (window.confirm(`Czy na pewno chcesz zużyć ostatnią sztukę "${item.name}"?`)) {
+      const msg = language === 'en'
+        ? `Are you sure you want to consume the last piece of "${item.name}"?`
+        : `Czy na pewno chcesz zużyć ostatnią sztukę "${item.name}"?`;
+      if (window.confirm(msg)) {
         await consumeItem(item.id, 1, false);
       }
     } else {
@@ -61,7 +66,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
     try {
       const listsRes = await api.getShoppingLists();
       if (!listsRes.lists || listsRes.lists.length === 0) {
-        showToast('Najpierw utwórz listę zakupów.', 'warning');
+        showToast(t('shopping.emptyDesc'), 'warning');
         return;
       }
       const targetList = listsRes.lists[0];
@@ -72,16 +77,24 @@ export const PantryCard: React.FC<PantryCardProps> = ({
         category: item.category,
         barcode: item.barcode || undefined,
       });
-      showToast(`Dodano "${item.name}" do listy "${targetList.name}".`, 'success');
+      showToast(
+        language === 'en'
+          ? `Added "${item.name}" to "${targetList.name}".`
+          : `Dodano "${item.name}" do listy "${targetList.name}".`,
+        'success'
+      );
       setShowMenu(false);
     } catch (e: any) {
-      showToast('Błąd dodawania do listy zakupów.', 'error');
+      showToast(t('common.error'), 'error');
     }
   };
 
   const handleDelete = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (window.confirm(`Czy na pewno chcesz całkowicie usunąć "${item.name}" ze spiżarni?`)) {
+    const msg = language === 'en'
+      ? `Are you sure you want to remove "${item.name}" from the pantry?`
+      : `Czy na pewno chcesz całkowicie usunąć "${item.name}" ze spiżarni?`;
+    if (window.confirm(msg)) {
       await deleteItem(item.id);
       setShowMenu(false);
     }
@@ -89,7 +102,10 @@ export const PantryCard: React.FC<PantryCardProps> = ({
 
   const handleWasted = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (window.confirm(`Czy oznaczyć "${item.name}" jako zmarnowane/wyrzucone?`)) {
+    const msg = language === 'en'
+      ? `Mark "${item.name}" as wasted/discarded?`
+      : `Czy oznaczyć "${item.name}" jako zmarnowane/wyrzucone?`;
+    if (window.confirm(msg)) {
       await consumeItem(item.id, item.quantity, true);
       setShowMenu(false);
     }
@@ -172,7 +188,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
 
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md">
-                <Tag className="w-3 h-3 text-slate-500" /> {item.category}
+                <Tag className="w-3 h-3 text-slate-500" /> {tCategory(item.category)}
               </span>
               <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
             </div>
@@ -186,18 +202,18 @@ export const PantryCard: React.FC<PantryCardProps> = ({
             <button
               onClick={handleDecrement}
               className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors active:scale-95"
-              title="Zmniejsz / Zużyj 1 szt."
+              title={t('pantry.consumeOne')}
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
             <span className="px-2.5 text-xs sm:text-sm font-extrabold text-white min-w-[2.8rem] text-center">
-              {item.quantity} <span className="text-[10px] text-slate-400 font-normal">szt.</span>
+              {item.quantity} <span className="text-[10px] text-slate-400 font-normal">{t('common.pcs')}</span>
             </span>
             <button
               onClick={handleIncrement}
               disabled={isUpdating}
               className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 active:scale-95"
-              title="Zwiększ o 1 szt."
+              title="+1"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -232,20 +248,20 @@ export const PantryCard: React.FC<PantryCardProps> = ({
                     onClick={handleAddToShoppingList}
                     className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
                   >
-                    <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" /> Dodaj do listy zakupów
+                    <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" /> {language === 'en' ? 'Add to shopping list' : 'Dodaj do listy zakupów'}
                   </button>
                   <button
                     onClick={handleWasted}
                     className="w-full text-left px-3.5 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Oznacz jako wyrzucone
+                    <Trash2 className="w-3.5 h-3.5" /> {language === 'en' ? 'Mark as wasted' : 'Oznacz jako wyrzucone'}
                   </button>
                   <div className="border-t border-slate-800 my-1" />
                   <button
                     onClick={handleDelete}
                     className="w-full text-left px-3.5 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Usuń ze spiżarni
+                    <Trash2 className="w-3.5 h-3.5" /> {language === 'en' ? 'Remove from pantry' : 'Usuń ze spiżarni'}
                   </button>
                 </div>
               </>
@@ -340,20 +356,20 @@ export const PantryCard: React.FC<PantryCardProps> = ({
                   onClick={handleAddToShoppingList}
                   className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
                 >
-                  <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" /> Dodaj do listy zakupów
+                  <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" /> {language === 'en' ? 'Add to shopping list' : 'Dodaj do listy zakupów'}
                 </button>
                 <button
                   onClick={handleWasted}
                   className="w-full text-left px-3.5 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Oznacz jako wyrzucone
+                  <Trash2 className="w-3.5 h-3.5" /> {language === 'en' ? 'Mark as wasted' : 'Oznacz jako wyrzucone'}
                 </button>
                 <div className="border-t border-slate-800 my-1" />
                 <button
                   onClick={handleDelete}
                   className="w-full text-left px-3.5 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Usuń ze spiżarni
+                  <Trash2 className="w-3.5 h-3.5" /> {language === 'en' ? 'Remove from pantry' : 'Usuń ze spiżarni'}
                 </button>
               </div>
             </>
@@ -365,7 +381,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
       <div className="space-y-2 mb-4">
         <div className="flex items-center gap-1 text-[11px] text-slate-400">
           <Tag className="w-3 h-3 text-slate-500" />
-          <span className="truncate">{item.category}</span>
+          <span className="truncate">{tCategory(item.category)}</span>
         </div>
         <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
       </div>
@@ -376,18 +392,18 @@ export const PantryCard: React.FC<PantryCardProps> = ({
           <button
             onClick={handleDecrement}
             className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors active:scale-95"
-            title="Zmniejsz / Zużyj 1 szt."
+            title={t('pantry.consumeOne')}
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
           <span className="px-3 text-sm font-extrabold text-white min-w-[3rem] text-center">
-            {item.quantity} <span className="text-[10px] text-slate-400 font-normal">szt.</span>
+            {item.quantity} <span className="text-[10px] text-slate-400 font-normal">{t('common.pcs')}</span>
           </span>
           <button
             onClick={handleIncrement}
             disabled={isUpdating}
             className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
-            title="Zwiększ o 1 szt."
+            title="+1"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -399,10 +415,10 @@ export const PantryCard: React.FC<PantryCardProps> = ({
             consumeItem(item.id, 1, false);
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all active:scale-95"
-          title="Szybkie zużycie 1 sztuki"
+          title={t('pantry.consumeOne')}
         >
           <Utensils className="w-3.5 h-3.5" />
-          Zużyj
+          {language === 'en' ? 'Consume' : 'Zużyj'}
         </button>
       </div>
     </div>

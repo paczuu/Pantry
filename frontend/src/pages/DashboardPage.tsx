@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePantry } from '../contexts/PantryContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { PantryCard } from '../components/pantry/PantryCard';
 import { PantryItem } from '../types';
 import {
@@ -9,9 +10,6 @@ import {
   PackageOpen,
   QrCode,
   Plus,
-  ShoppingCart,
-  BookOpen,
-  ChefHat,
   ArrowRight,
   MinusCircle,
 } from 'lucide-react';
@@ -30,13 +28,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   setActiveTab,
 }) => {
   const { items, stats, setFilter, expiryWarningDays } = usePantry();
+  const { t, language } = useLanguage();
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const warningUntil = new Date(today);
   warningUntil.setDate(warningUntil.getDate() + expiryWarningDays);
 
-  // Filtruj produkty wymagające uwagi (przeterminowane lub wygasające w 3 dni)
+  // Filtruj produkty wymagające uwagi (przeterminowane lub wygasające w zadanym okresie)
   const urgentItems = items.filter((item) => {
     if (!item.expiryDate) return false;
     const exp = new Date(item.expiryDate);
@@ -50,11 +49,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Szybki Pasek Akcji (Bez kafelka powitalnego) */}
+      {/* Szybki Pasek Akcji */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-900/80 border border-slate-800 rounded-3xl shadow-xl">
         <div className="flex items-center gap-2">
           <Boxes className="w-5 h-5 text-emerald-400" />
-          <span className="font-extrabold text-white text-base">Pulpit Spiżarni</span>
+          <span className="font-extrabold text-white text-base">
+            {t('nav.dashboard')}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -63,7 +64,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-950/50 transition-all"
           >
             <QrCode className="w-4 h-4" />
-            Skanuj
+            {t('dashboard.scanBarcode')}
           </button>
 
           <button
@@ -71,7 +72,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 active:scale-95 font-bold text-xs sm:text-sm transition-all"
           >
             <MinusCircle className="w-4 h-4" />
-            Zużyj
+            {t('scanner.consumedBtn')}
           </button>
 
           <button
@@ -79,7 +80,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 font-semibold text-xs sm:text-sm transition-all"
           >
             <Plus className="w-4 h-4" />
-            Dodaj bez kodu
+            {t('dashboard.addManual')}
           </button>
         </div>
       </div>
@@ -92,7 +93,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           className="p-4 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:scale-[1.02] shadow-lg group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Wszystkie produkty</span>
+            <span className="text-xs font-semibold text-slate-400">{t('dashboard.totalItems')}</span>
             <div className="p-2 rounded-xl bg-slate-800 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
               <Boxes className="w-4 h-4" />
             </div>
@@ -100,7 +101,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-2xl font-extrabold text-white mt-2">
             {stats?.totalActive || 0}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">w spiżarni</div>
+          <div className="text-[11px] text-slate-500 mt-1">
+            {language === 'en' ? 'in pantry' : 'w spiżarni'}
+          </div>
         </div>
 
         {/* Wkrótce po terminie */}
@@ -109,7 +112,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           className="p-4 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:scale-[1.02] shadow-lg group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-400">Kończy się termin</span>
+            <span className="text-xs font-semibold text-amber-400">{t('dashboard.expiringSoon')}</span>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
               <Clock className="w-4 h-4" />
             </div>
@@ -117,7 +120,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-2xl font-extrabold text-amber-300 mt-2">
             {stats?.expiring3DaysCount || 0}
           </div>
-          <div className="text-[11px] text-amber-400/80 mt-1">w ciągu {expiryWarningDays} {expiryWarningDays === 1 ? 'dnia' : 'dni'}</div>
+          <div className="text-[11px] text-amber-400/80 mt-1">
+            {language === 'en'
+              ? `within ${expiryWarningDays} ${expiryWarningDays === 1 ? 'day' : 'days'}`
+              : `w ciągu ${expiryWarningDays} ${expiryWarningDays === 1 ? 'dnia' : 'dni'}`}
+          </div>
         </div>
 
         {/* Przeterminowane */}
@@ -126,7 +133,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           className="p-4 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:scale-[1.02] shadow-lg group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-400">Przeterminowane</span>
+            <span className="text-xs font-semibold text-rose-400">{t('dashboard.expired')}</span>
             <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-colors">
               <AlertCircle className="w-4 h-4" />
             </div>
@@ -134,7 +141,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-2xl font-extrabold text-rose-400 mt-2">
             {stats?.expiredCount || 0}
           </div>
-          <div className="text-[11px] text-rose-400/80 mt-1">wymagają weryfikacji</div>
+          <div className="text-[11px] text-rose-400/80 mt-1">
+            {language === 'en' ? 'need review' : 'wymagają weryfikacji'}
+          </div>
         </div>
 
         {/* Otwarte */}
@@ -143,7 +152,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           className="p-4 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:scale-[1.02] shadow-lg group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-cyan-400">Otwarte opakowania</span>
+            <span className="text-xs font-semibold text-cyan-400">
+              {language === 'en' ? 'Opened Items' : 'Otwarte opakowania'}
+            </span>
             <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-colors">
               <PackageOpen className="w-4 h-4" />
             </div>
@@ -151,7 +162,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="text-2xl font-extrabold text-cyan-300 mt-2">
             {stats?.openedCount || 0}
           </div>
-          <div className="text-[11px] text-cyan-400/80 mt-1">otwarte artykuły</div>
+          <div className="text-[11px] text-cyan-400/80 mt-1">
+            {language === 'en' ? 'opened articles' : 'otwarte artykuły'}
+          </div>
         </div>
       </div>
 
@@ -159,7 +172,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-lg text-white">Zużyj w pierwszej kolejności</h3>
+            <h3 className="font-bold text-lg text-white">
+              {t('dashboard.expiringProductsTitle')}
+            </h3>
             {urgentItems.length > 0 && (
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 {urgentItems.length}
@@ -171,15 +186,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             onClick={() => { setFilter('filterByExpiry', 'expiring_3_days'); setActiveTab('pantry'); }}
             className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-1"
           >
-            Wszystkie produkty <ArrowRight className="w-3.5 h-3.5" />
+            {t('dashboard.viewAllPantry')} <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {urgentItems.length === 0 ? (
           <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-1">
-            <div className="text-emerald-400 font-bold text-sm">Wszystko świeże! 🥑</div>
+            <div className="text-emerald-400 font-bold text-sm">
+              {t('dashboard.noExpiringProducts')} 🥑
+            </div>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Żaden z produktów w Twojej spiżarni nie przekracza terminu ważności w najbliższych {expiryWarningDays} {expiryWarningDays === 1 ? 'dniu' : 'dniach'}.
+              {language === 'en'
+                ? `No items in your pantry expire within the next ${expiryWarningDays} ${expiryWarningDays === 1 ? 'day' : 'days'}.`
+                : `Żaden z produktów w Twojej spiżarni nie przekracza terminu ważności w najbliższych ${expiryWarningDays} ${expiryWarningDays === 1 ? 'dniu' : 'dniach'}.`}
             </p>
           </div>
         ) : (

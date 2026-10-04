@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePantry } from '../contexts/PantryContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { PantryCard } from '../components/pantry/PantryCard';
 import { PantryFilter } from '../components/pantry/PantryFilter';
 import { PantryItem } from '../types';
@@ -17,6 +18,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
   onEditItem,
 }) => {
   const { items, isLoading } = usePantry();
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   return (
@@ -26,10 +28,10 @@ export const PantryPage: React.FC<PantryPageProps> = ({
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Boxes className="w-6 h-6 text-emerald-400" />
-            Stan Spiżarni & Magazyn
+            {t('pantry.title')}
           </h2>
           <p className="text-xs text-slate-400">
-            Przeglądaj, filtruj i kontroluj stan zapasów w swojej kuchni
+            {t('pantry.searchPlaceholder')}
           </p>
         </div>
 
@@ -40,14 +42,14 @@ export const PantryPage: React.FC<PantryPageProps> = ({
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all"
           >
             <QrCode className="w-4 h-4" />
-            Skanuj EAN
+            {t('pantry.scanProduct')}
           </button>
           <button
             onClick={onOpenAddManual}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs transition-all"
           >
             <Plus className="w-4 h-4" />
-            Dodaj produkt
+            {t('pantry.addProduct')}
           </button>
         </div>
       </div>
@@ -62,7 +64,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
       {/* Lista / Siatka Produktów */}
       {isLoading ? (
         <div className="py-20 text-center text-slate-400 text-sm">
-          Ładowanie produktów ze spiżarni...
+          {t('common.loading')}
         </div>
       ) : items.length === 0 ? (
         <div className="py-20 text-center bg-slate-900/40 rounded-3xl border border-slate-800 p-6 space-y-4">
@@ -70,9 +72,11 @@ export const PantryPage: React.FC<PantryPageProps> = ({
             <PackageOpen className="w-8 h-8 text-emerald-400" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-white">Brak produktów dla wybranych kryteriów</h3>
+            <h3 className="text-base font-bold text-white">
+              {t('pantry.emptyFilterTitle')}
+            </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Zmień filtry lub dodaj nowe produkty, skanując ich kody kreskowe kamerą.
+              {t('pantry.emptyFilterDesc')}
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">
@@ -80,13 +84,13 @@ export const PantryPage: React.FC<PantryPageProps> = ({
               onClick={() => onOpenScanner('ADD')}
               className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg"
             >
-              Zeskanuj kod EAN
+              {t('pantry.scanProduct')}
             </button>
             <button
               onClick={onOpenAddManual}
               className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all"
             >
-              Wpisz ręcznie bez kodu
+              {t('pantry.addProduct')}
             </button>
           </div>
         </div>

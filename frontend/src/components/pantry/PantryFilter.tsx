@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePantry } from '../../contexts/PantryContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   Search,
   LayoutGrid,
@@ -24,6 +25,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
   onOpenScannerSearch,
 }) => {
   const { filters, setFilter, resetFilters, categories, stats, expiryWarningDays } = usePantry();
+  const { t, tCategory, language } = useLanguage();
 
   return (
     <div className="space-y-3.5 mb-6">
@@ -36,7 +38,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             type="text"
             value={filters.search}
             onChange={(e) => setFilter('search', e.target.value)}
-            placeholder="Szukaj produktu, producenta, kodu EAN..."
+            placeholder={t('pantry.searchPlaceholder')}
             className="w-full pl-10 pr-24 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -46,7 +48,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
                 onClick={() => setFilter('search', '')}
                 className="px-1.5 py-0.5 text-xs text-slate-400 hover:text-white"
               >
-                Wyczyść
+                {t('common.clear')}
               </button>
             )}
             {onOpenScannerSearch && (
@@ -54,10 +56,10 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
                 type="button"
                 onClick={onOpenScannerSearch}
                 className="p-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 px-2 text-[11px] font-bold"
-                title="Skanuj kod EAN do wyszukiwania"
+                title={t('scanner.instructionSearch')}
               >
                 <ScanBarcode className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Skanuj EAN</span>
+                <span className="hidden sm:inline">{t('pantry.scanProduct')}</span>
               </button>
             )}
           </div>
@@ -72,11 +74,12 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               onChange={(e) => setFilter('sortBy', e.target.value)}
               className="w-full sm:w-auto pl-8 pr-8 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs font-medium focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
             >
-              <option value="expiry_asc">Termin: najkrótszy najpierw</option>
-              <option value="expiry_desc">Termin: najdłuższy najpierw</option>
-              <option value="name_asc">Nazwa: A - Z</option>
-              <option value="quantity_desc">Ilość: malejąco</option>
-              <option value="created_desc">Ostatnio dodane</option>
+              <option value="expiry_asc">{t('pantry.sortExpiryAsc')}</option>
+              <option value="expiry_desc">{t('pantry.sortExpiryDesc')}</option>
+              <option value="name_asc">{t('pantry.sortNameAsc')}</option>
+              <option value="name_desc">{t('pantry.sortNameDesc')}</option>
+              <option value="quantity_desc">{t('pantry.sortQuantityDesc')}</option>
+              <option value="created_desc">{t('pantry.sortNewest')}</option>
             </select>
           </div>
 
@@ -87,7 +90,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               className={`p-2 rounded-xl transition-colors ${
                 viewMode === 'grid' ? 'bg-slate-800 text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Widok siatki"
+              title="Grid view"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -97,7 +100,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               className={`p-2 rounded-xl transition-colors ${
                 viewMode === 'list' ? 'bg-slate-800 text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Widok listy"
+              title="List view"
             >
               <List className="w-4 h-4" />
             </button>
@@ -117,7 +120,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
                 : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
             }`}
           >
-            Wszystkie ({stats?.totalActive || 0})
+            {t('common.all')} ({stats?.totalActive || 0})
           </button>
 
           <button
@@ -129,7 +132,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             }`}
           >
             <Clock className="w-3.5 h-3.5 text-amber-400" />
-            Wkrótce ({expiryWarningDays} {expiryWarningDays === 1 ? 'dzień' : 'dni'}) ({stats?.expiring3DaysCount || 0})
+            {t('dashboard.expiringSoon')} ({expiryWarningDays} {language === 'en' ? (expiryWarningDays === 1 ? 'd' : 'd') : (expiryWarningDays === 1 ? 'dzień' : 'dni')}) ({stats?.expiring3DaysCount || 0})
           </button>
 
           <button
@@ -141,7 +144,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             }`}
           >
             <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-            Przeterminowane ({stats?.expiredCount || 0})
+            {t('dashboard.expired')} ({stats?.expiredCount || 0})
           </button>
 
           <button
@@ -153,7 +156,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             }`}
           >
             <PackageOpen className="w-3.5 h-3.5 text-cyan-400" />
-            Otwarte ({stats?.openedCount || 0})
+            {language === 'en' ? 'Opened' : 'Otwarte'} ({stats?.openedCount || 0})
           </button>
         </div>
 
@@ -165,10 +168,10 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               onChange={(e) => setFilter('category', e.target.value)}
               className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
             >
-              <option value="ALL">Wszystkie kategorie</option>
+              <option value="ALL">{t('pantry.categoryAll')}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.name}>
-                  {c.name}
+                  {tCategory(c.name)}
                 </option>
               ))}
             </select>
@@ -180,7 +183,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             <button
               onClick={resetFilters}
               className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-              title="Resetuj wszystkie filtry"
+              title={t('pantry.resetFilters')}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>

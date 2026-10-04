@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import { ToastProvider } from './contexts/ToastContext';
+import { LanguageProvider } from './i18n/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { PantryProvider } from './contexts/PantryContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
@@ -12,14 +13,16 @@ registerSW({ immediate: true });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ToastProvider>
-      <AuthProvider>
-        <PantryProvider>
-          <RealtimeProvider>
-            <App />
-          </RealtimeProvider>
-        </PantryProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <LanguageProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <PantryProvider>
+            <RealtimeProvider>
+              <App />
+            </RealtimeProvider>
+          </PantryProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </LanguageProvider>
   </React.StrictMode>
 );

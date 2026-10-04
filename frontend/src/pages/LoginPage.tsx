@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { UserPlus, LogIn } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login, register } = useAuth();
+  const { t, language } = useLanguage();
 
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
@@ -50,7 +52,9 @@ export const LoginPage: React.FC = () => {
           Pantry
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
-            Inteligentne zarządzanie zapasami w kuchni, skaner kodów EAN i wspólne listy zakupów.
+            {language === 'en'
+              ? 'Smart kitchen inventory management, barcode scanner, and shared grocery lists.'
+              : 'Inteligentne zarządzanie zapasami w kuchni, skaner kodów EAN i wspólne listy zakupów.'}
           </p>
         </div>
 
@@ -65,7 +69,7 @@ export const LoginPage: React.FC = () => {
                 !isRegister ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Logowanie
+              {language === 'en' ? 'Log in' : 'Logowanie'}
             </button>
             <button
               type="button"
@@ -74,39 +78,39 @@ export const LoginPage: React.FC = () => {
                 isRegister ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Rejestracja
+              {language === 'en' ? 'Register' : 'Rejestracja'}
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
             {isRegister && (
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Twoje Imię *</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.nameLabel')} *</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="np. Anna, Jan"
+                  placeholder={language === 'en' ? 'e.g. John, Alex' : 'np. Anna, Jan'}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Adres Email *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.emailLabel')} *</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="twoj@email.pl"
+                placeholder={language === 'en' ? 'your@email.com' : 'twoj@email.pl'}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Hasło *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.passwordLabel')} *</label>
               <input
                 type="password"
                 required
@@ -121,7 +125,7 @@ export const LoginPage: React.FC = () => {
             {isRegister && (
               <div className="pt-2 border-t border-slate-800 space-y-2">
                 <label className="block text-[11px] text-slate-400 mb-1">
-                  Kod zaproszenia do gospodarstwa
+                  {language === 'en' ? 'Household invite code' : 'Kod zaproszenia do gospodarstwa'}
                 </label>
                 <input
                   type="text"
@@ -129,11 +133,13 @@ export const LoginPage: React.FC = () => {
                   maxLength={6}
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  placeholder="np. AB12CD"
+                  placeholder={language === 'en' ? 'e.g. AB12CD' : 'np. AB12CD'}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-emerald-500"
                 />
                 <p className="text-[10px] text-slate-500">
-                  Rejestracja wymaga podania aktywnego kodu zaproszenia.
+                  {language === 'en'
+                    ? 'Registration requires providing an active 6-digit household invite code.'
+                    : 'Rejestracja wymaga podania aktywnego kodu zaproszenia.'}
                 </p>
               </div>
             )}
@@ -144,7 +150,11 @@ export const LoginPage: React.FC = () => {
               className="w-full py-3 mt-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isRegister ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-              {isLoading ? 'Przetwarzanie...' : isRegister ? 'Zarejestruj konto' : 'Zaloguj się'}
+              {isLoading
+                ? (language === 'en' ? 'Processing...' : 'Przetwarzanie...')
+                : isRegister
+                ? t('auth.registerBtn')
+                : t('auth.loginBtn')}
             </button>
           </form>
         </div>

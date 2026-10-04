@@ -10,6 +10,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { NavItemConfig } from '../../types';
 import {
   NAV_CONFIG_UPDATED_EVENT,
@@ -39,6 +40,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenScanner,
 }) => {
   const { isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() => loadNavConfig());
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       <div className="max-w-xl mx-auto px-2 flex items-center justify-around h-16">
         {visibleItems.map((item) => {
           const Icon = ICONS_MAP[item.id] || LayoutDashboard;
+          const displayLabel = t(`nav.${item.id}`) || item.label;
 
           if (item.id === 'scan-action') {
             return (
@@ -74,7 +77,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-400 hover:text-emerald-400 transition-colors"
               >
                 <Icon className="w-5 h-5 mb-0.5" />
-                <span className="text-[10px] tracking-tight font-medium">{item.label}</span>
+                <span className="text-[10px] tracking-tight font-medium">{displayLabel}</span>
               </button>
             );
           }
@@ -90,7 +93,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               }`}
             >
               <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'scale-110 text-emerald-400' : ''} transition-transform`} />
-              <span className="text-[10px] tracking-tight">{item.label}</span>
+              <span className="text-[10px] tracking-tight">{displayLabel}</span>
               {isActive && (
                 <span className="w-1 h-1 bg-emerald-400 rounded-full mt-0.5 animate-fade-in" />
               )}
