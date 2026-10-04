@@ -20,7 +20,7 @@ export const getPantryItems = async (
       status = 'ACTIVE',
       search,
       filterByExpiry,
-      sortBy = 'expiry_asc',
+      sortBy = 'name_asc',
     } = req.query;
 
     const where: any = { householdId };

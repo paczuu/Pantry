@@ -33,7 +33,7 @@ const defaultFilters: FilterState = {
   category: 'ALL',
   search: '',
   filterByExpiry: 'ALL',
-  sortBy: 'expiry_asc',
+  sortBy: 'name_asc',
 };
 
 const PantryContext = createContext<PantryContextType | undefined>(undefined);

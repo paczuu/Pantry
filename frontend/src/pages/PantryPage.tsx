@@ -37,7 +37,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
   const { t, tCategory } = useLanguage();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [groupBy, setGroupBy] = useState<GroupBy>('status');
+  const [groupBy, setGroupBy] = useState<GroupBy>('category');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Sumy globalne ze stats (niezależne od aktywnych filtrów)
