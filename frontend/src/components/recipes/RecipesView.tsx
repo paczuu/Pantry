@@ -17,6 +17,8 @@ import {
   ListChecks,
   StickyNote,
   ImagePlus,
+  Camera,
+  Image as ImageIcon,
   Loader2,
   Star,
   ShoppingCart,
@@ -136,45 +138,96 @@ const compressRecipeImage = async (file: File): Promise<string> => {
   return result;
 };
 
-// Funkcja generowania karty przepisu jako obrazu PNG
+// Funkcja generowania wysokiej jakości karty przepisu jako obrazu PNG (High-DPI)
 const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> => {
   const canvas = document.createElement('canvas');
-  const width = 800;
-  const padding = 36;
   const ctx = canvas.getContext('2d')!;
 
+  const width = 1200;
+  const padding = 60;
+  const contentWidth = width - padding * 2;
+
   const items = parseIngredients(recipe.ingredients);
-  let estimatedHeight = 220 + items.length * 28 + 120;
-  if (recipe.instructions) {
-    const lines = Math.ceil(recipe.instructions.length / 55);
-    estimatedHeight += lines * 26 + 60;
+
+  // Funkcja pomocnicza do łamania wierszy tekstu
+  const wrapText = (text: string, font: string, maxWidth: number): string[] => {
+    ctx.font = font;
+    const lines: string[] = [];
+    const paragraphs = text.split('\n');
+
+    for (const para of paragraphs) {
+      if (!para.trim()) {
+        lines.push('');
+        continue;
+      }
+      const words = para.split(' ');
+      let curLine = '';
+      for (const word of words) {
+        const testLine = curLine ? `${curLine} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxWidth) {
+          if (curLine) lines.push(curLine);
+          curLine = word;
+        } else {
+          curLine = testLine;
+        }
+      }
+      if (curLine) lines.push(curLine);
+    }
+    return lines;
+  };
+
+  const instructionLines = recipe.instructions
+    ? wrapText(recipe.instructions, '24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', contentWidth - 40)
+    : [];
+
+  const notesLines = recipe.notes
+    ? wrapText(recipe.notes, '22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', contentWidth - 60)
+    : [];
+
+  // Obliczanie dynamicznej wysokości całego obrazu
+  let totalHeight = padding * 2;
+  const heroImageHeight = recipe.imageUrl ? 520 : 0;
+  if (heroImageHeight) totalHeight += heroImageHeight + 40;
+
+  totalHeight += 70; // Tytuł
+  totalHeight += 50; // Ocena i liczba składników
+  totalHeight += 40; // Separator
+
+  if (items.length > 0) {
+    totalHeight += 60; // Nagłówek składników
+    totalHeight += items.length * 38 + 30;
   }
-  if (recipe.notes) {
-    estimatedHeight += 80;
+
+  if (instructionLines.length > 0) {
+    totalHeight += 60; // Nagłówek instrukcji
+    totalHeight += instructionLines.length * 36 + 30;
   }
-  if (recipe.imageUrl) {
-    estimatedHeight += 340;
+
+  if (notesLines.length > 0) {
+    totalHeight += 60; // Nagłówek uwag
+    totalHeight += notesLines.length * 34 + 60; // Ramka uwag
   }
-  estimatedHeight = Math.max(550, Math.min(2000, estimatedHeight));
+
+  totalHeight += 70; // Stopka
 
   canvas.width = width;
-  canvas.height = estimatedHeight;
+  canvas.height = totalHeight;
 
   // Tło gradientowe
-  const gradient = ctx.createLinearGradient(0, 0, width, estimatedHeight);
-  gradient.addColorStop(0, '#020617');
-  gradient.addColorStop(1, '#0f172a');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, estimatedHeight);
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, totalHeight);
+  bgGrad.addColorStop(0, '#090d16');
+  bgGrad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, totalHeight);
 
-  // Ramka
+  // Zewnętrzna subtelna ramka
   ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(8, 8, width - 16, estimatedHeight - 16);
+  ctx.lineWidth = 3;
+  ctx.strokeRect(10, 10, width - 20, totalHeight - 20);
 
-  let curY = padding + 15;
+  let curY = padding;
 
-  // Rysowanie zdjęcia jeśli istnieje
+  // Rysowanie zdjęcia z zachowaniem proporcji i centrowaniem (object-fit: cover)
   if (recipe.imageUrl) {
     try {
       const img = new Image();
@@ -184,79 +237,124 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras): Promise<Blob> 
         img.onerror = res;
         img.src = recipe.imageUrl!;
       });
-      if (img.width > 0) {
-        const imgH = 300;
+
+      if (img.width > 0 && img.height > 0) {
+        const imgW = img.naturalWidth || img.width;
+        const imgH = img.naturalHeight || img.height;
+        const targetH = 520;
+        const scale = Math.max(contentWidth / imgW, targetH / imgH);
+        const sWidth = contentWidth / scale;
+        const sHeight = targetH / scale;
+        const sx = (imgW - sWidth) / 2;
+        const sy = (imgH - sHeight) / 2;
+
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(padding, curY, width - padding * 2, imgH, 16);
+        ctx.roundRect(padding, curY, contentWidth, targetH, 24);
         ctx.clip();
-        ctx.drawImage(img, padding, curY, width - padding * 2, imgH);
+        ctx.drawImage(img, sx, sy, sWidth, sHeight, padding, curY, contentWidth, targetH);
         ctx.restore();
-        curY += imgH + 25;
+
+        // Obramowanie zdjęcia
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(padding, curY, contentWidth, targetH, 24);
+        ctx.stroke();
+
+        curY += targetH + 40;
       }
-    } catch {}
+    } catch (e) {}
   }
 
-  // Tytuł
+  // Tytuł przepisu
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 28px Inter, system-ui, sans-serif';
-  ctx.fillText(recipe.name, padding, curY);
-  curY += 34;
+  ctx.font = 'bold 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText(recipe.name, padding, curY + 36);
+  curY += 60;
 
   // Ocena i Liczba składników
   ctx.fillStyle = '#10b981';
-  ctx.font = 'bold 16px Inter, system-ui, sans-serif';
-  ctx.fillText(`★ Ocena: ${recipe.rating || 5}/10   •   Składniki: ${items.length}`, padding, curY);
-  curY += 34;
+  ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  const ratingText = `★ Ocena: ${recipe.rating || 5}/10`;
+  const countText = `Składniki: ${items.length}`;
+  ctx.fillText(`${ratingText}   •   ${countText}`, padding, curY + 20);
+  curY += 45;
+
+  // Separator
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(padding, curY);
+  ctx.lineTo(width - padding, curY);
+  ctx.stroke();
+  curY += 35;
 
   // Składniki
   if (items.length > 0) {
     ctx.fillStyle = '#34d399';
-    ctx.font = 'bold 17px Inter, system-ui, sans-serif';
-    ctx.fillText('SKŁADNIKI:', padding, curY);
-    curY += 26;
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '15px Inter, system-ui, sans-serif';
-    for (const ing of items) {
-      if (curY > estimatedHeight - 140) break;
-      ctx.fillText(`• ${ing}`, padding + 8, curY);
-      curY += 24;
-    }
-    curY += 15;
-  }
-
-  // Instrukcje
-  if (recipe.instructions && curY < estimatedHeight - 100) {
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 17px Inter, system-ui, sans-serif';
-    ctx.fillText('PRZEPIS:', padding, curY);
-    curY += 26;
+    ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('📋 SKŁADNIKI', padding, curY + 24);
+    curY += 45;
 
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = '15px Inter, system-ui, sans-serif';
-    const words = recipe.instructions.split(' ');
-    let currentLine = '';
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      if (ctx.measureText(testLine).width > width - padding * 2 - 20) {
-        ctx.fillText(currentLine, padding + 8, curY);
-        curY += 24;
-        currentLine = word;
-        if (curY > estimatedHeight - 60) break;
-      } else {
-        currentLine = testLine;
-      }
+    ctx.font = '24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    for (const item of items) {
+      ctx.fillStyle = '#10b981';
+      ctx.fillText('•', padding + 8, curY + 20);
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fillText(item, padding + 36, curY + 20);
+      curY += 38;
     }
-    if (currentLine && curY <= estimatedHeight - 50) {
-      ctx.fillText(currentLine, padding + 8, curY);
+    curY += 20;
+  }
+
+  // Sposób przygotowania
+  if (instructionLines.length > 0) {
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('👨‍🍳 SPOSÓB PRZYGOTOWANIA', padding, curY + 24);
+    curY += 45;
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    for (const line of instructionLines) {
+      ctx.fillText(line, padding + 8, curY + 20);
+      curY += 36;
     }
+    curY += 20;
+  }
+
+  // Uwagi
+  if (notesLines.length > 0) {
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('💡 UWAGI I WSKAZÓWKI', padding, curY + 22);
+    curY += 38;
+
+    const boxH = notesLines.length * 34 + 30;
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.1)';
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(padding, curY, contentWidth, boxH, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#fef3c7';
+    ctx.font = '22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    let noteY = curY + 30;
+    for (const line of notesLines) {
+      ctx.fillText(line, padding + 20, noteY);
+      noteY += 34;
+    }
+    curY += boxH + 25;
   }
 
   // Stopka
   ctx.fillStyle = '#64748b';
-  ctx.font = '13px Inter, system-ui, sans-serif';
-  ctx.fillText('Pantry • Przepis', padding, estimatedHeight - 18);
+  ctx.font = '20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText('Aplikacja Pantry • Twoja domowa spiżarnia & przepisy', padding, totalHeight - 25);
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob || new Blob()), 'image/png');
@@ -299,6 +397,31 @@ export const RecipesView: React.FC = () => {
   const [rating, setRating] = useState(5);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
 
+  // Snapshot do śledzenia isDirty
+  const [initialSnapshot, setInitialSnapshot] = useState<{
+    name: string;
+    instructions: string;
+    ingredients: string;
+    notes: string;
+    imageUrl: string | null;
+    rating: number;
+  }>({
+    name: '',
+    instructions: '',
+    ingredients: '[]',
+    notes: '',
+    imageUrl: null,
+    rating: 5,
+  });
+
+  const isDirty =
+    name !== initialSnapshot.name ||
+    instructions !== initialSnapshot.instructions ||
+    JSON.stringify(ingredients) !== initialSnapshot.ingredients ||
+    notes !== initialSnapshot.notes ||
+    imageUrl !== initialSnapshot.imageUrl ||
+    rating !== initialSnapshot.rating;
+
   // Udostępnianie
   const [sharingRecipe, setSharingRecipe] = useState<RecipeWithExtras | null>(null);
   const [isSharingImage, setIsSharingImage] = useState(false);
@@ -311,7 +434,8 @@ export const RecipesView: React.FC = () => {
   const [isShoppingChoiceOpen, setIsShoppingChoiceOpen] = useState(false);
 
   const ingredientInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const fetchRecipes = async () => {
     setIsLoading(true);
@@ -343,7 +467,16 @@ export const RecipesView: React.FC = () => {
     setImageUrl(null);
     setRating(5);
     setIsImageProcessing(false);
-    if (imageInputRef.current) imageInputRef.current.value = '';
+    setInitialSnapshot({
+      name: '',
+      instructions: '',
+      ingredients: '[]',
+      notes: '',
+      imageUrl: null,
+      rating: 5,
+    });
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const handleOpenAdd = () => {
@@ -352,17 +485,27 @@ export const RecipesView: React.FC = () => {
   };
 
   const handleOpenEdit = (recipe: RecipeWithExtras) => {
+    const ings = parseIngredients(recipe.ingredients);
     setEditingRecipe(recipe);
     setName(recipe.name);
     setInstructions(recipe.instructions || '');
-    setIngredients(parseIngredients(recipe.ingredients));
+    setIngredients(ings);
     setNewIngredient('');
     setNotes(recipe.notes || '');
     setShowNotesField(Boolean(recipe.notes));
     setImageUrl(recipe.imageUrl || null);
     setRating(recipe.rating || 5);
     setIsImageProcessing(false);
-    if (imageInputRef.current) imageInputRef.current.value = '';
+    setInitialSnapshot({
+      name: recipe.name,
+      instructions: recipe.instructions || '',
+      ingredients: JSON.stringify(ings),
+      notes: recipe.notes || '',
+      imageUrl: recipe.imageUrl || null,
+      rating: recipe.rating || 5,
+    });
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
     setIsModalOpen(true);
   };
 
@@ -386,13 +529,15 @@ export const RecipesView: React.FC = () => {
       showToast(error?.message || 'Nie udało się przygotować zdjęcia.', 'error');
     } finally {
       setIsImageProcessing(false);
-      if (imageInputRef.current) imageInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
     }
   };
 
   const handleRemoveImage = () => {
     setImageUrl(null);
-    if (imageInputRef.current) imageInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -430,13 +575,15 @@ export const RecipesView: React.FC = () => {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!window.confirm('Czy na pewno chcesz usunąć ten przepis?')) return;
+  const handleDeleteInModal = async () => {
+    if (!editingRecipe) return;
+    if (!window.confirm(`Czy na pewno chcesz usunąć przepis „${editingRecipe.name}”?`)) return;
     try {
-      await api.deleteRecipe(id);
+      await api.deleteRecipe(editingRecipe.id);
       showToast('Przepis usunięty.', 'info');
-      setRecipes((prev) => prev.filter((recipe) => recipe.id !== id));
+      setRecipes((prev) => prev.filter((r) => r.id !== editingRecipe.id));
+      setIsModalOpen(false);
+      resetForm();
     } catch {
       showToast('Błąd usuwania przepisu.', 'error');
     }
@@ -737,7 +884,7 @@ export const RecipesView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Akcje: Udostępnij & Usuń */}
+                {/* Akcje: Udostępnij */}
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
@@ -749,14 +896,6 @@ export const RecipesView: React.FC = () => {
                     title="Udostępnij przepis"
                   >
                     <Share2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleDelete(e, recipe.id)}
-                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
-                    title="Usuń"
-                  >
-                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -810,14 +949,6 @@ export const RecipesView: React.FC = () => {
                         title="Udostępnij przepis"
                       >
                         <Share2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDelete(e, recipe.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-slate-800 transition-colors"
-                        title="Usuń"
-                      >
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -986,8 +1117,30 @@ export const RecipesView: React.FC = () => {
         }}
         title={editingRecipe ? 'Edytuj przepis' : 'Nowy przepis'}
         maxWidth="lg"
+        isDirty={isDirty}
+        headerActions={
+          <div className="flex items-center gap-2 mr-1">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              disabled={isImageProcessing}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-40"
+            >
+              Anuluj
+            </button>
+            <button
+              type="submit"
+              form="recipe-edit-form"
+              disabled={isImageProcessing}
+              className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+              {editingRecipe ? 'Zapisz' : 'Utwórz'}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSave} className="space-y-4">
+        <form id="recipe-edit-form" onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Nazwa *</label>
             <input
@@ -997,7 +1150,7 @@ export const RecipesView: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               placeholder="np. Zupa pomidorowa"
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-              autoFocus
+              autoFocus={!editingRecipe}
             />
           </div>
 
@@ -1042,7 +1195,21 @@ export const RecipesView: React.FC = () => {
 
           <div className="space-y-2">
             <label className="block text-xs font-semibold text-slate-300">Zdjęcie przepisu</label>
-            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
 
             {imageUrl ? (
               <div className="space-y-2">
@@ -1059,46 +1226,70 @@ export const RecipesView: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => imageInputRef.current?.click()}
+                    onClick={() => cameraInputRef.current?.click()}
                     disabled={isImageProcessing}
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
                   >
-                    {isImageProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4 text-emerald-400" />}
-                    {isImageProcessing ? 'Przetwarzanie...' : 'Zmień zdjęcie'}
+                    {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5 text-emerald-400" />}
+                    {isImageProcessing ? 'Przetwarzanie...' : 'Zrób zdjęcie'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    disabled={isImageProcessing}
+                    className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                    Wybierz z galerii
                   </button>
                   <button
                     type="button"
                     onClick={handleRemoveImage}
                     disabled={isImageProcessing}
-                    className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs disabled:opacity-50"
+                    className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs disabled:opacity-50 transition-colors"
                   >
-                    Usuń zdjęcie
+                    Usuń
                   </button>
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isImageProcessing}
-                className="w-full min-h-32 rounded-2xl border-2 border-dashed border-slate-700 hover:border-emerald-500/50 bg-slate-900/50 hover:bg-emerald-500/5 transition-colors flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-emerald-300 disabled:opacity-50"
-              >
+              <div className="p-4 rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/50 flex flex-col items-center justify-center gap-3">
                 {isImageProcessing ? (
-                  <>
-                    <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
-                    <span className="text-xs font-bold">Przetwarzanie zdjęcia...</span>
-                  </>
+                  <div className="flex flex-col items-center gap-2 py-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                    <span className="text-xs font-bold text-slate-300">Przetwarzanie zdjęcia...</span>
+                  </div>
                 ) : (
                   <>
-                    <ImagePlus className="w-7 h-7 text-emerald-400" />
-                    <span className="text-xs font-bold">Wybierz zdjęcie z galerii</span>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <ImagePlus className="w-6 h-6 text-emerald-400" />
+                      <span className="text-xs font-bold text-slate-300">Dodaj zdjęcie do przepisu</span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-sm">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Camera className="w-4 h-4 text-emerald-400" />
+                        Zrób zdjęcie
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <ImageIcon className="w-4 h-4 text-slate-300" />
+                        Wybierz z galerii
+                      </button>
+                    </div>
                     <span className="text-[10px] text-slate-500">JPG, PNG, WEBP • maks. 15 MB</span>
                   </>
                 )}
-              </button>
+              </div>
             )}
 
             <p className="text-[10px] text-slate-500">
@@ -1182,24 +1373,19 @@ export const RecipesView: React.FC = () => {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              disabled={isImageProcessing}
-              className="px-4 py-2.5 text-slate-400 hover:text-white text-sm font-semibold disabled:opacity-40"
-            >
-              Anuluj
-            </button>
-            <button
-              type="submit"
-              disabled={isImageProcessing}
-              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-sm rounded-xl transition-all shadow-lg disabled:opacity-50 flex items-center gap-2"
-            >
-              {isImageProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
-              {editingRecipe ? 'Zapisz zmiany' : 'Utwórz'}
-            </button>
-          </div>
+          {/* Opcja usuwania przepisu wewnątrz modala */}
+          {editingRecipe && (
+            <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={handleDeleteInModal}
+                className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold text-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Usuń ten przepis
+              </button>
+            </div>
+          )}
         </form>
       </Modal>
 

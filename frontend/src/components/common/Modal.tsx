@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 import {
   focusAndKeepVisible,
@@ -11,6 +11,9 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  isDirty?: boolean;
+  confirmCloseMessage?: string;
+  headerActions?: React.ReactNode;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -19,14 +22,84 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   maxWidth = 'md',
+  isDirty = false,
+  confirmCloseMessage = 'Masz niezapisane zmiany. Czy na pewno chcesz wyjść bez zapisywania?',
+  headerActions,
 }) => {
   const viewport = useVisualViewport();
-
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
+  const confirmMsgRef = useRef(confirmCloseMessage);
+  confirmMsgRef.current = confirmCloseMessage;
+
+  const isOpenRef = useRef(isOpen);
+  const historyPushedRef = useRef(false);
+
+  const handleRequestClose = useCallback(() => {
+    if (isDirtyRef.current) {
+      const ok = window.confirm(confirmMsgRef.current);
+      if (!ok) return;
+    }
+    onCloseRef.current();
+  }, []);
+
   /**
-   * Blokada scrolla strony pod modalem.
+   * Obsługa cofania (przycisk Wstecz przeglądarki / gest na telefonie).
+   */
+  useEffect(() => {
+    if (isOpen && !isOpenRef.current) {
+      // Otwarcie modala
+      isOpenRef.current = true;
+      const modalId = 'modal_' + Date.now();
+      window.history.pushState({ modalId }, '');
+      historyPushedRef.current = true;
+
+      const handlePopState = () => {
+        if (!historyPushedRef.current) return;
+        historyPushedRef.current = false;
+        isOpenRef.current = false;
+
+        if (isDirtyRef.current) {
+          const ok = window.confirm(confirmMsgRef.current);
+          if (!ok) {
+            window.history.pushState({ modalId }, '');
+            historyPushedRef.current = true;
+            isOpenRef.current = true;
+            return;
+          }
+        }
+        onCloseRef.current();
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        if (historyPushedRef.current) {
+          historyPushedRef.current = false;
+          isOpenRef.current = false;
+          if (window.history.state?.modalId === modalId) {
+            window.history.back();
+          }
+        }
+      };
+    } else if (!isOpen && isOpenRef.current) {
+      // Zamknięcie modala
+      isOpenRef.current = false;
+      if (historyPushedRef.current) {
+        historyPushedRef.current = false;
+        window.history.back();
+      }
+    }
+  }, [isOpen]);
+
+  /**
+   * Blokada scrolla strony pod modalem i obsługa Escape.
    */
   useEffect(() => {
     if (!isOpen) return;
@@ -35,7 +108,7 @@ export const Modal: React.FC<ModalProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleRequestClose();
       }
     };
 
@@ -46,7 +119,7 @@ export const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = previousBodyOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, handleRequestClose]);
 
   /**
    * Pilnujemy widoczności inputów wewnątrz modala.
@@ -78,10 +151,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   /**
    * Po zmianie wysokości visual viewportu
-   * (np. pojawienie się klawiatury) sprawdzamy
-   * aktywne pole.
-   *
-   * Celowo NIE reagujemy tutaj na offsetTop.
+   * (np. pojawienie się klawiatury) sprawdzamy aktywne pole.
    */
   useEffect(() => {
     if (!isOpen) return;
@@ -106,12 +176,6 @@ export const Modal: React.FC<ModalProps> = ({
     '2xl': 'max-w-2xl',
   }[maxWidth];
 
-  /**
-   * visualViewport wykorzystujemy tylko do ograniczenia
-   * wysokości PANELU.
-   *
-   * Nie pozycjonujemy nim backdropu.
-   */
   const panelMaxHeight =
     viewport.height > 0
       ? `min(
@@ -131,6 +195,11 @@ export const Modal: React.FC<ModalProps> = ({
         animate-fade-in
         p-0 sm:p-4
       "
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleRequestClose();
+        }
+      }}
     >
       <div
         ref={panelRef}
@@ -154,38 +223,42 @@ export const Modal: React.FC<ModalProps> = ({
         <div
           className="
             flex items-center justify-between
-            px-5 py-4
+            px-5 py-3.5
             border-b border-slate-800
             bg-slate-900/90
             shrink-0
+            gap-3
           "
         >
-          <h2 className="text-lg font-bold text-white tracking-tight">
+          <h2 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
             {title}
           </h2>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Zamknij"
-            className="
-              p-1.5
-              text-slate-400
-              hover:text-white
-              rounded-lg
-              hover:bg-slate-800
-              transition-colors
-            "
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {headerActions}
+            <button
+              type="button"
+              onClick={handleRequestClose}
+              aria-label="Zamknij"
+              className="
+                p-1.5
+                text-slate-400
+                hover:text-white
+                rounded-lg
+                hover:bg-slate-800
+                transition-colors
+              "
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollowalna zawartość */}
         <div
           ref={bodyRef}
           className="
-            px-5 pt-5
+            px-5 pt-4
             pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]
             overflow-y-auto
             overscroll-contain

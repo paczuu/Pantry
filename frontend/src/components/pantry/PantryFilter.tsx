@@ -9,16 +9,19 @@ import {
   AlertCircle,
   PackageOpen,
   ArrowUpDown,
+  ScanBarcode,
 } from 'lucide-react';
 
 interface PantryFilterProps {
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
+  onOpenScannerSearch?: () => void;
 }
 
 export const PantryFilter: React.FC<PantryFilterProps> = ({
   viewMode,
   setViewMode,
+  onOpenScannerSearch,
 }) => {
   const { filters, setFilter, resetFilters, categories, stats, expiryWarningDays } = usePantry();
 
@@ -28,22 +31,36 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
         {/* Szukaj */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={filters.search}
             onChange={(e) => setFilter('search', e.target.value)}
             placeholder="Szukaj produktu, producenta, kodu EAN..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full pl-10 pr-24 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
           />
-          {filters.search && (
-            <button
-              onClick={() => setFilter('search', '')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
-            >
-              Wyczyść
-            </button>
-          )}
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {filters.search && (
+              <button
+                type="button"
+                onClick={() => setFilter('search', '')}
+                className="px-1.5 py-0.5 text-xs text-slate-400 hover:text-white"
+              >
+                Wyczyść
+              </button>
+            )}
+            {onOpenScannerSearch && (
+              <button
+                type="button"
+                onClick={onOpenScannerSearch}
+                className="p-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 px-2 text-[11px] font-bold"
+                title="Skanuj kod EAN do wyszukiwania"
+              >
+                <ScanBarcode className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Skanuj EAN</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Sortowanie i Widok */}

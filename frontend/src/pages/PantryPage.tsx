@@ -6,7 +6,7 @@ import { PantryItem } from '../types';
 import { QrCode, Plus, Boxes, PackageOpen } from 'lucide-react';
 
 interface PantryPageProps {
-  onOpenScanner: (mode?: 'ADD' | 'REMOVE') => void;
+  onOpenScanner: (mode?: 'ADD' | 'REMOVE' | 'SEARCH') => void;
   onOpenAddManual: () => void;
   onEditItem: (item: PantryItem) => void;
 }
@@ -53,7 +53,11 @@ export const PantryPage: React.FC<PantryPageProps> = ({
       </div>
 
       {/* Pasek Filtrów i Sortowania */}
-      <PantryFilter viewMode={viewMode} setViewMode={setViewMode} />
+      <PantryFilter
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        onOpenScannerSearch={() => onOpenScanner('SEARCH')}
+      />
 
       {/* Lista / Siatka Produktów */}
       {isLoading ? (

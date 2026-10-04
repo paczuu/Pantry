@@ -333,7 +333,6 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
             checklistData: getNullableString(note.checklistData),
             color: getString(note.color, 'default'),
             isPinned: getBoolean(note.isPinned, false),
-            category: getString(note.category, 'Ogólne'),
             createdById: getNullableString(note.createdById),
             createdAt: getDate(note.createdAt),
             updatedAt: getDate(note.updatedAt),

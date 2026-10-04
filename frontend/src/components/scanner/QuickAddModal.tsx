@@ -11,6 +11,7 @@ import {
   Calendar,
   Tag,
   Image as ImageIcon,
+  Camera,
   Check,
   Scale,
   PackageOpen,
@@ -19,6 +20,7 @@ import {
   Loader2,
   SearchX,
   Barcode,
+  X,
 } from 'lucide-react';
 
 interface QuickAddModalProps {
@@ -50,6 +52,32 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [notes, setNotes] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Snapshot do śledzenia isDirty
+  const [initialSnapshot, setInitialSnapshot] = useState({
+    name: '',
+    brand: '',
+    category: 'Inne',
+    quantity: 1,
+    capacity: '',
+    expiryDate: '',
+    openedDate: '',
+    notes: '',
+    imageUrl: '',
+  });
+
+  const isDirty =
+    name !== initialSnapshot.name ||
+    brand !== initialSnapshot.brand ||
+    category !== initialSnapshot.category ||
+    quantity !== initialSnapshot.quantity ||
+    capacity !== initialSnapshot.capacity ||
+    expiryDate !== initialSnapshot.expiryDate ||
+    openedDate !== initialSnapshot.openedDate ||
+    notes !== initialSnapshot.notes ||
+    imageUrl !== initialSnapshot.imageUrl;
 
   // Hook głosowego wprowadzania daty
   const { isListening, isSupported, spokenTranscript, toggleListening } = useVoiceExpiry(
@@ -60,19 +88,50 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
   useEffect(() => {
     if (initialProduct) {
-      setName(initialProduct.name || '');
-      setBrand(initialProduct.brand || '');
-      setCategory(initialProduct.category || (categories[0]?.name || 'Inne'));
+      const initName = initialProduct.name || '';
+      const initBrand = initialProduct.brand || '';
+      const initCat = initialProduct.category || (categories[0]?.name || 'Inne');
+      const initCap = initialProduct.capacity || '';
+      const initImg = initialProduct.imageUrl || '';
+
+      setName(initName);
+      setBrand(initBrand);
+      setCategory(initCat);
       setQuantity(1);
-      setCapacity(initialProduct.capacity || '');
-      setImageUrl(initialProduct.imageUrl || '');
+      setCapacity(initCap);
+      setImageUrl(initImg);
+
+      setInitialSnapshot({
+        name: initName,
+        brand: initBrand,
+        category: initCat,
+        quantity: 1,
+        capacity: initCap,
+        expiryDate: '',
+        openedDate: '',
+        notes: '',
+        imageUrl: initImg,
+      });
     } else {
+      const initCat = categories[0]?.name || 'Inne';
       setName('');
       setBrand('');
-      setCategory(categories[0]?.name || 'Inne');
+      setCategory(initCat);
       setQuantity(1);
       setCapacity('');
       setImageUrl('');
+
+      setInitialSnapshot({
+        name: '',
+        brand: '',
+        category: initCat,
+        quantity: 1,
+        capacity: '',
+        expiryDate: '',
+        openedDate: '',
+        notes: '',
+        imageUrl: '',
+      });
     }
 
     setExpiryDate('');
@@ -80,6 +139,42 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     setOpenedDate('');
     setNotes('');
   }, [initialProduct, isOpen, categories]);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            const ratio = Math.min(maxDim / w, maxDim / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setImageUrl(compressed);
+          showToast('Dodano zdjęcie produktu.', 'success');
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      showToast('Błąd podczas wczytywania zdjęcia.', 'error');
+    } finally {
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
 
   const addDaysToExpiry = (days: number) => {
     const d = new Date();
@@ -150,8 +245,30 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           : 'Dodaj produkt do spiżarni'
       }
       maxWidth="lg"
+      isDirty={isDirty}
+      headerActions={
+        <div className="flex items-center gap-2 mr-1">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
+          >
+            Anuluj
+          </button>
+          <button
+            type="submit"
+            form="quick-add-form"
+            disabled={isSubmitting}
+            className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+            Dodaj
+          </button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="quick-add-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Podgląd po znalezieniu produktu w bazie */}
         {initialProduct ? (
           <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
@@ -422,6 +539,73 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           )}
         </div>
 
+        {/* Zdjęcie produktu */}
+        <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-2">
+          <label className="block text-xs font-semibold text-slate-300">Zdjęcie produktu (opcjonalnie)</label>
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
+          <div className="flex items-center gap-3">
+            {imageUrl ? (
+              <div className="relative w-16 h-16 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden shrink-0">
+                <img src={imageUrl} alt="Podgląd" className="w-full h-full object-contain p-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageUrl('');
+                    if (cameraInputRef.current) cameraInputRef.current.value = '';
+                    if (galleryInputRef.current) galleryInputRef.current.value = '';
+                  }}
+                  className="absolute top-1 right-1 p-0.5 rounded-full bg-slate-900/90 text-slate-300 hover:text-rose-400 transition-colors"
+                  title="Usuń zdjęcie"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-500 shrink-0">
+                <ImageIcon className="w-6 h-6 text-slate-400" />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                  Zrób zdjęcie
+                </button>
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                  Wybierz z galerii
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Zdjęcie zostanie zapisane i automatycznie przypisane do tego kodu EAN.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Notatki */}
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1">Notatka (opcjonalnie)</label>
@@ -432,25 +616,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             placeholder="np. Otwarto sos, zjeść w 3 dni"
             className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
           />
-        </div>
-
-        {/* Przyciski Akcji */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-medium text-sm transition-colors"
-          >
-            Anuluj
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/60 transition-all disabled:opacity-50"
-          >
-            <Check className="w-4 h-4 stroke-[2.5]" />
-            {isSubmitting ? 'Zapisywanie...' : 'Dodaj do spiżarni'}
-          </button>
         </div>
       </form>
     </Modal>

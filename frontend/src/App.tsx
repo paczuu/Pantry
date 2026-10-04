@@ -14,15 +14,17 @@ import { BottomNav } from './components/common/BottomNav';
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { QuickAddModal } from './components/scanner/QuickAddModal';
 import { EditPantryItemModal } from './components/pantry/EditPantryItemModal';
+import { usePantry } from './contexts/PantryContext';
 import { PantryItem } from './types';
 import { Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { user, isLoading } = useAuth();
+  const { setFilter } = usePantry();
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [scannerMode, setScannerMode] = useState<'ADD' | 'REMOVE'>('ADD');
+  const [scannerMode, setScannerMode] = useState<'ADD' | 'REMOVE' | 'SEARCH'>('ADD');
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PantryItem | null>(null);
 
@@ -43,7 +45,7 @@ export const App: React.FC = () => {
     return <NoHouseholdView />;
   }
 
-  const handleOpenScanner = (mode: 'ADD' | 'REMOVE' = 'ADD') => {
+  const handleOpenScanner = (mode: 'ADD' | 'REMOVE' | 'SEARCH' = 'ADD') => {
     setScannerMode(mode);
     setIsScannerOpen(true);
   };

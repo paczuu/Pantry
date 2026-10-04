@@ -5,17 +5,25 @@ import { QuickRemoveModal } from './QuickRemoveModal';
 import { ProductCatalogItem, PantryItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
-import { X, Flashlight, Keyboard, PlusCircle, MinusCircle, Search, Loader2, Camera, ShieldAlert, Sparkles, SwitchCamera } from 'lucide-react';
+import { usePantry } from '../../contexts/PantryContext';
+import { X, Flashlight, Keyboard, PlusCircle, MinusCircle, Search, Loader2, Camera, ShieldAlert, Sparkles, SwitchCamera, ScanBarcode } from 'lucide-react';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultMode?: 'ADD' | 'REMOVE';
+  defaultMode?: 'ADD' | 'REMOVE' | 'SEARCH';
+  onScanSearch?: (barcode: string) => void;
 }
 
-export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen, onClose, defaultMode = 'ADD' }) => {
+export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
+  isOpen,
+  onClose,
+  defaultMode = 'ADD',
+  onScanSearch,
+}) => {
   const { showToast, playBeep, vibrate } = useToast();
-  const [mode, setMode] = useState<'ADD' | 'REMOVE'>(defaultMode);
+  const { setFilter } = usePantry();
+  const [mode, setMode] = useState<'ADD' | 'REMOVE' | 'SEARCH'>(defaultMode);
   const [activeTab, setActiveTab] = useState<'camera' | 'manual'>('camera');
   const [manualCode, setManualCode] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -38,6 +46,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
   const scannerContainerId = 'spizarnia-fullscreen-barcode-reader';
   const lastScannedTimeRef = useRef<number>(0);
   const scannerStartingRef = useRef(false);
+  const historyPushedRef = useRef(false);
 
   useEffect(() => { setMode(defaultMode); }, [defaultMode, isOpen]);
 
@@ -181,6 +190,47 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     }
   };
 
+  const isOpenRef = useRef(isOpen);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Obsługa cofania (przycisk Wstecz przeglądarki / gest na telefonie)
+  useEffect(() => {
+    if (isOpen && !isOpenRef.current) {
+      isOpenRef.current = true;
+      const scannerId = 'scanner_' + Date.now();
+      window.history.pushState({ scannerId }, '');
+      historyPushedRef.current = true;
+
+      const handlePopState = () => {
+        if (!historyPushedRef.current) return;
+        historyPushedRef.current = false;
+        isOpenRef.current = false;
+        stopScanner();
+        onCloseRef.current();
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        if (historyPushedRef.current) {
+          historyPushedRef.current = false;
+          isOpenRef.current = false;
+          if (window.history.state?.scannerId === scannerId) {
+            window.history.back();
+          }
+        }
+      };
+    } else if (!isOpen && isOpenRef.current) {
+      isOpenRef.current = false;
+      if (historyPushedRef.current) {
+        historyPushedRef.current = false;
+        window.history.back();
+      }
+    }
+  }, [isOpen, stopScanner]);
+
   const handleBarcodeScanned = useCallback(async (barcode: string) => {
     const now = Date.now();
     if (now - lastScannedTimeRef.current < 2000 || isProcessing) return;
@@ -193,6 +243,18 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     setIsProcessing(true);
 
     await stopScanner();
+
+    if (mode === 'SEARCH') {
+      setIsProcessing(false);
+      if (onScanSearch) {
+        onScanSearch(cleanBarcode);
+      } else {
+        setFilter('search', cleanBarcode);
+      }
+      showToast(`Filtrowanie po kodzie EAN: ${cleanBarcode}`, 'success');
+      onCloseRef.current();
+      return;
+    }
 
     try {
       const res = await api.lookupBarcode(cleanBarcode);
@@ -213,7 +275,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, mode, playBeep, showToast, soundEnabled, vibrate, stopScanner]);
+  }, [isProcessing, mode, onScanSearch, setFilter, onClose, playBeep, showToast, soundEnabled, vibrate, stopScanner]);
 
   // Uruchom skaner
   useEffect(() => {
@@ -305,6 +367,19 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return;
     setIsProcessing(true);
+
+    if (mode === 'SEARCH') {
+      setIsProcessing(false);
+      if (onScanSearch) {
+        onScanSearch(cleanBarcode);
+      } else {
+        setFilter('search', cleanBarcode);
+      }
+      showToast(`Filtrowanie po kodzie: ${cleanBarcode}`, 'success');
+      handleClose();
+      return;
+    }
+
     try {
       const res = await api.lookupBarcode(cleanBarcode);
       setScannedBarcode(cleanBarcode);
@@ -350,6 +425,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
   };
 
   const handleClose = async () => {
+    if (historyPushedRef.current) {
+      historyPushedRef.current = false;
+      if (window.history.state?.scannerOpen) {
+        window.history.back();
+      }
+    }
     await stopScanner();
     onClose();
   };
@@ -363,27 +444,37 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
         <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between overflow-hidden">
           {/* Górny Pasek Kontrolny */}
           <div className="absolute top-0 inset-x-0 z-40 p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-gradient-to-b from-black/90 via-black/60 to-transparent flex items-center justify-between gap-3">
-            {/* Przełącznik Trybu: Dodawanie vs Usuwanie */}
+            {/* Przełącznik Trybu: Dodawanie vs Zużyj vs Szukaj */}
             <div className="flex items-center bg-slate-900/90 backdrop-blur-md rounded-2xl p-1 border border-slate-700/80 shadow-2xl">
               <button
                 type="button"
                 onClick={() => setMode('ADD')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
                   mode === 'ADD' ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/60' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                Dodawanie
+                Dodaj
               </button>
               <button
                 type="button"
                 onClick={() => setMode('REMOVE')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
                   mode === 'REMOVE' ? 'bg-rose-500 text-white shadow-md shadow-rose-950/60' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <MinusCircle className="w-3.5 h-3.5" />
                 Zużyj
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('SEARCH')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                  mode === 'SEARCH' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/60' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Search className="w-3.5 h-3.5" />
+                Szukaj
               </button>
             </div>
 
@@ -578,7 +669,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
           {/* Dolny Pasek Nawigacyjny Skanera */}
           <div className="absolute bottom-0 inset-x-0 z-40 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col items-center gap-3">
             <p className="text-xs text-slate-300 font-medium text-center drop-shadow-md">
-              {mode === 'ADD' ? '⚡ Skieruj aparat na kod kreskowy, aby dodać lub zwiększyć ilość' : '⚡ Zeskanuj kod EAN, aby natychmiast odliczyć sztuki ze spiżarni'}
+              {mode === 'ADD'
+                ? '⚡ Skieruj aparat na kod kreskowy, aby dodać lub zwiększyć ilość'
+                : mode === 'REMOVE'
+                ? '⚡ Zeskanuj kod EAN, aby natychmiast odliczyć sztuki ze spiżarni'
+                : '⚡ Zeskanuj kod EAN, aby przefiltrować artykuły w spiżarni'}
             </p>
             <div className="flex items-center gap-3">
               <button

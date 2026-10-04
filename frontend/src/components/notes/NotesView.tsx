@@ -37,6 +37,31 @@ export const NotesView: React.FC = () => {
   const [isPinned, setIsPinned] = useState(false);
   const checklistInputRef = useRef<HTMLInputElement>(null);
 
+  // Initial snapshot to track isDirty
+  const [initialSnapshot, setInitialSnapshot] = useState<{
+    title: string;
+    content: string;
+    isChecklist: boolean;
+    checklistData: string;
+    color: string;
+    isPinned: boolean;
+  }>({
+    title: '',
+    content: '',
+    isChecklist: false,
+    checklistData: '[]',
+    color: 'default',
+    isPinned: false,
+  });
+
+  const isDirty =
+    title !== initialSnapshot.title ||
+    content !== initialSnapshot.content ||
+    isChecklist !== initialSnapshot.isChecklist ||
+    JSON.stringify(checklistItems) !== initialSnapshot.checklistData ||
+    color !== initialSnapshot.color ||
+    isPinned !== initialSnapshot.isPinned;
+
   const fetchNotes = async () => {
     setIsLoading(true);
     try {
@@ -65,6 +90,14 @@ export const NotesView: React.FC = () => {
     setNewChecklistText('');
     setColor('default');
     setIsPinned(false);
+    setInitialSnapshot({
+      title: '',
+      content: '',
+      isChecklist: false,
+      checklistData: '[]',
+      color: 'default',
+      isPinned: false,
+    });
     setIsModalOpen(true);
   };
 
@@ -83,6 +116,14 @@ export const NotesView: React.FC = () => {
     setNewChecklistText('');
     setColor(note.color);
     setIsPinned(note.isPinned);
+    setInitialSnapshot({
+      title: note.title,
+      content: note.content || '',
+      isChecklist: note.isChecklist,
+      checklistData: JSON.stringify(items),
+      color: note.color,
+      isPinned: note.isPinned,
+    });
     setIsModalOpen(true);
   };
 
@@ -96,6 +137,18 @@ export const NotesView: React.FC = () => {
     setChecklistItems((prev) => [...prev, newItem]);
     setNewChecklistText('');
     window.setTimeout(() => focusAndKeepVisible(checklistInputRef.current), 0);
+  };
+
+  const handleUpdateChecklistItemText = (id: string, newText: string) => {
+    setChecklistItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, text: newText } : item))
+    );
+  };
+
+  const handleToggleModalChecklistItem = (id: string) => {
+    setChecklistItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
+    );
   };
 
   const handleRemoveChecklistItem = (id: string) => {
@@ -363,31 +416,53 @@ export const NotesView: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title={editingNote ? 'Edytuj notatkę' : 'Nowa notatka / lista zadań'}
         maxWidth="lg"
-      >
-        <form onSubmit={handleSaveNote} className="space-y-4">
-          {/* Przełącznik formatu: Tekst vs Lista zadań */}
-          <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-bold">
+        isDirty={isDirty}
+        headerActions={
+          <div className="flex items-center gap-2 mr-1">
             <button
               type="button"
-              onClick={() => setIsChecklist(false)}
-              className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
-                !isChecklist ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => setIsModalOpen(false)}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors"
             >
-              <FileText className="w-4 h-4" />
-              Notatka tekstowa
+              Anuluj
             </button>
             <button
-              type="button"
-              onClick={() => setIsChecklist(true)}
-              className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
-                isChecklist ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
+              type="submit"
+              form="note-edit-form"
+              className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5"
             >
-              <CheckSquare className="w-4 h-4" />
-              Lista zadań
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+              {editingNote ? 'Zapisz' : 'Utwórz'}
             </button>
           </div>
+        }
+      >
+        <form id="note-edit-form" onSubmit={handleSaveNote} className="space-y-4">
+          {/* Przełącznik formatu: Tylko przy tworzeniu nowej notatki */}
+          {!editingNote && (
+            <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setIsChecklist(false)}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
+                  !isChecklist ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Notatka tekstowa
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsChecklist(true)}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
+                  isChecklist ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <CheckSquare className="w-4 h-4" />
+                Lista zadań
+              </button>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Tytuł *</label>
@@ -398,7 +473,7 @@ export const NotesView: React.FC = () => {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="np. Mój dzień, Przygotowanie do imprezy..."
               className="w-full px-4 py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-white text-base font-bold focus:outline-none focus:border-emerald-500"
-              autoFocus
+              autoFocus={!editingNote}
             />
           </div>
 
@@ -432,18 +507,41 @@ export const NotesView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Lista pozycji w modalu z wygodnym przewijaniem */}
-              <div className="space-y-1.5 max-h-[45vh] overflow-y-auto pt-1 pr-1">
+              {/* Lista pozycji w modalu z podglądem wykonania i bezpośrednią edycją tekstu */}
+              <div className="space-y-2 max-h-[45vh] overflow-y-auto pt-1 pr-1">
                 {checklistItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs"
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs"
                   >
-                    <span className="text-white truncate flex-1 font-medium">{item.text}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleModalChecklistItem(item.id)}
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                        item.completed
+                          ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                          : 'border border-slate-600 bg-slate-900/60 hover:border-emerald-500/60'
+                      }`}
+                      title={item.completed ? 'Oznacz jako niewykonane' : 'Oznacz jako wykonane'}
+                    >
+                      {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </button>
+
+                    <input
+                      type="text"
+                      value={item.text}
+                      onChange={(e) => handleUpdateChecklistItemText(item.id, e.target.value)}
+                      placeholder="Treść punktu..."
+                      className={`flex-1 bg-slate-900/70 border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors ${
+                        item.completed ? 'line-through text-slate-400' : ''
+                      }`}
+                    />
+
                     <button
                       type="button"
                       onClick={() => handleRemoveChecklistItem(item.id)}
-                      className="text-slate-400 hover:text-rose-400 p-1 rounded-lg transition-colors"
+                      className="text-slate-400 hover:text-rose-400 p-1 rounded-lg transition-colors shrink-0"
+                      title="Usuń pozycję"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -502,22 +600,6 @@ export const NotesView: React.FC = () => {
               />
               Przypnij tę notatkę na samej górze
             </label>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2.5 text-slate-400 hover:text-white text-sm font-semibold"
-            >
-              Anuluj
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-sm rounded-xl transition-all shadow-lg"
-            >
-              {editingNote ? 'Zapisz zmiany' : 'Utwórz'}
-            </button>
           </div>
         </form>
       </Modal>

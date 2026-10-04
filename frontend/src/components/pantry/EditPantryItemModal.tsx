@@ -31,6 +31,25 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [initialSnapshot, setInitialSnapshot] = useState({
+    name: '',
+    brand: '',
+    quantity: 1,
+    category: 'Inne',
+    expiryDate: '',
+    openedDate: '',
+    notes: '',
+  });
+
+  const isDirty =
+    name !== initialSnapshot.name ||
+    brand !== initialSnapshot.brand ||
+    quantity !== initialSnapshot.quantity ||
+    category !== initialSnapshot.category ||
+    expiryDate !== initialSnapshot.expiryDate ||
+    openedDate !== initialSnapshot.openedDate ||
+    notes !== initialSnapshot.notes;
+
   const handleVoiceDateDetected = useCallback((detectedDate: string) => {
     setExpiryDate(detectedDate);
   }, []);
@@ -39,14 +58,33 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
 
   useEffect(() => {
     if (item) {
-      setName(item.name || '');
-      setBrand(item.brand || '');
-      setQuantity(item.quantity || 1);
-      setCapacity(item.capacity || '');
-      setCategory(item.category || 'Inne');
-      setExpiryDate(item.expiryDate ? item.expiryDate.split('T')[0] : '');
-      setOpenedDate(item.openedDate ? item.openedDate.split('T')[0] : '');
-      setNotes(item.notes || '');
+      const initName = item.name || '';
+      const initBrand = item.brand || '';
+      const initQty = item.quantity || 1;
+      const initCap = item.capacity || '';
+      const initCat = item.category || 'Inne';
+      const initExp = item.expiryDate ? item.expiryDate.split('T')[0] : '';
+      const initOp = item.openedDate ? item.openedDate.split('T')[0] : '';
+      const initNotes = item.notes || '';
+
+      setName(initName);
+      setBrand(initBrand);
+      setQuantity(initQty);
+      setCapacity(initCap);
+      setCategory(initCat);
+      setExpiryDate(initExp);
+      setOpenedDate(initOp);
+      setNotes(initNotes);
+
+      setInitialSnapshot({
+        name: initName,
+        brand: initBrand,
+        quantity: initQty,
+        category: initCat,
+        expiryDate: initExp,
+        openedDate: initOp,
+        notes: initNotes,
+      });
     }
   }, [item, isOpen]);
 
@@ -60,7 +98,6 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
     if (isListening) {
       stopListening();
     }
-
     onClose();
   };
 
@@ -101,8 +138,35 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
   if (!item) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Edycja produktu w spiżarni" maxWidth="lg">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Edycja produktu w spiżarni"
+      maxWidth="lg"
+      isDirty={isDirty}
+      headerActions={
+        <div className="flex items-center gap-2 mr-1">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
+          >
+            Anuluj
+          </button>
+          <button
+            type="submit"
+            form="edit-pantry-form"
+            disabled={isSubmitting}
+            className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+            Zapisz
+          </button>
+        </div>
+      }
+    >
+      <form id="edit-pantry-form" onSubmit={handleSubmit} className="space-y-4">
 
         {/* Nazwa i Producent */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

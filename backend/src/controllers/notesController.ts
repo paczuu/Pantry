@@ -43,7 +43,6 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
         checklistData: checklistData ? (typeof checklistData === 'string' ? checklistData : JSON.stringify(checklistData)) : null,
         color,
         isPinned,
-        category,
         createdById: req.user!.id,
       },
     });
@@ -58,7 +57,7 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const householdId = req.user!.householdId!;
-    const { title, content, isChecklist, checklistData, color, isPinned, category } = req.body;
+    const { title, content, isChecklist, checklistData, color, isPinned } = req.body;
 
     await prisma.note.updateMany({
       where: { id, householdId },
@@ -69,7 +68,6 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
         checklistData: checklistData !== undefined ? (typeof checklistData === 'string' ? checklistData : JSON.stringify(checklistData)) : undefined,
         color,
         isPinned,
-        category,
       },
     });
 
