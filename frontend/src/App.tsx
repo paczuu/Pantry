@@ -104,6 +104,7 @@ export const App: React.FC = () => {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         defaultMode={scannerMode}
+        allowSearch={activeTab === 'pantry'}
       />
 
       {/* Modal Ręcznego Dodawania */}

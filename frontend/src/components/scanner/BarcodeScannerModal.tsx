@@ -13,6 +13,7 @@ interface BarcodeScannerModalProps {
   onClose: () => void;
   defaultMode?: 'ADD' | 'REMOVE' | 'SEARCH';
   onScanSearch?: (barcode: string) => void;
+  allowSearch?: boolean;
 }
 
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
@@ -20,6 +21,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   onClose,
   defaultMode = 'ADD',
   onScanSearch,
+  allowSearch = false,
 }) => {
   const { showToast, playBeep, vibrate } = useToast();
   const { setFilter } = usePantry();
@@ -48,7 +50,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const scannerStartingRef = useRef(false);
   const historyPushedRef = useRef(false);
 
-  useEffect(() => { setMode(defaultMode); }, [defaultMode, isOpen]);
+  useEffect(() => {
+    setMode(defaultMode === 'SEARCH' && !allowSearch ? 'ADD' : defaultMode);
+  }, [defaultMode, allowSearch, isOpen]);
 
   const stopScanner = useCallback(async () => {
     const scanner = html5QrCodeRef.current;
@@ -251,7 +255,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       } else {
         setFilter('search', cleanBarcode);
       }
-      showToast(`Filtrowanie po kodzie EAN: ${cleanBarcode}`, 'success');
       onCloseRef.current();
       return;
     }
@@ -466,16 +469,18 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 <MinusCircle className="w-3.5 h-3.5" />
                 Zużyj
               </button>
-              <button
-                type="button"
-                onClick={() => setMode('SEARCH')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                  mode === 'SEARCH' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/60' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Search className="w-3.5 h-3.5" />
-                Szukaj
-              </button>
+              {allowSearch && (
+                <button
+                  type="button"
+                  onClick={() => setMode('SEARCH')}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                    mode === 'SEARCH' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/60' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  Szukaj
+                </button>
+              )}
             </div>
 
             {/* Przyciski Akcji: Przełącznik kamery, Latarka, Zamknij */}
