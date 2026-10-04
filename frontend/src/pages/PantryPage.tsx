@@ -97,7 +97,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
 
   const renderItems = (list: PantryItem[]) =>
     viewMode === 'grid' ? (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
         {list.map((item) => (
           <PantryCard key={item.id} item={item} onEdit={onEditItem} viewMode="grid" />
         ))}
@@ -116,7 +116,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-5">
       {/* Nagłówek: tytuł + podsumowanie + akcje */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Boxes className="w-6 h-6 text-emerald-400" />
@@ -137,20 +137,20 @@ export const PantryPage: React.FC<PantryPageProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => onOpenScanner('ADD')}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all"
           >
             <QrCode className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('pantry.scanProduct')}</span>
+            {t('pantry.scanProduct')}
           </button>
           <button
             onClick={onOpenAddManual}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('pantry.addProduct')}</span>
+            {t('pantry.addProduct')}
           </button>
         </div>
       </div>

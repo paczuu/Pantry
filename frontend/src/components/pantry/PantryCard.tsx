@@ -23,7 +23,7 @@ interface PantryCardProps {
   viewMode?: 'grid' | 'list';
 }
 
-/* ---------- Małe, współdzielone elementy (lista i siatka) ---------- */
+/* ---------- Małe, współdzielone elementy ---------- */
 
 const Thumb: React.FC<{ item: PantryItem }> = ({ item }) =>
   item.imageUrl ? (
@@ -78,6 +78,10 @@ interface MenuProps {
   onWasted: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
   labels: { shopping: string; wasted: string; remove: string };
+  /** Styl przycisku „⋮” (w siatce — okrągły, na zdjęciu) */
+  triggerClassName?: string;
+  /** Szerokość rozwijanego menu (w siatce węższa, żeby nie wychodziła poza ekran) */
+  menuWidthClassName?: string;
 }
 
 const CardMenu: React.FC<MenuProps> = ({
@@ -88,6 +92,8 @@ const CardMenu: React.FC<MenuProps> = ({
   onWasted,
   onDelete,
   labels,
+  triggerClassName = 'p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors',
+  menuWidthClassName = 'w-52',
 }) => (
   <div className="relative" onClick={(e) => e.stopPropagation()}>
     <button
@@ -95,7 +101,8 @@ const CardMenu: React.FC<MenuProps> = ({
         e.stopPropagation();
         onToggle();
       }}
-      className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+      className={triggerClassName}
+      aria-label="Menu"
     >
       <MoreVertical className="w-4 h-4" />
     </button>
@@ -110,33 +117,35 @@ const CardMenu: React.FC<MenuProps> = ({
           }}
         />
         <div
-          className="absolute right-0 top-full mt-1 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-1.5 z-30 text-xs animate-slide-up"
+          className={`absolute right-0 top-full mt-1 ${menuWidthClassName} bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-1.5 z-30 text-xs animate-slide-up`}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={onShopping}
-            className="w-full text-left px-3.5 py-2 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
+            className="w-full text-left px-3.5 py-2.5 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-medium"
           >
-            <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" /> {labels.shopping}
+            <ShoppingCart className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> {labels.shopping}
           </button>
           <button
             onClick={onWasted}
-            className="w-full text-left px-3.5 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
+            className="w-full text-left px-3.5 py-2.5 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
           >
-            <Trash2 className="w-3.5 h-3.5" /> {labels.wasted}
+            <Trash2 className="w-3.5 h-3.5 shrink-0" /> {labels.wasted}
           </button>
           <div className="border-t border-slate-800 my-1" />
           <button
             onClick={onDelete}
-            className="w-full text-left px-3.5 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
+            className="w-full text-left px-3.5 py-2.5 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 font-medium"
           >
-            <Trash2 className="w-3.5 h-3.5" /> {labels.remove}
+            <Trash2 className="w-3.5 h-3.5 shrink-0" /> {labels.remove}
           </button>
         </div>
       </>
     )}
   </div>
 );
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
 /* ---------- Karta ---------- */
 
@@ -239,6 +248,12 @@ export const PantryCard: React.FC<PantryCardProps> = ({
       ? 'bg-amber-950/20 border-amber-500/40'
       : 'bg-slate-900/80 hover:bg-slate-900 border-slate-800';
 
+  const menuLabels = {
+    shopping: en ? 'Add to shopping list' : 'Dodaj do listy zakupów',
+    wasted: en ? 'Mark as wasted' : 'Oznacz jako wyrzucone',
+    remove: en ? 'Remove from pantry' : 'Usuń ze spiżarni',
+  };
+
   const menuProps: MenuProps = {
     open: showMenu,
     onToggle: () => setShowMenu((v) => !v),
@@ -246,11 +261,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
     onShopping: handleAddToShoppingList,
     onWasted: handleWasted,
     onDelete: handleDelete,
-    labels: {
-      shopping: en ? 'Add to shopping list' : 'Dodaj do listy zakupów',
-      wasted: en ? 'Mark as wasted' : 'Oznacz jako wyrzucone',
-      remove: en ? 'Remove from pantry' : 'Usuń ze spiżarni',
-    },
+    labels: menuLabels,
   };
 
   /* WIDOK LISTY — kompaktowy: zdjęcie, nazwa, termin, ilość */
@@ -308,71 +319,99 @@ export const PantryCard: React.FC<PantryCardProps> = ({
     );
   }
 
-  /* WIDOK SIATKI */
+  /* WIDOK SIATKI — kafelek zdjęciowy: zdjęcie, marka, nazwa */
+  let statusPill: { text: string; cls: string } | null = null;
+  if (item.expiryDate && (status === 'expired' || status === 'warning')) {
+    const days = Math.round(
+      (startOfDay(new Date(item.expiryDate)).getTime() - startOfDay(new Date()).getTime()) / 86400000
+    );
+    if (status === 'expired') {
+      statusPill = { text: t('dashboard.expired'), cls: 'bg-rose-500 text-white' };
+    } else {
+      const text =
+        days <= 0
+          ? t('common.today')
+          : days === 1
+          ? t('common.tomorrow')
+          : en
+          ? `${days} d`
+          : `${days} dni`;
+      statusPill = { text, cls: 'bg-amber-400 text-slate-950' };
+    }
+  }
+
   return (
     <div
       onClick={() => onEdit(item)}
-      className={`relative group border rounded-2xl p-4 transition-all shadow-lg flex flex-col justify-between cursor-pointer select-none ${statusClasses} shadow-slate-950/40`}
+      className={`relative flex flex-col h-full border rounded-2xl transition-colors cursor-pointer select-none ${statusClasses} ${
+        showMenu ? 'z-40' : ''
+      }`}
     >
-      <div className="flex items-start justify-between gap-2.5 mb-3">
-        <Thumb item={item} />
-
-        <div className="flex-1 min-w-0 pr-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {item.capacity && (
-              <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">
-                {item.capacity}
-              </span>
-            )}
-            {item.brand && (
-              <span className="text-[11px] text-slate-300 font-semibold truncate max-w-[120px]">
-                {item.brand}
-              </span>
-            )}
+      {/* Zdjęcie: kwadrat na całą szerokość kafelka */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-slate-800">
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            loading="lazy"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-slate-800/80">
+            <Package className="w-1/3 h-1/3 text-emerald-400/70" />
           </div>
-          <h4
-            className="font-extrabold text-white text-sm line-clamp-2 leading-snug mt-0.5"
-            title={item.name}
+        )}
+
+        {/* Status terminu — tylko gdy wymaga uwagi */}
+        {statusPill && (
+          <span
+            className={`absolute top-2 left-2 max-w-[70%] truncate px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-md ${statusPill.cls}`}
           >
-            {item.name}
-          </h4>
-        </div>
+            {statusPill.text}
+          </span>
+        )}
 
-        <CardMenu {...menuProps} />
-      </div>
+        {/* Ilość (tylko gdy więcej niż 1) */}
+        {item.quantity > 1 && (
+          <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-slate-950/75 backdrop-blur-sm text-white text-[11px] font-bold">
+            ×{item.quantity}
+          </span>
+        )}
 
-      <div className="space-y-2 mb-4">
-        <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
-        <div className="flex items-center gap-1 text-[11px] text-slate-400">
-          <Tag className="w-3 h-3 text-slate-500" />
-          <span className="truncate">{tCategory(item.category)}</span>
-        </div>
-      </div>
-
-      <div
-        className="flex items-center justify-between pt-3 border-t border-slate-800/80"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Stepper
-          quantity={item.quantity}
-          pcs={t('common.pcs')}
-          decTitle={t('pantry.consumeOne')}
-          disabled={isUpdating}
-          onDec={handleDecrement}
-          onInc={handleIncrement}
-        />
-
+        {/* Szybkie zużycie */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            consumeItem(item.id, 1, false);
+            handleDecrement(e);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all active:scale-95"
+          className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg flex items-center justify-center active:scale-90 transition-all"
           title={t('pantry.consumeOne')}
+          aria-label={t('pantry.consumeOne')}
         >
-          <Utensils className="w-3.5 h-3.5" />
-          {en ? 'Consume' : 'Zużyj'}
+          <Utensils className="w-4 h-4" />
         </button>
+      </div>
+
+      {/* Menu „⋮” poza kontenerem z overflow, żeby rozwijane menu nie było ucinane */}
+      <div className="absolute top-1.5 right-1.5">
+        <CardMenu
+          {...menuProps}
+          menuWidthClassName="w-44"
+          triggerClassName="w-8 h-8 flex items-center justify-center rounded-full bg-slate-950/70 backdrop-blur-sm text-slate-100 hover:bg-slate-950 transition-colors"
+        />
+      </div>
+
+      {/* Marka + nazwa */}
+      <div className="p-2.5 sm:p-3 flex-1">
+        {item.brand && (
+          <p className="text-[11px] font-semibold text-slate-400 truncate leading-tight">{item.brand}</p>
+        )}
+        <h4
+          className="font-extrabold text-white text-sm line-clamp-2 leading-snug mt-0.5"
+          title={item.name}
+        >
+          {item.name}
+        </h4>
       </div>
     </div>
   );
