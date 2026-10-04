@@ -17,6 +17,8 @@ import {
   Mic,
   MicOff,
   Loader2,
+  SearchX,
+  Barcode,
 } from 'lucide-react';
 
 interface QuickAddModalProps {
@@ -140,12 +142,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialProduct ? 'Produkt ze skanera' : 'Dodaj produkt do spiżarni'}
+      title={
+        initialProduct
+          ? 'Produkt ze skanera'
+          : barcode
+          ? 'Nowy produkt z kodu EAN'
+          : 'Dodaj produkt do spiżarni'
+      }
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Podgląd z bazy Open Food Facts / Skanera */}
-        {initialProduct && (
+        {/* Podgląd po znalezieniu produktu w bazie */}
+        {initialProduct ? (
           <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
             {imageUrl ? (
               <img
@@ -159,7 +167,9 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <div className="font-extrabold text-white truncate text-sm sm:text-base">{initialProduct.name}</div>
+              <div className="font-extrabold text-white truncate text-sm sm:text-base">
+                {initialProduct.name}
+              </div>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-xs text-slate-400">
                   EAN: <strong className="font-mono text-slate-300">{barcode || initialProduct.barcode}</strong>
@@ -177,7 +187,25 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </div>
             </div>
           </div>
-        )}
+        ) : barcode ? (
+          /* Informacja i zeskanowany EAN w przypadku braku produktu w bazie */
+          <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/90 border border-amber-500/30 text-amber-200">
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+              <SearchX className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <div className="text-xs font-bold text-white flex items-center gap-2">
+                <span>Nie znaleziono w bazie</span>
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-500/30">
+                  <Barcode className="w-3 h-3" /> {barcode}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-snug">
+                Wprowadź nazwę i dane artykułu ręcznie.
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         {/* Nazwa i Producent */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
