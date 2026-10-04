@@ -938,9 +938,6 @@ export const HouseholdSettingsView: React.FC = () => {
                 <div className="text-sm font-bold text-white">{t('settings.langEnglish')}</div>
                 <div className="text-xs text-slate-400">{t('settings.langEnglishSub')}</div>
               </div>
-              {language === 'en' && (
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              )}
             </button>
 
             <button
@@ -962,9 +959,6 @@ export const HouseholdSettingsView: React.FC = () => {
                 <div className="text-sm font-bold text-white">{t('settings.langPolish')}</div>
                 <div className="text-xs text-slate-400">{t('settings.langPolishSub')}</div>
               </div>
-              {language === 'pl' && (
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              )}
             </button>
           </div>
         </div>
@@ -1027,16 +1021,6 @@ export const HouseholdSettingsView: React.FC = () => {
                       {theme.description[language] || theme.description.pl}
                     </div>
                   </div>
-
-                  {selected && (
-                    <div
-                      className="absolute top-2 right-2 w-2 h-2 rounded-full"
-                      style={{
-                        backgroundColor: theme.color,
-                        boxShadow: `0 0 8px ${theme.color}`,
-                      }}
-                    />
-                  )}
                 </button>
               );
             })}

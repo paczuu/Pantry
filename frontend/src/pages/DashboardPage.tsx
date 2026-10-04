@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { usePantry } from '../contexts/PantryContext';
 import { useLanguage } from '../language/LanguageContext';
-import { PantryItem } from '../types';
+import { useLiveRefresh } from '../contexts/RealtimeContext';
+import { api } from '../services/api';
+import { PantryItem, Note, NoteColor, ChecklistItem } from '../types';
 import { getExpiryStatus } from '../utils/expiry';
 import {
   Clock,
@@ -14,6 +16,11 @@ import {
   Package,
   Utensils,
   Leaf,
+  ShoppingCart,
+  BookOpen,
+  CheckSquare,
+  FileText,
+  Pin,
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -24,6 +31,8 @@ interface DashboardPageProps {
 }
 
 const MAX_URGENT = 5;
+const MAX_LISTS = 3;
+const MAX_NOTES = 3;
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -35,6 +44,64 @@ const plProducts = (n: number) => {
   return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? 'produkty' : 'produktów';
 };
 
+// Postęp listy zakupów (jeśli lista zawiera pozycje)
+const getListProgress = (list: any): { done: number; total: number } | null => {
+  if (!Array.isArray(list.items)) return null;
+  const done = list.items.filter(
+    (i: any) => i.isChecked ?? i.checked ?? i.completed ?? i.isCompleted ?? i.bought ?? false
+  ).length;
+  return { done, total: list.items.length };
+};
+
+const parseChecklist = (note: Note): ChecklistItem[] => {
+  if (!note.isChecklist || !note.checklistData) return [];
+  try {
+    return JSON.parse(note.checklistData);
+  } catch {
+    return [];
+  }
+};
+
+const noteAccent = (c: NoteColor) => {
+  switch (c) {
+    case 'emerald':
+      return 'border-l-emerald-500';
+    case 'blue':
+      return 'border-l-blue-500';
+    case 'amber':
+      return 'border-l-amber-500';
+    case 'rose':
+      return 'border-l-rose-500';
+    case 'purple':
+      return 'border-l-purple-500';
+    default:
+      return 'border-l-slate-600';
+  }
+};
+
+interface SectionHeaderProps {
+  icon: React.ReactNode;
+  title: string;
+  actionLabel: string;
+  onAction: () => void;
+}
+
+const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, actionLabel, onAction }) => (
+  <div className="flex items-center justify-between">
+    <h3 className="font-bold text-base text-white flex items-center gap-2">
+      {icon}
+      {title}
+    </h3>
+    <button
+      onClick={onAction}
+      className="text-xs font-semibold text-emerald-400 flex items-center gap-1 py-1.5 pl-2 -mr-1"
+    >
+      {actionLabel}
+      <ArrowRight className="w-3.5 h-3.5" />
+    </button>
+  </div>
+);
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   onOpenScanner,
   onOpenAddManual,
@@ -45,11 +112,52 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { t, language } = useLanguage();
   const en = language === 'en';
 
+  const [lists, setLists] = useState<any[]>([]);
+  const [listsLoaded, setListsLoaded] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoaded, setNotesLoaded] = useState(false);
+
   // Filtry ze spiżarni (ustawiane kliknięciem w kafelek) nie mogą zaburzać pulpitu
   useEffect(() => {
     resetFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchLists = async () => {
+    try {
+      const res = await api.getShoppingLists();
+      setLists(res.lists || []);
+    } catch (e) {
+      console.error('Błąd pobierania list zakupów:', e);
+    } finally {
+      setListsLoaded(true);
+    }
+  };
+
+  const fetchNotes = async () => {
+    try {
+      const data = await api.getNotes();
+      setNotes(data.notes || []);
+    } catch (e) {
+      console.error('Błąd pobierania notatek:', e);
+    } finally {
+      setNotesLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    fetchLists();
+    fetchNotes();
+  }, []);
+
+  useLiveRefresh('spizarnia_notes_refresh', fetchNotes);
+
+  const activeLists = useMemo(
+    () => lists.filter((l: any) => !(l.isArchived ?? l.archived ?? false)),
+    [lists]
+  );
+
+  const pinnedNotes = useMemo(() => notes.filter((n) => n.isPinned), [notes]);
 
   const today = startOfDay(new Date());
 
@@ -124,7 +232,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: en ? 'Fresh' : 'Świeże',
       count: freshCount,
       icon: <Leaf className="w-4 h-4" />,
-      dot: 'bg-emerald-500',
       iconCls: 'text-emerald-400',
       numCls: 'text-white',
       onClick: () => goToPantry('ALL'),
@@ -134,7 +241,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: t('dashboard.expiringSoon'),
       count: expiringCount,
       icon: <Clock className="w-4 h-4" />,
-      dot: 'bg-amber-400',
       iconCls: 'text-amber-400',
       numCls: expiringCount > 0 ? 'text-amber-300' : 'text-white',
       onClick: () => goToPantry('expiring_3_days'),
@@ -144,7 +250,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: t('dashboard.expired'),
       count: expiredCount,
       icon: <AlertCircle className="w-4 h-4" />,
-      dot: 'bg-rose-500',
       iconCls: 'text-rose-400',
       numCls: expiredCount > 0 ? 'text-rose-400' : 'text-white',
       onClick: () => goToPantry('expired'),
@@ -154,12 +259,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: en ? 'Opened' : 'Otwarte',
       count: openedCount,
       icon: <PackageOpen className="w-4 h-4" />,
-      dot: 'bg-cyan-400',
       iconCls: 'text-cyan-400',
       numCls: 'text-white',
       onClick: () => goToPantry('opened'),
     },
   ];
+
+  const seeAll = en ? 'See all' : 'Zobacz wszystkie';
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
@@ -168,7 +274,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <p className="text-xs font-medium text-slate-400 capitalize">{dateLabel}</p>
         <h2
           className={`text-2xl font-extrabold tracking-tight mt-0.5 ${
-            expiredCount > 0 ? 'text-white' : attentionCount > 0 ? 'text-white' : 'text-emerald-400'
+            attentionCount === 0 ? 'text-emerald-400' : 'text-white'
           }`}
         >
           {headline}
@@ -215,7 +321,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             onClick={() => goToPantry('ALL')}
             className="text-xs font-semibold text-emerald-400 flex items-center gap-1 py-1.5 pl-2 -mr-1"
           >
-            {en ? 'See all' : 'Zobacz wszystkie'}
+            {seeAll}
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -263,6 +369,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {urgentItems.length === 0 ? (
           <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-1">
             <div className="text-emerald-400 font-bold text-sm">{t('dashboard.noExpiringProducts')}</div>
+            {/*
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
               {en
                 ? `No items in your pantry expire within the next ${expiryWarningDays} ${
@@ -272,6 +379,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     expiryWarningDays === 1 ? 'dniu' : 'dniach'
                   }.`}
             </p>
+            */}
           </div>
         ) : (
           <div className="rounded-3xl border border-slate-800 bg-slate-900/80 divide-y divide-slate-800 overflow-hidden">
@@ -339,6 +447,126 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <ArrowRight className="w-4 h-4" />
           </button>
         )}
+      </div>
+
+      {/* Listy zakupów + przypięte notatki */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Listy zakupów */}
+        <div className="space-y-3">
+          <SectionHeader
+            icon={<ShoppingCart className="w-4 h-4 text-emerald-400" />}
+            title={t('dashboard.shoppingListSummary')}
+            actionLabel={seeAll}
+            onAction={() => setActiveTab('shopping')}
+          />
+
+          {!listsLoaded ? (
+            <div className="h-24 rounded-3xl bg-slate-900/60 border border-slate-800 animate-pulse" />
+          ) : activeLists.length === 0 ? (
+            <button
+              onClick={() => setActiveTab('shopping')}
+              className="w-full p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-1 active:scale-[0.99] transition-all"
+            >
+              <p className="text-xs text-slate-400">{t('dashboard.noShoppingLists')}</p>
+              <p className="text-xs font-semibold text-emerald-400">{t('dashboard.createShoppingList')}</p>
+            </button>
+          ) : (
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 divide-y divide-slate-800 overflow-hidden">
+              {activeLists.slice(0, MAX_LISTS).map((list: any) => {
+                const progress = getListProgress(list);
+                const percent =
+                  progress && progress.total > 0 ? (progress.done / progress.total) * 100 : 0;
+                const allDone = !!progress && progress.total > 0 && progress.done === progress.total;
+                return (
+                  <button
+                    key={list.id}
+                    onClick={() => setActiveTab('shopping')}
+                    className="w-full text-left p-3.5 min-h-[56px] hover:bg-slate-900 active:bg-slate-800/60 transition-colors space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-white truncate">{list.name}</span>
+                      {progress && (
+                        <span
+                          className={`text-xs font-semibold shrink-0 ${
+                            allDone ? 'text-emerald-400' : 'text-slate-400'
+                          }`}
+                        >
+                          {progress.done} / {progress.total}
+                        </span>
+                      )}
+                    </div>
+                    {progress && progress.total > 0 && (
+                      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Przypięte notatki */}
+        <div className="space-y-3">
+          <SectionHeader
+            icon={<Pin className="w-4 h-4 text-amber-400" />}
+            title={t('dashboard.recentNotes')}
+            actionLabel={seeAll}
+            onAction={() => setActiveTab('notes')}
+          />
+
+          {!notesLoaded ? (
+            <div className="h-24 rounded-3xl bg-slate-900/60 border border-slate-800 animate-pulse" />
+          ) : pinnedNotes.length === 0 ? (
+            <button
+              onClick={() => setActiveTab('notes')}
+              className="w-full p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-1 active:scale-[0.99] transition-all"
+            >
+              <BookOpen className="w-5 h-5 text-slate-600 mx-auto" />
+              <p className="text-xs text-slate-400">{t('dashboard.noNotesYet')}</p>
+            </button>
+          ) : (
+            <div className="space-y-2">
+              {pinnedNotes.slice(0, MAX_NOTES).map((note) => {
+                const checklist = parseChecklist(note);
+                const done = checklist.filter((i) => i.completed).length;
+                const preview = note.isChecklist
+                  ? checklist
+                      .filter((i) => !i.completed)
+                      .slice(0, 2)
+                      .map((i) => i.text)
+                      .join(' · ')
+                  : (note.content || '').trim().split('\n')[0];
+                return (
+                  <button
+                    key={note.id}
+                    onClick={() => setActiveTab('notes')}
+                    className={`w-full text-left p-3.5 min-h-[56px] rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 border-l-4 ${noteAccent(
+                      note.color
+                    )} active:scale-[0.99] transition-all`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-white truncate">{note.title}</span>
+                      {note.isChecklist ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 shrink-0">
+                          <CheckSquare className="w-3 h-3" />
+                          {done}/{checklist.length}
+                        </span>
+                      ) : (
+                        <FileText className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      )}
+                    </div>
+                    {preview && <p className="text-xs text-slate-400 truncate mt-1">{preview}</p>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

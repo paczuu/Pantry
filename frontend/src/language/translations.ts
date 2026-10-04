@@ -98,7 +98,7 @@ export const translations = {
       createShoppingList: 'Nowa lista zakupów',
       addRecipe: 'Dodaj przepis',
       expiringProductsTitle: 'Produkty wymagające uwagi',
-      noExpiringProducts: 'Świetnie! Żaden produkt nie kończy się w najbliższym czasie.',
+      noExpiringProducts: 'Żaden produkt nie kończy się w najbliższym czasie!',
       allPantryGood: 'Wszystkie produkty w Twojej spiżarni są świeże.',
       viewAllPantry: 'Zobacz całą spiżarnię',
       recentRecipes: 'Inspiracje kulinarne',
