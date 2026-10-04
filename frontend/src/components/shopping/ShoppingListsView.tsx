@@ -230,13 +230,13 @@ export const ShoppingListsView: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Nagłówek i Zakładki List */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-emerald-400" />
             {t('shopping.title')}
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 mt-0.5">
             {language === 'en'
               ? 'Plan groceries and check off bought items'
               : 'Planuj zakupy i oznaczaj kupione produkty'}
@@ -245,10 +245,10 @@ export const ShoppingListsView: React.FC = () => {
 
         <button
           onClick={() => setIsNewListModalOpen(true)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all shrink-0"
         >
           <ListPlus className="w-4 h-4" />
-          {t('shopping.createList')}
+          <span className="hidden sm:inline">{t('shopping.createList')}</span>
         </button>
       </div>
 

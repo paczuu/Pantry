@@ -296,13 +296,13 @@ export const NotesView: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Nagłówek i Szukajka */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-emerald-400" />
             {t('notes.title')}
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 mt-0.5">
             {language === 'en'
               ? 'Create checklists, reminders, recipes, and meal plans'
               : 'Twórz listy zadań z polami wyboru, wskazówki i plany posiłków'}
@@ -311,10 +311,12 @@ export const NotesView: React.FC = () => {
 
         <button
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
-          {language === 'en' ? 'Add note / checklist' : 'Dodaj notatkę / listę zadań'}
+          <span className="hidden sm:inline">
+            {language === 'en' ? 'Add note / checklist' : 'Dodaj notatkę / listę zadań'}
+          </span>
         </button>
       </div>
 

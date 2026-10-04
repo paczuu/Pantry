@@ -877,22 +877,22 @@ export const RecipesView: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <ChefHat className="w-6 h-6 text-emerald-400" />
             {t('recipes.title')}
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 mt-0.5">
             {language === 'en'
               ? 'Save recipes, ingredients list, photos, rating, and notes'
               : 'Zapisuj przepisy, listę składników, zdjęcia, ocenę i opcjonalne uwagi'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Przełącznik widoku: Pełny vs Kompaktowy */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-1 shadow-md">
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-0.5 shadow-md">
             <button
               type="button"
               onClick={() => handleToggleViewMode('full')}
@@ -921,10 +921,10 @@ export const RecipesView: React.FC = () => {
 
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            {t('recipes.addRecipe')}
+            <span className="hidden sm:inline">{t('recipes.addRecipe')}</span>
           </button>
         </div>
       </div>

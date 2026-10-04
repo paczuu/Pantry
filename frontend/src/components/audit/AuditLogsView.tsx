@@ -343,7 +343,7 @@ export const AuditLogsView: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Nagłówek */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
@@ -358,10 +358,10 @@ export const AuditLogsView: React.FC = () => {
 
         <button
           onClick={() => fetchAuditData()}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs transition-all shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          {t('common.refresh')}
+          <span className="hidden sm:inline">{t('common.refresh')}</span>
         </button>
       </div>
 

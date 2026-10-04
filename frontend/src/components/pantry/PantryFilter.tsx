@@ -14,7 +14,7 @@ import {
   Layers,
 } from 'lucide-react';
 
-export type GroupBy = 'status' | 'category' | 'none';
+export type GroupBy = 'category' | 'status' | 'none';
 
 interface PantryFilterProps {
   viewMode: 'grid' | 'list';
@@ -77,15 +77,16 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
   const warningUnit = en ? 'd' : expiryWarningDays === 1 ? 'dzień' : 'dni';
 
   const groupOptions: { key: GroupBy; label: string }[] = [
-    { key: 'status', label: t('pantry.groupStatus') },
     { key: 'category', label: t('pantry.groupCategory') },
+    { key: 'status', label: t('pantry.groupStatus') },
     { key: 'none', label: t('pantry.groupNone') },
   ];
 
   return (
     <div className="space-y-3">
-      {/* Rząd 1: wyszukiwarka + sortowanie + widok */}
-      <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+      {/* Rząd 1: Wyszukiwarka -> Sortowanie (ikona) -> Widok (siatka/lista) */}
+      <div className="flex items-center gap-2">
+        {/* Wyszukiwarka */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -119,45 +120,46 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:flex-none">
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilter('sortBy', e.target.value)}
-              className="w-full sm:w-auto pl-8 pr-8 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs font-medium focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
-            >
-              <option value="expiry_asc">{t('pantry.sortExpiryAsc')}</option>
-              <option value="expiry_desc">{t('pantry.sortExpiryDesc')}</option>
-              <option value="name_asc">{t('pantry.sortNameAsc')}</option>
-              <option value="name_desc">{t('pantry.sortNameDesc')}</option>
-              <option value="quantity_desc">{t('pantry.sortQuantityDesc')}</option>
-              <option value="created_desc">{t('pantry.sortNewest')}</option>
-            </select>
-          </div>
+        {/* Sortowanie */}
+        <div className="relative shrink-0 flex items-center justify-center bg-slate-900 border border-slate-800 rounded-2xl p-2.5 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
+          <ArrowUpDown className="w-4 h-4" />
+          <select
+            value={filters.sortBy}
+            onChange={(e) => setFilter('sortBy', e.target.value)}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+            title={en ? 'Sort items' : 'Sortuj produkty'}
+          >
+            <option value="name_asc">{t('pantry.sortNameAsc')}</option>
+            <option value="name_desc">{t('pantry.sortNameDesc')}</option>
+            <option value="expiry_asc">{t('pantry.sortExpiryAsc')}</option>
+            <option value="expiry_desc">{t('pantry.sortExpiryDesc')}</option>
+            <option value="quantity_desc">{t('pantry.sortQuantityDesc')}</option>
+            <option value="created_desc">{t('pantry.sortNewest')}</option>
+          </select>
+        </div>
 
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-xl transition-colors ${
-                viewMode === 'grid' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title={en ? 'Grid view' : 'Widok siatki'}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-xl transition-colors ${
-                viewMode === 'list' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title={en ? 'List view' : 'Widok listy'}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
+        {/* Przełącznik widoku */}
+        <div className="flex items-center shrink-0 bg-slate-900 border border-slate-800 rounded-2xl p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-xl transition-colors ${
+              viewMode === 'grid' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title={en ? 'Grid view' : 'Widok siatki'}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`p-2 rounded-xl transition-colors ${
+              viewMode === 'list' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title={en ? 'List view' : 'Widok listy'}
+          >
+            <List className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

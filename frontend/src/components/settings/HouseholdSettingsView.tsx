@@ -855,14 +855,16 @@ export const HouseholdSettingsView: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Nagłówek */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <Sliders className="w-6 h-6 text-emerald-400" />
-          {t('settings.title')}
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          {t('settings.subtitle')}
-        </p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <Sliders className="w-6 h-6 text-emerald-400" />
+            {t('settings.title')}
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {t('settings.subtitle')}
+          </p>
+        </div>
       </div>
 
       {/* Aplikacja */}
