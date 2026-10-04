@@ -27,7 +27,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
   const [brand, setBrand] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [capacity, setCapacity] = useState('');
-  const [category, setCategory] = useState('Inne');
+  const [category, setCategory] = useState('Other');
   const [expiryDate, setExpiryDate] = useState('');
   const [openedDate, setOpenedDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -37,7 +37,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
     name: '',
     brand: '',
     quantity: 1,
-    category: 'Inne',
+    category: 'Other',
     expiryDate: '',
     openedDate: '',
     notes: '',
@@ -64,7 +64,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
       const initBrand = item.brand || '';
       const initQty = item.quantity || 1;
       const initCap = item.capacity || '';
-      const initCat = item.category || 'Inne';
+      const initCat = item.category || 'Other';
       const initExp = item.expiryDate ? item.expiryDate.split('T')[0] : '';
       const initOp = item.openedDate ? item.openedDate.split('T')[0] : '';
       const initNotes = item.notes || '';

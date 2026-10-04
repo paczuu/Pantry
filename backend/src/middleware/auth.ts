@@ -29,7 +29,7 @@ export const authenticateToken = async (
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    res.status(401).json({ error: 'Brak tokenu autoryzacyjnego. Zaloguj się.' });
+    res.status(401).json({ error: 'Authorization token missing. Please log in.' });
     return;
   }
 
@@ -42,14 +42,14 @@ export const authenticateToken = async (
     });
 
     if (!dbUser) {
-      res.status(401).json({ error: 'Użytkownik nie istnieje.' });
+      res.status(401).json({ error: 'User does not exist.' });
       return;
     }
 
     req.user = dbUser;
     next();
   } catch (err) {
-    res.status(403).json({ error: 'Nieprawidłowy lub wygasły token sesji.' });
+    res.status(403).json({ error: 'Invalid or expired session token.' });
     return;
   }
 };

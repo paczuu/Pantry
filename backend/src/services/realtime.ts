@@ -32,7 +32,7 @@ export function initRealtime(httpServer: HttpServer): Server {
         (socket.handshake.query?.token as string | undefined);
 
       if (!token) {
-        next(new Error('Brak tokenu.'));
+        next(new Error('Missing token.'));
         return;
       }
 
@@ -43,7 +43,7 @@ export function initRealtime(httpServer: HttpServer): Server {
       });
 
       if (!user?.householdId) {
-        next(new Error('Brak gospodarstwa.'));
+        next(new Error('No household assigned.'));
         return;
       }
 
@@ -54,7 +54,7 @@ export function initRealtime(httpServer: HttpServer): Server {
       };
       next();
     } catch {
-      next(new Error('Nieautoryzowane połączenie.'));
+      next(new Error('Unauthorized connection.'));
     }
   });
 

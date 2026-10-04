@@ -19,7 +19,7 @@ export const getShoppingLists = async (req: Request, res: Response): Promise<voi
 
     res.json({ lists });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania list zakupów.' });
+    res.status(500).json({ error: 'Error getting the shopping lists.' });
   }
 };
 
@@ -38,13 +38,13 @@ export const getShoppingListById = async (req: Request, res: Response): Promise<
     });
 
     if (!list) {
-      res.status(404).json({ error: 'Lista zakupów nie istnieje.' });
+      res.status(404).json({ error: 'Shopping list not found.' });
       return;
     }
 
     res.json({ list });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd pobierania listy zakupów.' });
+    res.status(500).json({ error: 'Error getting the shopping list.' });
   }
 };
 
@@ -54,7 +54,7 @@ export const createShoppingList = async (req: Request, res: Response): Promise<v
     const { name, icon = 'shopping-bag', color = 'emerald' } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ error: 'Nazwa listy jest wymagana.' });
+      res.status(400).json({ error: 'Shopping list name is required.' });
       return;
     }
 
@@ -68,9 +68,9 @@ export const createShoppingList = async (req: Request, res: Response): Promise<v
       include: { items: true },
     });
 
-    res.status(201).json({ list: newList, message: 'Lista zakupów została utworzona.' });
+    res.status(201).json({ list: newList, message: 'Shopping list created.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas tworzenia listy zakupów.' });
+    res.status(500).json({ error: 'Error creating the shopping list.' });
   }
 };
 
@@ -89,9 +89,9 @@ export const updateShoppingList = async (req: Request, res: Response): Promise<v
       },
     });
 
-    res.json({ list, message: 'Lista zaktualizowana.' });
+    res.json({ list, message: 'Shopping list updated.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas edycji listy.' });
+    res.status(500).json({ error: 'Error updating the shopping list.' });
   }
 };
 
@@ -104,9 +104,9 @@ export const deleteShoppingList = async (req: Request, res: Response): Promise<v
       where: { id, householdId },
     });
 
-    res.json({ message: 'Lista została usunięta.' });
+    res.json({ message: 'Shopping list deleted.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas usuwania listy.' });
+    res.status(500).json({ error: 'Error deleting the shopping list.' });
   }
 };
 
@@ -114,10 +114,10 @@ export const addShoppingItem = async (req: Request, res: Response): Promise<void
   try {
     const { id } = req.params;
     const householdId = req.user!.householdId!;
-    const { name, quantity = 1, capacity, category = 'Inne', barcode } = req.body;
+    const { name, quantity = 1, capacity, category = 'Other', barcode } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ error: 'Nazwa produktu jest wymagana.' });
+      res.status(400).json({ error: 'Product name is required.' });
       return;
     }
 
@@ -126,7 +126,7 @@ export const addShoppingItem = async (req: Request, res: Response): Promise<void
     });
 
     if (!list) {
-      res.status(404).json({ error: 'Lista zakupów nie istnieje.' });
+      res.status(404).json({ error: 'Shopping list not found.' });
       return;
     }
 
@@ -136,14 +136,14 @@ export const addShoppingItem = async (req: Request, res: Response): Promise<void
         name: name.trim(),
         quantity: Math.max(1, parseInt(quantity) || 1),
         capacity: capacity?.trim() || null,
-        category: category?.trim() || 'Inne',
+        category: category?.trim() || 'Other',
         barcode: barcode?.trim() || null,
       },
     });
 
-    res.status(201).json({ item, message: 'Dodano do listy zakupów.' });
+    res.status(201).json({ item, message: 'Added to the shopping list.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas dodawania do listy.' });
+    res.status(500).json({ error: 'Error adding to the shopping list.' });
   }
 };
 
@@ -166,7 +166,7 @@ export const updateShoppingItem = async (req: Request, res: Response): Promise<v
 
     res.json({ item });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas aktualizacji pozycji na liście.' });
+    res.status(500).json({ error: 'Error updating the shopping item.' });
   }
 };
 
@@ -178,9 +178,9 @@ export const deleteShoppingItem = async (req: Request, res: Response): Promise<v
       where: { id: itemId },
     });
 
-    res.json({ message: 'Pozycja usunięta z listy.' });
+    res.json({ message: 'Shopping item deleted.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas usuwania pozycji.' });
+    res.status(500).json({ error: 'Error deleting the shopping item.' });
   }
 };
 
@@ -195,9 +195,9 @@ export const clearCheckedShoppingItems = async (req: Request, res: Response): Pr
       },
     });
 
-    res.json({ message: 'Kupione pozycje zostały wyczyszczone z listy.' });
+    res.json({ message: 'Checked shopping items cleared from the list.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas czyszczenia listy.' });
+    res.status(500).json({ error: 'Error clearing the checked shopping items.' });
   }
 };
 
@@ -217,7 +217,7 @@ export const transferCheckedToPantry = async (req: Request, res: Response): Prom
     }
 
     if (itemsToTransfer.length === 0) {
-      res.status(400).json({ error: 'Brak zaznaczonych artykułów do przeniesienia.' });
+      res.status(400).json({ error: 'No checked items to transfer.' });
       return;
     }
 
@@ -230,7 +230,7 @@ export const transferCheckedToPantry = async (req: Request, res: Response): Prom
           name: item.name,
           quantity: item.quantity || 1,
           capacity: item.capacity || null,
-          category: item.category || 'Inne',
+          category: item.category || 'Other',
           barcode: item.barcode || null,
           expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
           addedById: req.user!.id,
@@ -252,20 +252,20 @@ export const transferCheckedToPantry = async (req: Request, res: Response): Prom
       userId: req.user!.id,
       userName: req.user!.name,
       userEmail: req.user!.email,
-      action: 'PRZENIESIONO_Z_LISTY',
+      action: 'TRANSFERRED_TO_PANTRY',
       entityType: 'PANTRY_ITEM',
-      entityName: `${addedPantryItems.length} produktów`,
-      details: `Przeniesiono ${addedPantryItems.length} kupionych artykułów z listy zakupów bezpośrednio do spiżarni.`,
+      entityName: `${addedPantryItems.length} products`,
+      details: `Transferred ${addedPantryItems.length} purchased items directly to the pantry.`,
     });
 
     res.json({
-      message: `Przeniesiono pomyślnie ${addedPantryItems.length} artykułów do spiżarni!`,
+      message: `Successfully transferred ${addedPantryItems.length} items to the pantry!`,
       addedCount: addedPantryItems.length,
       items: addedPantryItems,
     });
   } catch (error) {
-    console.error('Błąd przenoszenia do spiżarni:', error);
-    res.status(500).json({ error: 'Błąd podczas przenoszenia produktów do spiżarni.' });
+    console.error('Error transferring to the pantry:', error);
+    res.status(500).json({ error: 'Error transferring to the pantry.' });
   }
 };
 
@@ -309,10 +309,10 @@ export const addExpiringToShoppingList = async (req: Request, res: Response): Pr
     }
 
     res.json({
-      message: `Dodano ${addedCount} produktów z krótkim terminem do listy zakupów.`,
+      message: `Added ${addedCount} products with a short expiry date to the shopping list.`,
       addedCount,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas dodawania kończących się produktów.' });
+    res.status(500).json({ error: 'Error adding products with a short expiry date to the shopping list.' });
   }
 };

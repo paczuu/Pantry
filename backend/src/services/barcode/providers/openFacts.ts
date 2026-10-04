@@ -26,157 +26,156 @@ const getDomain = (source: BarcodeSourceConfig): string => {
   return PROVIDER_DOMAINS[source.provider];
 };
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Dairy: [
+    // EN
+    'dairy', 'milk', 'cheese', 'yogurt', 'yoghurt', 'butter', 'cream', 'cottage',
+    'curd', 'margarine', 'kefir', 'sour cream', 'whey', 'ghee', 'mozzarella',
+    'cheddar', 'parmesan', 'brie', 'camembert', 'ricotta', 'mascarpone',
+    // PL
+    'nabiał', 'nabial', 'mleko', 'mleka', 'ser', 'sery', 'sernik', 'jogurt',
+    'jogurty', 'masło', 'maslo', 'śmietana', 'smietana', 'śmietanka', 'smietanka',
+    'twaróg', 'twarog', 'twarożek', 'twarozek', 'kefir', 'kefiry', 'maślanka',
+    'maslanka', 'margaryna', 'mleczko', 'serwatka', 'gorgonzola'
+  ],
+
+  Meat: [
+    // EN
+    'meat', 'meats', 'fish', 'fishes', 'poultry', 'pork', 'beef', 'chicken',
+    'turkey', 'duck', 'bacon', 'sausage', 'sausages', 'ham', 'salami', 'seafood',
+    'salmon', 'tuna', 'cod', 'shrimp', 'prawn', 'steak', 'minced', 'veal', 'lamb',
+    // PL
+    'mięso', 'mieso', 'męso', 'ryba', 'ryby', 'ryb', 'drób', 'drob', 'wieprzowina',
+    'wołowina', 'wolowina', 'kurczak', 'kurczaka', 'indyk', 'kaczka', 'boczek',
+    'kiełbasa', 'kielbasa', 'kiełbaski', 'kielbaski', 'szynka', 'szynki', 'parówki',
+    'parowki', 'kabanos', 'kabanosy', 'łosoś', 'losos', 'tuńczyk', 'tunczyk',
+    'dorsz', 'krewetki', 'owoce morza', 'mielone', 'schab', 'pierś', 'piers'
+  ],
+
+  FruitsVegetables: [
+    // EN
+    'fruit', 'fruits', 'vegetable', 'vegetables', 'salad', 'salads', 'tomato',
+    'tomatoes', 'potato', 'potatoes', 'apple', 'apples', 'banana', 'bananas',
+    'orange', 'oranges', 'berry', 'berries', 'lemon', 'onion', 'garlic', 'carrot',
+    'cucumber', 'pepper', 'avocado', 'mushroom', 'mushrooms', 'spinach', 'berry',
+    // PL
+    'owoc', 'owoce', 'owoców', 'warzywo', 'warzywa', 'warzyw', 'sałata', 'salata',
+    'sałatka', 'salatka', 'pomidor', 'pomidory', 'ziemniak', 'ziemniaki', 'jabłko',
+    'jablko', 'jabłka', 'jablka', 'banan', 'banany', 'pomarańcza', 'pomarancza',
+    'cytryna', 'cebula', 'czosnek', 'marchew', 'marchewka', 'ogórek', 'ogorek',
+    'papryka', 'awokado', 'pieczarki', 'grzyby', 'szpinak', 'truskawki', 'maliny'
+  ],
+
+  Beverages: [
+    // EN
+    'beverage', 'beverages', 'drink', 'drinks', 'juice', 'juices', 'water',
+    'waters', 'tea', 'teas', 'coffee', 'coffees', 'beer', 'beers', 'wine',
+    'soda', 'cola', 'cider', 'energy drink', 'isotonic', 'lemonade',
+    // PL
+    'napój', 'napoj', 'napoje', 'napojów', 'sok', 'soki', 'soków', 'woda',
+    'wody', 'herbata', 'herbaty', 'kawa, kawy', 'piwo', 'piwa', 'wino',
+    'wina', 'oranżada', 'oranzada', 'kompot', 'cola', 'energetyk', 'izotonik',
+    'cytrynada', 'lemoniada'
+  ],
+
+  DryGrains: [
+    // EN
+    'pasta', 'pastas', 'rice', 'cereal', 'cereals', 'flour', 'grain', 'grains',
+    'oat', 'oats', 'oatmeal', 'noodle', 'noodles', 'groats', 'couscous',
+    'quinoa', 'barley', 'semolina', 'lentils', 'chickpeas', 'beans',
+    // PL
+    'makaron', 'makarony', 'ryż', 'ryz', 'płatki', 'platki', 'mąka', 'maka',
+    'kasza', 'kasze', 'owsianka', 'musli', 'müsli', 'kuskus', 'soczewica',
+    'ciecierzyca', 'groch', 'fasola', 'otręby', 'otreby', 'sypkie'
+  ],
+
+  SpicesSauces: [
+    // EN
+    'spice', 'spices', 'sauce', 'sauces', 'condiment', 'condiments', 'oil',
+    'oils', 'dressing', 'ketchup', 'mustard', 'mayonnaise', 'mayo', 'vinegar',
+    'pepper', 'salt', 'herb', 'herbs', 'curry', 'soy sauce', 'olive oil',
+    // PL
+    'przyprawa', 'przyprawy', 'przypraw', 'sos', 'sosy', 'sosów', 'olej',
+    'oleje', 'oliwa', 'dresing', 'dressing', 'ketchup', 'keczap', 'musztarda',
+    'majonez', 'ocet', 'pieprz', 'sól', 'sol', 'zioła', 'ziola', 'bazylia',
+    'oregano', 'curry', 'sos sojowy', 'przecier'
+  ],
+
+  Sweets: [
+    // EN
+    'chocolate', 'chocolates', 'sweet', 'sweets', 'candy', 'candies',
+    'praline', 'pralines', 'caramel', 'marshmallow', 'lollipop', 'gummy',
+    'gummies', 'bonbon', 'cocoa', 'wafer', 'wafers',
+    // PL
+    'czekolada', 'czekolady', 'słodycze', 'slodycze', 'słodycz', 'slodycz',
+    'cukierek', 'cukierki', 'cukierków', 'praliny', 'pralinostwo', 'karamel',
+    'pianki', 'lizak', 'lizaki', 'żelki', 'zelki', 'kakao', 'batonik', 'batony',
+    'wafel', 'wafelek', 'wafle'
+  ],
+
+  Snacks: [
+    // EN
+    'snack', 'snacks', 'biscuit', 'biscuits', 'cookie', 'cookies', 'chip',
+    'chips', 'crisp', 'crisps', 'cracker', 'crackers', 'popcorn', 'pretzel',
+    'pretzels', 'nuts', 'peanut', 'peanuts', 'almond', 'almonds',
+    // PL
+    'przekąska', 'przekaska', 'przekąski', 'przekaski', 'ciastko', 'ciastka',
+    'ciasteczka', 'herbatniki', 'chipsy', 'chrupki', 'krakersy', 'popcorn',
+    'paluszki', 'precle', 'orzechy', 'orzeszki', 'migdały', 'migdaly', 'płatki'
+  ],
+
+  Bakery: [
+    // EN
+    'bread', 'breads', 'bakery', 'bun', 'buns', 'roll', 'rolls', 'baguette',
+    'croissant', 'toast', 'tortilla', 'bagel', 'pita', 'doughnut', 'donut',
+    // PL
+    'pieczywo', 'chleb', 'chleby', 'bułka', 'bulka', 'bułki', 'bulki',
+    'bagietka', 'rogai', 'rogalik', 'rogaliki', 'toast', 'tosty', 'tortilla',
+    'pączek', 'paczek', 'drożdżówka', 'drozdzowka', 'kajzerka', 'kajzerki'
+  ],
+
+  FrozenFoods: [
+    // EN
+    'frozen', 'ice cream', 'icecreams', 'sorbet', 'gelato', 'deep frozen',
+    // PL
+    'mrożonka', 'mrozonka', 'mrożonki', 'mrozonki', 'mrożony', 'mrozony',
+    'mrożone', 'mrozone', 'lody', 'lód', 'lod', 'sorbet', 'frytki'
+  ],
+
+  CannedPreserves: [
+    // EN
+    'canned', 'can', 'cans', 'preserve', 'preserves', 'jam', 'jams',
+    'marmalade', 'pickle', 'pickles', 'compote', 'jar', 'jars', 'tinned',
+    // PL
+    'konserwa', 'konserwy', 'przetwory', 'przetwór', 'przetwor', 'dżem',
+    'dzem', 'dżemy', 'dzemy', 'marmolada', 'konfitura', 'ogórki kiszone',
+    'kiszona', 'kiszone', 'pasteryzowane', 'słoik', 'sloik', 'słoiki', 'kompot'
+  ]
+};
+
 const mapCategoryFromTags = (tags: string[] = [], categoriesString = ''): string => {
   const combined = `${tags.join(' ')} ${categoriesString}`.toLowerCase();
 
-  if (
-    combined.includes('dairy') ||
-    combined.includes('milk') ||
-    combined.includes('cheese') ||
-    combined.includes('yogurt') ||
-    combined.includes('nabiał') ||
-    combined.includes('mleko') ||
-    combined.includes('ser') ||
-    combined.includes('jogurt') ||
-    combined.includes('śmietana') ||
-    combined.includes('masło')
-  ) {
-    return 'Nabiał';
+  // Przeglądamy po kolei kategorie z zdefiniowanej tablicy
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((keyword) => combined.includes(keyword))) {
+      return category;
+    }
   }
 
-  if (
-    combined.includes('meat') ||
-    combined.includes('fish') ||
-    combined.includes('poultry') ||
-    combined.includes('ham') ||
-    combined.includes('mięso') ||
-    combined.includes('ryb') ||
-    combined.includes('wędlin') ||
-    combined.includes('kurczak') ||
-    combined.includes('szynka') ||
-    combined.includes('kiełbasa')
-  ) {
-    return 'Mięso i Ryby';
-  }
-
-  if (
-    combined.includes('fruit') ||
-    combined.includes('vegetable') ||
-    combined.includes('salad') ||
-    combined.includes('owoc') ||
-    combined.includes('warzyw') ||
-    combined.includes('pomidor') ||
-    combined.includes('jabłko') ||
-    combined.includes('ziemniak')
-  ) {
-    return 'Warzywa i Owoce';
-  }
-
-  if (
-    combined.includes('beverage') ||
-    combined.includes('drink') ||
-    combined.includes('juice') ||
-    combined.includes('water') ||
-    combined.includes('tea') ||
-    combined.includes('coffee') ||
-    combined.includes('napój') ||
-    combined.includes('sok') ||
-    combined.includes('woda') ||
-    combined.includes('herbata') ||
-    combined.includes('kawa') ||
-    combined.includes('piwo')
-  ) {
-    return 'Napoje';
-  }
-
-  if (
-    combined.includes('pasta') ||
-    combined.includes('rice') ||
-    combined.includes('cereal') ||
-    combined.includes('flour') ||
-    combined.includes('makaron') ||
-    combined.includes('ryż') ||
-    combined.includes('kasza') ||
-    combined.includes('mąka') ||
-    combined.includes('płatki') ||
-    combined.includes('strączkowe')
-  ) {
-    return 'Makarony i Sypkie';
-  }
-
-  if (
-    combined.includes('spice') ||
-    combined.includes('sauce') ||
-    combined.includes('condiment') ||
-    combined.includes('oil') ||
-    combined.includes('przypraw') ||
-    combined.includes('sos') ||
-    combined.includes('olej') ||
-    combined.includes('oliwa') ||
-    combined.includes('ketchup') ||
-    combined.includes('musztarda') ||
-    combined.includes('majonez')
-  ) {
-    return 'Przyprawy i Sosy';
-  }
-
-  if (
-    combined.includes('snack') ||
-    combined.includes('sweet') ||
-    combined.includes('biscuit') ||
-    combined.includes('chocolate') ||
-    combined.includes('chips') ||
-    combined.includes('przekąsk') ||
-    combined.includes('słodycz') ||
-    combined.includes('ciastk') ||
-    combined.includes('czekolad') ||
-    combined.includes('chipsy')
-  ) {
-    return 'Przekąski';
-  }
-
-  if (
-    combined.includes('frozen') ||
-    combined.includes('ice cream') ||
-    combined.includes('mrożon') ||
-    combined.includes('lody')
-  ) {
-    return 'Mrożonki';
-  }
-
-  if (
-    combined.includes('bread') ||
-    combined.includes('bakery') ||
-    combined.includes('pieczywo') ||
-    combined.includes('chleb') ||
-    combined.includes('bułk')
-  ) {
-    return 'Pieczywo';
-  }
-
-  if (
-    combined.includes('canned') ||
-    combined.includes('preserve') ||
-    combined.includes('konserw') ||
-    combined.includes('przetwor') ||
-    combined.includes('dżem')
-  ) {
-    return 'Przetwory i Konserwy';
-  }
-
-  return 'Inne';
+  return 'Other';
 };
 
 const getFallbackCategory = (provider: BarcodeProviderKey): string => {
   switch (provider) {
     case 'OPEN_BEAUTY_FACTS':
-      return 'Kosmetyki';
+      return 'Beauty';
     case 'OPEN_PET_FOOD_FACTS':
-      return 'Karma dla zwierząt';
+      return 'Pet food';
     case 'OPEN_PRODUCTS_FACTS':
-      return 'Inne';
+      return 'Other';
     default:
-      return 'Inne';
+      return 'Other';
   }
 };
 
@@ -211,7 +210,7 @@ export class OpenFactsProvider implements BarcodeProvider {
         prod.generic_name_pl ||
         prod.generic_name ||
         prod.brands ||
-        'Produkt';
+        'Product';
 
       const mappedCategory = mapCategoryFromTags(
         prod.categories_tags || [],
@@ -223,7 +222,7 @@ export class OpenFactsProvider implements BarcodeProvider {
         name: String(name).trim(),
         brand: prod.brands ? String(prod.brands).trim() : undefined,
         category:
-          mappedCategory !== 'Inne'
+          mappedCategory !== 'Other'
             ? mappedCategory
             : getFallbackCategory(source.provider),
         capacity: prod.quantity ? String(prod.quantity).trim() : undefined,
@@ -240,7 +239,7 @@ export class OpenFactsProvider implements BarcodeProvider {
       };
     } catch (error) {
       console.warn(
-        `Błąd providera ${getSourceKey(source)} dla EAN ${cleanBarcode}:`,
+        `Error provider ${getSourceKey(source)} for EAN ${cleanBarcode}:`,
         error instanceof Error ? error.message : error
       );
       return null;

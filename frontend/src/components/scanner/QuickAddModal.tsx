@@ -45,7 +45,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('Inne');
+  const [category, setCategory] = useState('Other');
   const [quantity, setQuantity] = useState(1);
   const [capacity, setCapacity] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -61,7 +61,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [initialSnapshot, setInitialSnapshot] = useState({
     name: '',
     brand: '',
-    category: 'Inne',
+    category: 'Other',
     quantity: 1,
     capacity: '',
     expiryDate: '',
@@ -92,7 +92,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     if (initialProduct) {
       const initName = initialProduct.name || '';
       const initBrand = initialProduct.brand || '';
-      const initCat = initialProduct.category || (categories[0]?.name || 'Inne');
+      const initCat = initialProduct.category || (categories[0]?.name || 'Other');
       const initCap = initialProduct.capacity || '';
       const initImg = initialProduct.imageUrl || '';
 
@@ -115,7 +115,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         imageUrl: initImg,
       });
     } else {
-      const initCat = categories[0]?.name || 'Inne';
+      const initCat = categories[0]?.name || 'Other';
       setName('');
       setBrand('');
       setCategory(initCat);

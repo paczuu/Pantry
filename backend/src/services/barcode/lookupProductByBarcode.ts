@@ -20,7 +20,7 @@ const toStandardProduct = (product: {
   barcode: product.barcode,
   name: product.name,
   brand: product.brand || undefined,
-  category: product.category || 'Inne',
+  category: product.category || 'Other',
   capacity: product.capacity || undefined,
   imageUrl: product.imageUrl || undefined,
   nutriScore: product.nutriScore || undefined,
@@ -137,7 +137,7 @@ export const lookupProductByBarcode = async (
       await cacheExternalProduct(product);
     } catch (error) {
       console.warn(
-        `Nie udało się zapisać cache dla ${sourceKey} / ${cleanBarcode}:`,
+        `Error caching for ${sourceKey} / ${cleanBarcode}:`,
         error instanceof Error ? error.message : error
       );
     }

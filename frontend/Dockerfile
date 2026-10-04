@@ -19,10 +19,10 @@ RUN npm run build
 # =========================
 FROM nginx:alpine
 
-# Nasza konfiguracja nginx
+# Custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Kopiujemy zbudowany frontend
+# Copy built frontend
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80

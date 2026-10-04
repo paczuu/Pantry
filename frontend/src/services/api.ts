@@ -459,7 +459,7 @@ class ApiService {
   }> {
     return this.request('/settings/backup/restore', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-spizarnia-backup' },
+      headers: { 'Content-Type': 'application/x-pantry-backup' },
       body: JSON.stringify(backup),
     });
   }

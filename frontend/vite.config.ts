@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: 'Pantry',
         short_name: 'Pantry',
-        description: 'Inteligentne zarządzanie zapasami w kuchni i spiżarni ze skanerem kodów EAN',
+        description: 'Intelligent inventory management in the kitchen and pantry with barcode scanner',
         theme_color: '#020617',
         background_color: '#020617',
         display: 'standalone',

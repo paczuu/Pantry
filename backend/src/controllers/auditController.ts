@@ -71,8 +71,8 @@ export const getAuditLogs = async (req: Request, res: Response): Promise<void> =
       logs,
     });
   } catch (error) {
-    console.error('Błąd pobierania audytu zmian:', error);
-    res.status(500).json({ error: 'Błąd podczas pobierania dziennika audytu.' });
+    console.error('Error fetching audit log:', error);
+    res.status(500).json({ error: 'Failed to fetch audit log.' });
   }
 };
 
@@ -114,6 +114,6 @@ export const getAuditStats = async (req: Request, res: Response): Promise<void> 
       userActivity,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania statystyk audytu.' });
+    res.status(500).json({ error: 'Failed to fetch audit statistics.' });
   }
 };

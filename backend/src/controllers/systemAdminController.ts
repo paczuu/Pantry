@@ -69,8 +69,8 @@ export const getSystemUsers = async (req: Request, res: Response): Promise<void>
       })),
     });
   } catch (error) {
-    console.error('Błąd pobierania użytkowników systemu:', error);
-    res.status(500).json({ error: 'Nie udało się pobrać użytkowników.' });
+    console.error('Error fetching system users:', error);
+    res.status(500).json({ error: 'Failed to fetch users.' });
   }
 };
 
@@ -103,8 +103,8 @@ export const getSystemHouseholds = async (req: Request, res: Response): Promise<
       })),
     });
   } catch (error) {
-    console.error('Błąd pobierania gospodarstw systemu:', error);
-    res.status(500).json({ error: 'Nie udało się pobrać gospodarstw.' });
+    console.error('Error fetching system households:', error);
+    res.status(500).json({ error: 'Failed to fetch households.' });
   }
 };
 
@@ -113,12 +113,12 @@ export const createSystemHousehold = async (req: Request, res: Response): Promis
     const name = String(req.body?.name || '').trim();
 
     if (name.length < 2) {
-      res.status(400).json({ error: 'Nazwa gospodarstwa musi mieć co najmniej 2 znaki.' });
+      res.status(400).json({ error: 'Household name must be at least 2 characters.' });
       return;
     }
 
     if (name.length > 60) {
-      res.status(400).json({ error: 'Nazwa gospodarstwa może mieć maksymalnie 60 znaków.' });
+      res.status(400).json({ error: 'Household name cannot exceed 60 characters.' });
       return;
     }
 
@@ -147,11 +147,11 @@ export const createSystemHousehold = async (req: Request, res: Response): Promis
         ...household,
         memberCount: 0,
       },
-      message: 'Utworzono gospodarstwo i wygenerowano kod zaproszenia ważny przez 5 minut.',
+      message: 'Household created and invite code generated (valid for 5 minutes).',
     });
   } catch (error) {
-    console.error('Błąd tworzenia gospodarstwa:', error);
-    res.status(500).json({ error: 'Nie udało się utworzyć gospodarstwa.' });
+    console.error('Error creating household:', error);
+    res.status(500).json({ error: 'Failed to create household.' });
   }
 };
 
@@ -165,7 +165,7 @@ export const generateSystemHouseholdInviteCode = async (req: Request, res: Respo
     });
 
     if (!existingHousehold) {
-      res.status(404).json({ error: 'Gospodarstwo nie istnieje.' });
+      res.status(404).json({ error: 'Household not found.' });
       return;
     }
 
@@ -183,11 +183,11 @@ export const generateSystemHouseholdInviteCode = async (req: Request, res: Respo
     res.json({
       inviteCode,
       inviteCodeExpiresAt: inviteCodeExpiresAt.toISOString(),
-      message: `Wygenerowano kod dla gospodarstwa "${existingHousehold.name}".`,
+      message: `Invite code generated for household "${existingHousehold.name}".`,
     });
   } catch (error) {
-    console.error('Błąd generowania kodu gospodarstwa:', error);
-    res.status(500).json({ error: 'Nie udało się wygenerować kodu zaproszenia.' });
+    console.error('Error generating household invite code:', error);
+    res.status(500).json({ error: 'Failed to generate invite code.' });
   }
 };
 
@@ -201,7 +201,7 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
     });
 
     if (!targetUser) {
-      res.status(404).json({ error: 'Użytkownik nie istnieje.' });
+      res.status(404).json({ error: 'User not found.' });
       return;
     }
 
@@ -213,12 +213,12 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       isSystemAdmin !== undefined &&
       isSystemAdmin === false
     ) {
-      res.status(400).json({ error: 'Kontu głównemu nie można odebrać uprawnień administratora systemu.' });
+      res.status(400).json({ error: 'Cannot revoke system admin privileges from the primary account.' });
       return;
     }
 
     if (role !== undefined && !['ADMIN', 'MEMBER'].includes(role)) {
-      res.status(400).json({ error: 'Nieprawidłowa rola użytkownika.' });
+      res.status(400).json({ error: 'Invalid user role.' });
       return;
     }
 
@@ -229,7 +229,7 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       });
 
       if (!household) {
-        res.status(400).json({ error: 'Wybrane gospodarstwo nie istnieje.' });
+        res.status(400).json({ error: 'The selected household does not exist.' });
         return;
       }
     }
@@ -239,7 +239,7 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       isSystemAdmin !== undefined &&
       isSystemAdmin === false
     ) {
-      res.status(400).json({ error: 'Nie możesz odebrać sobie uprawnień administratora systemu.' });
+      res.status(400).json({ error: 'You cannot revoke your own system admin privileges.' });
       return;
     }
 
@@ -273,10 +273,10 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       },
     });
 
-    res.json({ user, message: 'Zaktualizowano użytkownika.' });
+    res.json({ user, message: 'User updated.' });
   } catch (error) {
-    console.error('Błąd aktualizacji użytkownika systemu:', error);
-    res.status(500).json({ error: 'Nie udało się zaktualizować użytkownika.' });
+    console.error('Error updating system user:', error);
+    res.status(500).json({ error: 'Failed to update user.' });
   }
 };
 
@@ -285,7 +285,7 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
     const { userId } = req.params;
 
     if (userId === req.user!.id) {
-      res.status(400).json({ error: 'Nie możesz usunąć własnego konta administratora systemu.' });
+      res.status(400).json({ error: 'You cannot delete your own system admin account.' });
       return;
     }
 
@@ -299,14 +299,14 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
     });
 
     if (!targetUser) {
-      res.status(404).json({ error: 'Użytkownik nie istnieje.' });
+      res.status(404).json({ error: 'User not found.' });
       return;
     }
 
     const primaryUserId = await getPrimaryUserId();
 
     if (userId === primaryUserId) {
-      res.status(400).json({ error: 'Konta głównego nie można usunąć.' });
+      res.status(400).json({ error: 'The primary account cannot be deleted.' });
       return;
     }
 
@@ -315,10 +315,10 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
     });
 
     res.json({
-      message: `Usunięto konto użytkownika ${targetUser.name} (${targetUser.email}).`,
+      message: `Account for ${targetUser.name} (${targetUser.email}) has been deleted.`,
     });
   } catch (error) {
-    console.error('Błąd usuwania użytkownika systemu:', error);
-    res.status(500).json({ error: 'Nie udało się usunąć użytkownika.' });
+    console.error('Error deleting system user:', error);
+    res.status(500).json({ error: 'Failed to delete user.' });
   }
 };

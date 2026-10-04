@@ -213,21 +213,21 @@ export const AuditLogsView: React.FC = () => {
 
   const getActionBadge = (action: string) => {
     switch (action) {
-      case 'DODANO_PRODUKT':
+      case 'ADDED_PRODUCT':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
             <PlusCircle className="w-3.5 h-3.5" />
             {language === 'en' ? 'Item added' : 'Dodano produkt'}
           </span>
         );
-      case 'ZWIĘKSZONO_ILOSC':
+      case 'INCREASED_QUANTITY':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
             <PlusCircle className="w-3.5 h-3.5" />
             {language === 'en' ? 'Quantity increased' : 'Zwiększono ilość'}
           </span>
         );
-      case 'ZMIENIONO_WARTOSCI':
+      case 'UPDATED_VALUES':
       case 'EDYTOWANO_PRODUKT':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
@@ -235,37 +235,37 @@ export const AuditLogsView: React.FC = () => {
             {language === 'en' ? 'Item edited' : 'Edytowano dane'}
           </span>
         );
-      case 'ZMNIEJSZONO_ILOSC':
+      case 'DECREASED_QUANTITY':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
             <MinusCircle className="w-3.5 h-3.5" />
             {language === 'en' ? 'Quantity reduced' : 'Zmniejszono ilość'}
           </span>
         );
-      case 'ZUŻYTO_PRODUKT':
+      case 'CONSUMED_PRODUCT':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
             <MinusCircle className="w-3.5 h-3.5" />
             {language === 'en' ? 'Fully consumed' : 'Całkowicie zużyto'}
           </span>
         );
-      case 'USUNIĘTO_PRODUKT':
+      case 'DELETED_PRODUCT':
       case 'USUNIETO_PRODUKT':
-      case 'WYRZUCONO_PRODUKT':
+      case 'DISCARDED_PRODUCT':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
             <Trash2 className="w-3.5 h-3.5" />
             {language === 'en' ? 'Removed / Discarded' : 'Usunięto / Wyrzucono'}
           </span>
         );
-      case 'PRZENIESIONO_Z_LISTY':
+      case 'TRANSFERRED_TO_PANTRY':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30">
             <ShoppingCart className="w-3.5 h-3.5" />
             {language === 'en' ? 'Transferred from shopping' : 'Przeniesiono z zakupów'}
           </span>
         );
-      case 'DOLACZONO_DO_DOMU':
+      case 'JOINED_HOUSEHOLD':
       case 'NOWY_DOMOWNIK':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/30">
@@ -273,28 +273,28 @@ export const AuditLogsView: React.FC = () => {
             {language === 'en' ? 'Member joined' : 'Nowy domownik'}
           </span>
         );
-      case 'WYGENEROWANO_KOD_ZAPROSZENIA':
+      case 'INVITE_CODE_GENERATED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
             <KeyRound className="w-3.5 h-3.5" />
             {language === 'en' ? 'Invite code' : 'Kod zaproszenia'}
           </span>
         );
-      case 'ZMIANA_ROLI':
+      case 'ROLE_CHANGE':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
             <ShieldCheck className="w-3.5 h-3.5" />
             {language === 'en' ? 'Role changed' : 'Zmiana uprawnień'}
           </span>
         );
-      case 'USUNIETO_CZLONKA':
+      case 'USER_DELETED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
             <Trash2 className="w-3.5 h-3.5" />
             {language === 'en' ? 'Member removed' : 'Usunięto użytkownika'}
           </span>
         );
-      case 'UTWORZONO_GOSPODARSTWO':
+      case 'HOUSEHOLD_CREATED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
             <Home className="w-3.5 h-3.5" />
@@ -379,7 +379,7 @@ export const AuditLogsView: React.FC = () => {
               {t('audit.itemsAddedStat')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">
-              {(stats.actionCounts['DODANO_PRODUKT'] || 0) + (stats.actionCounts['ZWIĘKSZONO_ILOSC'] || 0)}
+              {(stats.actionCounts['ADDED_PRODUCT'] || 0) + (stats.actionCounts['INCREASED_QUANTITY'] || 0)}
             </div>
           </div>
           <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
@@ -387,7 +387,7 @@ export const AuditLogsView: React.FC = () => {
               {t('audit.consumedStat')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">
-              {(stats.actionCounts['ZMNIEJSZONO_ILOSC'] || 0) + (stats.actionCounts['ZUŻYTO_PRODUKT'] || 0)}
+              {(stats.actionCounts['DECREASED_QUANTITY'] || 0) + (stats.actionCounts['CONSUMED_PRODUCT'] || 0)}
             </div>
           </div>
           <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
@@ -395,7 +395,7 @@ export const AuditLogsView: React.FC = () => {
               {t('audit.editsStat')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">
-              {(stats.actionCounts['ZMIENIONO_WARTOSCI'] || 0) + (stats.actionCounts['EDYTOWANO_PRODUKT'] || 0)}
+              {(stats.actionCounts['UPDATED_VALUES'] || 0) + (stats.actionCounts['EDYTOWANO_PRODUKT'] || 0)}
             </div>
           </div>
         </div>
@@ -423,16 +423,16 @@ export const AuditLogsView: React.FC = () => {
             className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
           >
             <option value="ALL">{t('audit.allActionTypes')}</option>
-            <option value="DODANO_PRODUKT">{language === 'en' ? 'Item added' : 'Dodanie produktu'}</option>
-            <option value="ZWIĘKSZONO_ILOSC">{language === 'en' ? 'Quantity increased' : 'Zwiększenie ilości'}</option>
-            <option value="ZMIENIONO_WARTOSCI">{language === 'en' ? 'Values edited' : 'Edycja wartości'}</option>
-            <option value="ZMNIEJSZONO_ILOSC">{language === 'en' ? 'Quantity reduced / Consumed' : 'Zmniejszenie ilości / Zużycie'}</option>
-            <option value="ZUŻYTO_PRODUKT">{language === 'en' ? 'Fully consumed' : 'Całkowite zużycie'}</option>
-            <option value="USUNIĘTO_PRODUKT">{language === 'en' ? 'Item deleted' : 'Usunięcie produktu'}</option>
-            <option value="PRZENIESIONO_Z_LISTY">{language === 'en' ? 'Transferred from shopping' : 'Przeniesienie z zakupów'}</option>
-            <option value="DOLACZONO_DO_DOMU">{language === 'en' ? 'Member joined' : 'Dołączenie domownika'}</option>
-            <option value="ZMIANA_ROLI">{language === 'en' ? 'Role change' : 'Zmiana uprawnień'}</option>
-            <option value="WYGENEROWANO_KOD_ZAPROSZENIA">{language === 'en' ? 'Invite code generated' : 'Wygenerowanie kodu'}</option>
+            <option value="ADDED_PRODUCT">{language === 'en' ? 'Item added' : 'Dodanie produktu'}</option>
+            <option value="INCREASED_QUANTITY">{language === 'en' ? 'Quantity increased' : 'Zwiększenie ilości'}</option>
+            <option value="UPDATED_VALUES">{language === 'en' ? 'Values edited' : 'Edycja wartości'}</option>
+            <option value="DECREASED_QUANTITY">{language === 'en' ? 'Quantity reduced / Consumed' : 'Zmniejszenie ilości / Zużycie'}</option>
+            <option value="CONSUMED_PRODUCT">{language === 'en' ? 'Fully consumed' : 'Całkowite zużycie'}</option>
+            <option value="DELETED_PRODUCT">{language === 'en' ? 'Item deleted' : 'Usunięcie produktu'}</option>
+            <option value="TRANSFERRED_TO_PANTRY">{language === 'en' ? 'Transferred from shopping' : 'Przeniesienie z zakupów'}</option>
+            <option value="JOINED_HOUSEHOLD">{language === 'en' ? 'Member joined' : 'Dołączenie domownika'}</option>
+            <option value="ROLE_CHANGE">{language === 'en' ? 'Role change' : 'Zmiana uprawnień'}</option>
+            <option value="INVITE_CODE_GENERATED">{language === 'en' ? 'Invite code generated' : 'Wygenerowanie kodu'}</option>
           </select>
 
           {/* Użytkownicy */}

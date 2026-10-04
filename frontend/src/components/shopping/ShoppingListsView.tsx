@@ -29,7 +29,7 @@ export const ShoppingListsView: React.FC = () => {
   const [newItemQty, setNewItemQty] = useState(1);
   const [newItemCapacity, setNewItemCapacity] = useState('');
   const [showCapInput, setShowCapInput] = useState(false);
-  const [newItemCategory, setNewItemCategory] = useState('Inne');
+  const [newItemCategory, setNewItemCategory] = useState('Other');
 
   // Modals
   const [isNewListModalOpen, setIsNewListModalOpen] = useState(false);

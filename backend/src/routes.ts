@@ -193,7 +193,7 @@ router.post(
   '/settings/backup/restore',
   authenticateToken,
   requireAdmin,
-  text({ type: 'application/x-spizarnia-backup', limit: '20mb' }),
+  text({ type: 'application/x-pantry-backup', limit: '20mb' }),
   settingsController.restoreHouseholdBackup
 );
 

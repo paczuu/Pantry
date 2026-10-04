@@ -11,7 +11,7 @@ export const getPantryItems = async (
     const householdId = req.user!.householdId;
 
     if (!householdId) {
-      res.status(400).json({ error: 'Brak przypisanego gospodarstwa.' });
+      res.status(400).json({ error: 'No household assigned.' });
       return;
     }
 
@@ -93,10 +93,10 @@ export const getPantryItems = async (
 
     res.json({ items });
   } catch (error) {
-    console.error('Błąd pobierania pozycji ze spiżarni:', error);
+    console.error('Error fetching pantry items:', error);
 
     res.status(500).json({
-      error: 'Błąd podczas pobierania produktów.',
+      error: 'Error fetching products.',
     });
   }
 };
@@ -118,17 +118,17 @@ export const getPantryItemById = async (
 
     if (!item) {
       res.status(404).json({
-        error: 'Produkt nie został odnaleziony.',
+        error: 'Product not found.',
       });
       return;
     }
 
     res.json({ item });
   } catch (error) {
-    console.error('Błąd pobierania produktu:', error);
+    console.error('Error fetching product:', error);
 
     res.status(500).json({
-      error: 'Błąd podczas pobierania produktu.',
+      error: 'Error fetching product.',
     });
   }
 };
@@ -142,7 +142,7 @@ export const addPantryItem = async (
 
     if (!householdId) {
       res.status(400).json({
-        error: 'Brak przypisanego gospodarstwa.',
+        error: 'No household assigned.',
       });
       return;
     }
@@ -151,7 +151,7 @@ export const addPantryItem = async (
       barcode,
       name,
       brand,
-      category = 'Inne',
+      category = 'Other',
       quantity = 1,
       capacity,
       expiryDate,
@@ -162,7 +162,7 @@ export const addPantryItem = async (
 
     if (!name || !name.trim()) {
       res.status(400).json({
-        error: 'Nazwa produktu jest wymagana.',
+        error: 'Product name is required.',
       });
       return;
     }
@@ -181,8 +181,8 @@ export const addPantryItem = async (
       ? new Date(expiryDate)
       : null;
 
-    // Sprawdź czy produkt już istnieje w spiżarni
-    // i można zwiększyć jego ilość.
+    // Check if the product already exists in the pantry
+    // and its quantity can be increased.
     let existingItem = null;
 
     if (cleanBarcode) {
@@ -202,7 +202,7 @@ export const addPantryItem = async (
           name: {
             equals: name.trim(),
           },
-          category: category.trim() || 'Inne',
+          category: category.trim() || 'Other',
           expiryDate: targetExpiry,
         },
       });
@@ -236,22 +236,22 @@ export const addPantryItem = async (
         userId: req.user!.id,
         userName: req.user!.name,
         userEmail: req.user!.email,
-        action: 'ZWIĘKSZONO_ILOSC',
+        action: 'INCREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: updatedItem.name,
         details:
-          `Zwiększono ilość istniejącego produktu ` +
-          `"${updatedItem.name}"${capText} o ${parsedQty} szt. ` +
-          `(aktualnie w spiżarni: ${updatedItem.quantity} szt.).`,
+          `Increased the quantity of an existing product ` +
+          `"${updatedItem.name}"${capText} by ${parsedQty} pcs. ` +
+          `(currently in the pantry: ${updatedItem.quantity} pcs.).`,
       });
 
       res.status(200).json({
         item: updatedItem,
         isMerged: true,
         message:
-          `Zwiększono ilość "${updatedItem.name}" ` +
-          `o ${parsedQty} szt. ` +
-          `(łącznie: ${updatedItem.quantity} szt.)`,
+          `Increased the quantity of "${updatedItem.name}" ` +
+          `by ${parsedQty} pcs. ` +
+          `(total: ${updatedItem.quantity} pcs.)`,
       });
 
       return;
@@ -263,7 +263,7 @@ export const addPantryItem = async (
         barcode: cleanBarcode,
         name: name.trim(),
         brand: brand?.trim() || null,
-        category: category.trim() || 'Inne',
+        category: category.trim() || 'Other',
         quantity: parsedQty,
         capacity: capacity?.trim() || null,
         expiryDate: targetExpiry,
@@ -284,7 +284,7 @@ export const addPantryItem = async (
         const catalogData = {
           name: name.trim(),
           brand: brand?.trim() || null,
-          category: category.trim() || 'Inne',
+          category: category.trim() || 'Other',
           capacity: capacity?.trim() || null,
           imageUrl: imageUrl || null,
         };
@@ -312,14 +312,14 @@ export const addPantryItem = async (
         }
       } catch (error) {
         console.error(
-          'Nie udało się zapisać produktu CUSTOM do ProductCatalog:',
+          'Error saving the custom product to ProductCatalog:',
           error
         );
       }
     }
 
     const expiryText = expiryDate
-      ? ` (Ważność: ${new Date(
+      ? ` (Expiry: ${new Date(
           expiryDate
         ).toLocaleDateString('pl-PL')})`
       : '';
@@ -333,12 +333,12 @@ export const addPantryItem = async (
       userId: req.user!.id,
       userName: req.user!.name,
       userEmail: req.user!.email,
-      action: 'DODANO_PRODUKT',
+      action: 'ADDED_PRODUCT',
       entityType: 'PANTRY_ITEM',
       entityName: newItem.name,
       details: {
         message:
-          `Dodano ${newItem.quantity} szt.` +
+          `Added ${newItem.quantity} pcs. ` +
           `${capText}${expiryText}.`,
         item: {
           id: newItem.id,
@@ -355,13 +355,13 @@ export const addPantryItem = async (
 
     res.status(201).json({
       item: newItem,
-      message: 'Produkt został dodany do spiżarni.',
+      message: 'Product added to the pantry.',
     });
   } catch (error) {
-    console.error('Błąd dodawania produktu:', error);
+    console.error('Error adding the product:', error);
 
     res.status(500).json({
-      error: 'Błąd podczas dodawania produktu.',
+      error: 'Error adding the product.',
     });
   }
 };
@@ -383,7 +383,7 @@ export const updatePantryItem = async (
 
     if (!existing) {
       res.status(404).json({
-        error: 'Produkt nie został odnaleziony.',
+        error: 'Product not found.',
       });
       return;
     }
@@ -413,13 +413,13 @@ export const updatePantryItem = async (
 
     if (name && name !== existing.name) {
       changes.push(
-        `nazwę z "${existing.name}" na "${name}"`
+        `name from "${existing.name}" to "${name}"`
       );
     }
 
     if (parsedQty !== existing.quantity) {
       changes.push(
-        `ilość z ${existing.quantity} na ${parsedQty} szt.`
+        `quantity from ${existing.quantity} to ${parsedQty} pcs.`
       );
     }
 
@@ -428,7 +428,7 @@ export const updatePantryItem = async (
       capacity !== existing.capacity
     ) {
       changes.push(
-        `pojemność/gramaturę na "${capacity || 'brak'}"`
+        `capacity/weight to "${capacity || 'none'}"`
       );
     }
 
@@ -437,7 +437,7 @@ export const updatePantryItem = async (
       category !== existing.category
     ) {
       changes.push(
-        `kategorię z "${existing.category}" na "${category}"`
+        `category from "${existing.category}" to "${category}"`
       );
     }
 
@@ -446,17 +446,17 @@ export const updatePantryItem = async (
         ? existing.expiryDate
             .toISOString()
             .split('T')[0]
-        : 'brak';
+        : 'none';
 
       const newExp = expiryDate
         ? new Date(expiryDate)
             .toISOString()
             .split('T')[0]
-        : 'brak';
+        : 'none';
 
       if (oldExp !== newExp) {
         changes.push(
-          `datę ważności z ${oldExp} na ${newExp}`
+          `expiry date from ${oldExp} to ${newExp}`
         );
       }
     }
@@ -466,17 +466,17 @@ export const updatePantryItem = async (
         ? existing.openedDate
             .toISOString()
             .split('T')[0]
-        : 'brak';
+        : 'none';
 
       const newOp = openedDate
         ? new Date(openedDate)
             .toISOString()
             .split('T')[0]
-        : 'brak';
+        : 'none';
 
       if (oldOp !== newOp) {
         changes.push(
-          `datę otwarcia z ${oldOp} na ${newOp}`
+          `opening date from ${oldOp} to ${newOp}`
         );
       }
     }
@@ -486,7 +486,7 @@ export const updatePantryItem = async (
       status !== existing.status
     ) {
       changes.push(
-        `status z ${existing.status} na ${status}`
+        `status from ${existing.status} to ${status}`
       );
     }
 
@@ -554,12 +554,12 @@ export const updatePantryItem = async (
         userId: req.user!.id,
         userName: req.user!.name,
         userEmail: req.user!.email,
-        action: 'ZMIENIONO_WARTOSCI',
+        action: 'UPDATED_VALUES',
         entityType: 'PANTRY_ITEM',
         entityName: updated.name,
         details: {
           message:
-            `Zaktualizowano ${changes.join(', ')}.`,
+            `Updated ${changes.join(', ')}.`,
           previous: existing,
           current: updated,
         },
@@ -568,13 +568,13 @@ export const updatePantryItem = async (
 
     res.json({
       item: updated,
-      message: 'Produkt zaktualizowany.',
+      message: 'Product updated.',
     });
   } catch (error) {
-    console.error('Błąd edycji produktu:', error);
+    console.error('Error updating the product:', error);
 
     res.status(500).json({
-      error: 'Błąd podczas aktualizacji produktu.',
+      error: 'Error updating the product.',
     });
   }
 };
@@ -601,7 +601,7 @@ export const consumePantryItem = async (
 
     if (!existing) {
       res.status(404).json({
-        error: 'Produkt nie został odnaleziony.',
+        error: 'Product not found.',
       });
       return;
     }
@@ -638,13 +638,13 @@ export const consumePantryItem = async (
         userName: req.user!.name,
         userEmail: req.user!.email,
         action: isWasted
-          ? 'WYRZUCONO_PRODUKT'
-          : 'ZUŻYTO_PRODUKT',
+          ? 'DISCARDED_PRODUCT'
+          : 'CONSUMED_PRODUCT',
         entityType: 'PANTRY_ITEM',
         entityName: existing.name,
         details: isWasted
-          ? `Wyrzucono cały produkt "${existing.name}" (${consumeAmount} szt.).`
-          : `Zużyto cały produkt "${existing.name}" (${consumeAmount} szt.).`,
+          ? `Discarded the entire product "${existing.name}" (${consumeAmount} pcs.).`
+          : `Consumed the entire product "${existing.name}" (${consumeAmount} pcs.).`,
       });
     } else {
       updated = await prisma.pantryItem.update({
@@ -661,12 +661,12 @@ export const consumePantryItem = async (
         userId: req.user!.id,
         userName: req.user!.name,
         userEmail: req.user!.email,
-        action: 'ZMNIEJSZONO_ILOSC',
+        action: 'DECREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: existing.name,
         details:
-          `Zużyto ${consumeAmount} szt. ` +
-          `Pozostało ${remaining} szt.`,
+          `Consumed ${consumeAmount} pcs. ` +
+          `Remaining ${remaining} pcs.`,
       });
     }
 
@@ -679,18 +679,18 @@ export const consumePantryItem = async (
       ),
       message:
         remaining <= 0
-          ? 'Produkt całkowicie zużyty.'
-          : `Zmniejszono ilość o ${consumeAmount} szt.`,
+          ? 'Product completely consumed.'
+          : `Decreased the quantity by ${consumeAmount} pcs.`,
     });
   } catch (error) {
     console.error(
-      'Błąd zużywania produktu:',
+      'Error consuming the product:',
       error
     );
 
     res.status(500).json({
       error:
-        'Błąd podczas usuwania/zużywania produktu.',
+        'Error consuming the product.',
     });
   }
 };
@@ -713,7 +713,7 @@ export const barcodeQuickRemove = async (
     if (!barcode && !itemId) {
       res.status(400).json({
         error:
-          'Wymagany kod kreskowy lub identyfikator produktu.',
+          'Required barcode or product identifier.',
       });
       return;
     }
@@ -731,7 +731,7 @@ export const barcodeQuickRemove = async (
       if (!item) {
         res.status(404).json({
           error:
-            'Produkt nie został odnaleziony w spiżarni.',
+            'Product not found in the pantry.',
         });
         return;
       }
@@ -774,15 +774,15 @@ export const barcodeQuickRemove = async (
         action:
           remaining <= 0
             ? isWasted
-              ? 'WYRZUCONO_PRODUKT'
-              : 'ZUŻYTO_PRODUKT'
-            : 'ZMNIEJSZONO_ILOSC',
+              ? 'DISCARDED_PRODUCT'
+              : 'CONSUMED_PRODUCT'
+            : 'DECREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: item.name,
         details:
-          `Szybkie usunięcie przez skaner EAN: ` +
-          `zużyto ${consumeQty} szt. ` +
-          `Pozostało ${Math.max(0, remaining)} szt.`,
+          `Quick removal by barcode scanner: ` +
+          `Consumed ${consumeQty} pcs. ` +
+          `Remaining ${Math.max(0, remaining)} pcs.`,
       });
 
       res.json({
@@ -794,7 +794,7 @@ export const barcodeQuickRemove = async (
           remaining
         ),
         message:
-          `Usunięto ${consumeQty} szt. ` +
+          `Removed ${consumeQty} pcs. ` +
           `(${item.name}).`,
       });
 
@@ -824,7 +824,7 @@ export const barcodeQuickRemove = async (
     if (matchingItems.length === 0) {
       res.status(404).json({
         error:
-          'Nie znaleziono aktywnych produktów o tym kodzie kreskowym w spiżarni.',
+          'No active products found with this barcode in the pantry.',
         barcode: cleanBarcode,
       });
       return;
@@ -896,15 +896,15 @@ export const barcodeQuickRemove = async (
         action:
           newQty <= 0
             ? isWasted
-              ? 'WYRZUCONO_PRODUKT'
-              : 'ZUŻYTO_PRODUKT'
-            : 'ZMNIEJSZONO_ILOSC',
+              ? 'DISCARDED_PRODUCT'
+              : 'CONSUMED_PRODUCT'
+            : 'DECREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: item.name,
         details:
-          `Szybkie skanowanie EAN: ` +
-          `zużyto ${take} szt. ` +
-          `Pozostało: ${Math.max(0, newQty)} szt.`,
+          `Quick scanning by barcode scanner: ` +
+          `Consumed ${take} pcs. ` +
+          `Remaining: ${Math.max(0, newQty)} pcs.`,
       });
     }
 
@@ -919,18 +919,18 @@ export const barcodeQuickRemove = async (
       remainingRequested:
         remainingToConsume,
       message:
-        `Usunięto łącznie ${consumedTotal} szt. ` +
-        `produktu "${matchingItems[0].name}".`,
+        `Removed ${consumedTotal} pcs. ` +
+        `product "${matchingItems[0].name}".`,
     });
   } catch (error) {
     console.error(
-      'Błąd szybkiego usuwania kodem kreskowym:',
+      'Error quick removing the product by barcode:',
       error
     );
 
     res.status(500).json({
       error:
-        'Błąd podczas szybkiego usuwania.',
+        'Error quick removing the product by barcode.',
     });
   }
 };
@@ -955,7 +955,7 @@ export const deletePantryItem = async (
     if (!existing) {
       res.status(404).json({
         error:
-          'Produkt nie został odnaleziony.',
+          'Product not found.',
       });
       return;
     }
@@ -971,28 +971,28 @@ export const deletePantryItem = async (
       userId: req.user!.id,
       userName: req.user!.name,
       userEmail: req.user!.email,
-      action: 'USUNIĘTO_PRODUKT',
+      action: 'DELETED_PRODUCT',
       entityType: 'PANTRY_ITEM',
       entityName: existing.name,
       details:
-        `Całkowicie usunięto produkt ` +
+        `Completely removed the product ` +
         `"${existing.name}" ` +
-        `(${existing.quantity} szt.) ze spiżarni.`,
+        `(${existing.quantity} pcs.) from the pantry.`,
     });
 
     res.json({
       message:
-        'Produkt został usunięty ze spiżarni.',
+        'Product removed from the pantry.',
     });
   } catch (error) {
     console.error(
-      'Błąd usuwania produktu:',
+      'Error deleting the product:',
       error
     );
 
     res.status(500).json({
       error:
-        'Błąd podczas usuwania produktu.',
+        'Error deleting the product.',
     });
   }
 };
@@ -1074,13 +1074,13 @@ export const getPantryStats = async (
     });
   } catch (error) {
     console.error(
-      'Błąd obliczania statystyk:',
+      'Error calculating statistics:',
       error
     );
 
     res.status(500).json({
       error:
-        'Błąd podczas obliczania statystyk.',
+        'Error calculating statistics.',
     });
   }
 };

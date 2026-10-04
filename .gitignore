@@ -1,4 +1,4 @@
-# Główne foldery i pliki
+# Main directories and files
 /data/
 .env
 
@@ -8,10 +8,10 @@ backend/dist/
 backend/data/
 backend/.env
 
-# Frontend (np. React / Vite / Angular)
+# Frontend (e.g., React / Vite / Angular)
 frontend/node_modules/
 frontend/dist/
 
-# Systemowe pliki operacyjne
+# System and OS files
 .DS_Store
 Thumbs.db

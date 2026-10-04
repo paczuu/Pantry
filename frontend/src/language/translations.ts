@@ -1,19 +1,19 @@
 export type Language = 'pl' | 'en';
 
 export const CATEGORY_TRANSLATIONS: Record<string, { pl: string; en: string }> = {
-  'Wszystkie': { pl: 'Wszystkie', en: 'All' },
-  'ALL': { pl: 'Wszystkie', en: 'All' },
-  'Pieczywo': { pl: 'Pieczywo', en: 'Bakery & Bread' },
-  'Warzywa i owoce': { pl: 'Warzywa i owoce', en: 'Fruits & Vegetables' },
-  'Mięso': { pl: 'Mięso', en: 'Meat' },
-  'Mrożonki': { pl: 'Mrożonki', en: 'Frozen Foods' },
-  'Suche i sypkie': { pl: 'Suche i sypkie', en: 'Dry & Grains' },
-  'Napoje': { pl: 'Napoje', en: 'Beverages' },
-  'Przekąski': { pl: 'Przekąski', en: 'Snacks' },
-  'Słodycze': { pl: 'Słodycze', en: 'Sweets' },
-  'Przyprawy i sosy': { pl: 'Przyprawy i sosy', en: 'Spices & Sauces' },
-  'Konserwy i przetwory': { pl: 'Konserwy i przetwory', en: 'Canned & Preserves' },
-  'Inne': { pl: 'Inne', en: 'Other' },
+  'All': { pl: 'Wszystkie', en: 'All' },
+  'Dairy': { pl: 'Nabiał', en: 'Dairy' },
+  'Meat': { pl: 'Mięso i Ryby', en: 'Meat & Fish' },
+  'FruitsVegetables': { pl: 'Warzywa i Owoce', en: 'Fruits & Vegetables' },
+  'DryGrains': { pl: 'Makarony i Sypkie', en: 'Pasta & Dry Grains' },
+  'Beverages': { pl: 'Napoje', en: 'Beverages' },
+  'SpicesSauces': { pl: 'Przyprawy i Sosy', en: 'Spices & Sauces' },
+  'Snacks': { pl: 'Przekąski', en: 'Snacks' },
+  'Sweets': { pl: 'Słodycze', en: 'Sweets' },
+  'Bakery': { pl: 'Pieczywo', en: 'Bakery' },
+  'FrozenFoods': { pl: 'Mrożonki', en: 'Frozen Foods' },
+  'CannedPreserves': { pl: 'Przetwory i Konserwy', en: 'Canned & Preserves' },
+  'Other': { pl: 'Inne', en: 'Other' },
 };
 
 export const translations = {

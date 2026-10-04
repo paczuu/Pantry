@@ -42,14 +42,14 @@ const getNullableDate = (value: unknown): Date | null => {
 const getBackupArray = (backup: Record<string, any>, key: string): Record<string, any>[] => {
   const value = backup[key];
   if (value === undefined || value === null) return [];
-  if (!Array.isArray(value)) throw new BackupValidationError(`Nieprawidłowe pole "${key}" w kopii zapasowej.`);
-  if (!value.every(isRecord)) throw new BackupValidationError(`Nieprawidłowe dane w polu "${key}" kopii zapasowej.`);
+  if (!Array.isArray(value)) throw new BackupValidationError(`Invalid field "${key}" in backup.`);
+  if (!value.every(isRecord)) throw new BackupValidationError(`Invalid data in field "${key}" of backup.`);
   return value;
 };
 
 const requireName = (item: Record<string, any>, section: string): string => {
   const name = getString(item.name).trim();
-  if (!name) throw new BackupValidationError(`Brak nazwy w sekcji "${section}" kopii zapasowej.`);
+  if (!name) throw new BackupValidationError(`Missing name in section "${section}" of backup.`);
   return name;
 };
 
@@ -63,7 +63,7 @@ export const getHouseholdSettings = async (req: Request, res: Response): Promise
 
     res.json({ settings: household });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania ustawień gospodarstwa.' });
+    res.status(500).json({ error: 'Failed to fetch household settings.' });
   }
 };
 
@@ -79,12 +79,12 @@ export const updateHouseholdSettings = async (req: Request, res: Response): Prom
 
     if (name !== undefined) {
       if (req.user!.role !== 'ADMIN') {
-        res.status(403).json({ error: 'Tylko administrator może zmienić nazwę gospodarstwa.' });
+        res.status(403).json({ error: 'Only an administrator can change the household name.' });
         return;
       }
       const trimmed = String(name).trim();
       if (!trimmed) {
-        res.status(400).json({ error: 'Nazwa gospodarstwa nie może być pusta.' });
+        res.status(400).json({ error: 'Household name cannot be empty.' });
         return;
       }
       data.name = trimmed;
@@ -96,9 +96,9 @@ export const updateHouseholdSettings = async (req: Request, res: Response): Prom
       select: { id: true, name: true, expiryWarningDays: true },
     });
 
-    res.json({ settings: household, message: 'Zapisano ustawienia gospodarstwa.' });
+    res.json({ settings: household, message: 'Household settings saved.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas zapisywania ustawień gospodarstwa.' });
+    res.status(500).json({ error: 'Failed to save household settings.' });
   }
 };
 
@@ -111,7 +111,7 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
     });
     res.json({ categories });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania kategorii.' });
+    res.status(500).json({ error: 'Failed to fetch categories.' });
   }
 };
 
@@ -121,7 +121,7 @@ export const addCategory = async (req: Request, res: Response): Promise<void> =>
     const { name, icon = 'tag', color = 'emerald' } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ error: 'Nazwa kategorii jest wymagana.' });
+      res.status(400).json({ error: 'Category name is required.' });
       return;
     }
 
@@ -139,7 +139,7 @@ export const addCategory = async (req: Request, res: Response): Promise<void> =>
 
     res.status(201).json({ category });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd lub kategoria o tej nazwie już istnieje.' });
+    res.status(500).json({ error: 'Failed to create category or a category with that name already exists.' });
   }
 };
 
@@ -152,9 +152,9 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
       where: { id, householdId },
     });
 
-    res.json({ message: 'Kategoria usunięta.' });
+    res.json({ message: 'Category deleted.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas usuwania kategorii.' });
+    res.status(500).json({ error: 'Failed to delete category.' });
   }
 };
 
@@ -177,7 +177,7 @@ export const exportHouseholdBackup = async (req: Request, res: Response): Promis
     res.setHeader('Content-Disposition', `attachment; filename=pantry-backup-${new Date().toISOString().split('T')[0]}.json`);
     res.json(household);
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas generowania kopii zapasowej.' });
+    res.status(500).json({ error: 'Failed to generate backup.' });
   }
 };
 
@@ -190,13 +190,13 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       try {
         backup = JSON.parse(backup);
       } catch {
-        res.status(400).json({ error: 'Wybrany plik nie zawiera poprawnego JSON.' });
+        res.status(400).json({ error: 'The selected file does not contain valid JSON.' });
         return;
       }
     }
 
     if (!isRecord(backup)) {
-      res.status(400).json({ error: 'Nieprawidłowy format kopii zapasowej.' });
+      res.status(400).json({ error: 'Invalid backup format.' });
       return;
     }
 
@@ -213,7 +213,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       recipes.length > 5000 ||
       customCategories.length > 1000
     ) {
-      res.status(400).json({ error: 'Kopia zapasowa zawiera zbyt dużo rekordów.' });
+      res.status(400).json({ error: 'Backup contains too many records.' });
       return;
     }
 
@@ -222,7 +222,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       const name = requireName(category, 'customCategories');
       const key = name.toLocaleLowerCase('pl');
       if (categoryNames.has(key)) {
-        throw new BackupValidationError(`Kopia zawiera zduplikowaną kategorię "${name}".`);
+        throw new BackupValidationError(`Backup contains a duplicate category "${name}".`);
       }
       categoryNames.add(key);
     }
@@ -231,22 +231,22 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
     for (const list of shoppingLists) {
       requireName(list, 'shoppingLists');
       if (list.items !== undefined && !Array.isArray(list.items)) {
-        throw new BackupValidationError('Nieprawidłowa lista produktów w kopii zapasowej.');
+        throw new BackupValidationError('Invalid item list in backup.');
       }
       const items = Array.isArray(list.items) ? list.items : [];
       shoppingItemCount += items.length;
       if (shoppingItemCount > 50000) {
-        throw new BackupValidationError('Kopia zapasowa zawiera zbyt dużo pozycji list zakupów.');
+        throw new BackupValidationError('Backup contains too many shopping list items.');
       }
       for (const item of items) {
-        if (!isRecord(item)) throw new BackupValidationError('Nieprawidłowa pozycja listy zakupów.');
+        if (!isRecord(item)) throw new BackupValidationError('Invalid shopping list item.');
         requireName(item, 'shoppingLists.items');
       }
     }
 
     for (const item of pantryItems) requireName(item, 'pantryItems');
     for (const note of notes) {
-      if (!getString(note.title).trim()) throw new BackupValidationError('Brak tytułu notatki w kopii zapasowej.');
+      if (!getString(note.title).trim()) throw new BackupValidationError('Missing note title in backup.');
     }
     for (const recipe of recipes) requireName(recipe, 'recipes');
 
@@ -276,7 +276,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
             barcode: getNullableString(item.barcode),
             name: requireName(item, 'pantryItems'),
             brand: getNullableString(item.brand),
-            category: getString(item.category, 'Inne'),
+            category: getString(item.category, 'Other'),
             quantity: getInteger(item.quantity, 1, 1),
             capacity: getNullableString(item.capacity),
             expiryDate: getNullableDate(item.expiryDate),
@@ -313,7 +313,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
               name: requireName(item, 'shoppingLists.items'),
               quantity: getInteger(item.quantity, 1, 1),
               capacity: getNullableString(item.capacity),
-              category: getString(item.category, 'Inne'),
+              category: getString(item.category, 'Other'),
               barcode: getNullableString(item.barcode),
               isChecked: getBoolean(item.isChecked, false),
               createdAt: getDate(item.createdAt),
@@ -359,7 +359,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
     }, { maxWait: 5000, timeout: 30000 });
 
     res.json({
-      message: 'Kopia zapasowa została przywrócona.',
+      message: 'Backup restored successfully.',
       restored: {
         pantryItems: pantryItems.length,
         shoppingLists: shoppingLists.length,
@@ -375,7 +375,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       return;
     }
 
-    console.error('Błąd przywracania kopii zapasowej:', error);
-    res.status(500).json({ error: 'Błąd podczas przywracania kopii zapasowej. Nie zmieniono danych.' });
+    console.error('Error restoring backup:', error);
+    res.status(500).json({ error: 'Failed to restore backup. No data was changed.' });
   }
 };

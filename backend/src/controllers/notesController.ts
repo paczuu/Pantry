@@ -12,7 +12,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
 
     res.json({ notes });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania notatek.' });
+    res.status(500).json({ error: 'Error fetching notes.' });
   }
 };
 
@@ -30,7 +30,7 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
     } = req.body;
 
     if (!title || !title.trim()) {
-      res.status(400).json({ error: 'Tytuł notatki jest wymagany.' });
+      res.status(400).json({ error: 'Note title is required.' });
       return;
     }
 
@@ -47,9 +47,9 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
       },
     });
 
-    res.status(201).json({ note, message: 'Notatka utworzona.' });
+    res.status(201).json({ note, message: 'Note created.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas tworzenia notatki.' });
+    res.status(500).json({ error: 'Error creating note.' });
   }
 };
 
@@ -71,9 +71,9 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
       },
     });
 
-    res.json({ message: 'Notatka zaktualizowana.' });
+    res.json({ message: 'Note updated.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas edycji notatki.' });
+    res.status(500).json({ error: 'Error updating note.' });
   }
 };
 
@@ -86,8 +86,8 @@ export const deleteNote = async (req: Request, res: Response): Promise<void> => 
       where: { id, householdId },
     });
 
-    res.json({ message: 'Notatka usunięta.' });
+    res.json({ message: 'Note deleted.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas usuwania notatki.' });
+    res.status(500).json({ error: 'Error deleting note.' });
   }
 };

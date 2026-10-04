@@ -8,7 +8,7 @@ export const requireSystemAdmin = async (
 ): Promise<void> => {
   try {
     if (!req.user?.id) {
-      res.status(401).json({ error: 'Brak autoryzacji.' });
+      res.status(401).json({ error: 'Unauthorized.' });
       return;
     }
 
@@ -18,13 +18,13 @@ export const requireSystemAdmin = async (
     });
 
     if (!user?.isSystemAdmin) {
-      res.status(403).json({ error: 'Ta operacja wymaga uprawnień administratora systemu.' });
+      res.status(403).json({ error: 'This operation requires system administrator privileges.' });
       return;
     }
 
     next();
   } catch (error) {
-    console.error('Błąd weryfikacji administratora systemu:', error);
-    res.status(500).json({ error: 'Nie udało się zweryfikować uprawnień.' });
+    console.error('System administrator verification error:', error);
+    res.status(500).json({ error: 'Failed to verify privileges.' });
   }
 };

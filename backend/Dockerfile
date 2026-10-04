@@ -5,21 +5,21 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Prisma na Alpine potrzebuje OpenSSL
+# Prisma on Alpine requires OpenSSL
 RUN apk add --no-cache openssl libc6-compat
 
-# Najpierw package.json dla lepszego cache Dockera
+# package.json first for better Docker layer caching
 COPY package*.json ./
 
 RUN npm install
 
-# Reszta backendu
+# Remaining backend code
 COPY . .
 
-# Generowanie Prisma Client
+# Generate Prisma Client
 RUN npx prisma generate
 
-# Build backendu
+# Build backend
 RUN npm run build
 
 
@@ -36,7 +36,7 @@ ENV NODE_ENV=production
 ENV PORT=3001
 ENV DATABASE_URL=file:/app/data/pantry.db
 
-# Instalujemy tylko produkcyjne zależności
+# Install production dependencies only
 COPY package*.json ./
 
 RUN npm install --omit=dev
@@ -44,14 +44,14 @@ RUN npm install --omit=dev
 # Prisma schema
 COPY --from=builder /app/prisma ./prisma
 
-# Wygenerowany Prisma Client
+# Generated Prisma Client
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Zbudowany backend
+# Built backend
 COPY --from=builder /app/dist ./dist
 
-# Katalog SQLite
+# SQLite directory
 RUN mkdir -p /app/data
 
 EXPOSE 3001

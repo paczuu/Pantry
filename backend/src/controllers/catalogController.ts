@@ -10,7 +10,7 @@ export const getProductByBarcode = async (
     const { barcode } = req.params;
 
     if (!barcode) {
-      res.status(400).json({ error: 'Podaj kod kreskowy.' });
+      res.status(400).json({ error: 'Provide a barcode.' });
       return;
     }
 
@@ -59,12 +59,12 @@ export const getProductByBarcode = async (
       totalInPantry,
     });
   } catch (error) {
-    console.error('Błąd wyszukiwania kodu EAN:', error);
+    console.error('Barcode EAN lookup error:', error);
 
     res
       .status(500)
       .json({
-        error: 'Błąd podczas wyszukiwania kodu kreskowego.',
+        error: 'Failed to look up barcode.',
       });
   }
 };
@@ -99,9 +99,9 @@ export const searchCatalog = async (
       take: 100,
     });
 
-    // Ten sam EAN może być zapisany w cache z kilku źródeł.
-    // W katalogu pokazujemy jeden rekord na EAN.
-    // CUSTOM ma pierwszeństwo przed cache z zewnętrznych providerów.
+    // The same EAN may be cached from multiple sources.
+    // In the catalog we show one record per EAN.
+    // CUSTOM takes precedence over cache from external providers.
     const deduplicated = new Map<string, (typeof products)[number]>();
 
     for (const product of products) {
@@ -120,12 +120,12 @@ export const searchCatalog = async (
       products: Array.from(deduplicated.values()).slice(0, 20),
     });
   } catch (error) {
-    console.error('Błąd wyszukiwania w katalogu:', error);
+    console.error('Error searching the catalog:', error);
 
     res
       .status(500)
       .json({
-        error: 'Błąd podczas wyszukiwania w katalogu.',
+        error: 'Error searching the catalog.',
       });
   }
 };
@@ -147,7 +147,7 @@ export const saveCustomProduct = async (
 
     if (!name || !name.trim()) {
       res.status(400).json({
-        error: 'Nazwa produktu jest wymagana.',
+        error: 'Product name is required.',
       });
       return;
     }
@@ -157,7 +157,7 @@ export const saveCustomProduct = async (
       const catalogData = {
         name: name.trim(),
         brand: brand?.trim() || null,
-        category: category || 'Inne',
+        category: category || 'Other',
         capacity: capacity?.trim() || null,
         imageUrl: imageUrl || null,
         nutriScore: nutriScore || null,
@@ -192,18 +192,18 @@ export const saveCustomProduct = async (
 
     res.json({
       message:
-        'Produkt bez kodu kreskowego nie wymaga wpisu w katalogu EAN.',
+        'Product without a barcode does not require entry in the EAN catalog.',
     });
   } catch (error) {
     console.error(
-      'Błąd zapisywania produktu niestandardowego:',
+      'Error saving the custom product:',
       error
     );
 
     res
       .status(500)
       .json({
-        error: 'Błąd podczas zapisywania produktu w katalogu.',
+        error: 'Error saving the custom product.',
       });
   }
 };

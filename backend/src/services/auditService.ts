@@ -31,6 +31,6 @@ export const logActivity = async (params: LogActivityParams) => {
       },
     });
   } catch (error) {
-    console.error('Błąd podczas zapisywania audytu aktywności:', error);
+    console.error('Error saving activity audit log:', error);
   }
 };

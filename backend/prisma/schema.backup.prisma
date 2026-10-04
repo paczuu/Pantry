@@ -84,7 +84,7 @@ model PantryItem {
   barcode     String?
   name        String
   brand       String?
-  category    String    @default("Inne")
+  category    String    @default("Other")
   quantity    Int       @default(1)
   capacity    String?
   expiryDate  DateTime?
@@ -117,7 +117,7 @@ model ShoppingItem {
   name           String
   quantity       Int          @default(1)
   capacity       String?
-  category       String       @default("Inne")
+  category       String       @default("Other")
   barcode        String?
   isChecked      Boolean      @default(false)
   createdAt      DateTime     @default(now())

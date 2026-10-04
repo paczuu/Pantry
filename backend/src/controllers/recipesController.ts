@@ -61,7 +61,7 @@ export const getRecipes = async (req: Request, res: Response): Promise<void> => 
 
     res.json({ recipes });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas pobierania przepisów.' });
+    res.status(500).json({ error: 'Error fetching recipes.' });
   }
 };
 
@@ -71,7 +71,7 @@ export const createRecipe = async (req: Request, res: Response): Promise<void> =
     const { name, instructions = '', ingredients = [], notes = null, imageUrl = null, rating = 5 } = req.body;
 
     if (!name || !String(name).trim()) {
-      res.status(400).json({ error: 'Nazwa przepisu jest wymagana.' });
+      res.status(400).json({ error: 'Recipe name is required.' });
       return;
     }
 
@@ -83,14 +83,14 @@ export const createRecipe = async (req: Request, res: Response): Promise<void> =
       parsedRating = parseRating(rating);
     } catch (error: any) {
       if (error.message === 'IMAGE_TOO_LARGE') {
-        res.status(400).json({ error: 'Zdjęcie przepisu jest zbyt duże.' });
+        res.status(400).json({ error: 'Recipe image is too large.' });
         return;
       }
       if (error.message === 'INVALID_RATING') {
-        res.status(400).json({ error: 'Ocena przepisu musi być liczbą od 1 do 10.' });
+        res.status(400).json({ error: 'Recipe rating must be a number from 1 to 10.' });
         return;
       }
-      res.status(400).json({ error: 'Nieprawidłowy format zdjęcia przepisu.' });
+      res.status(400).json({ error: 'Invalid recipe image format.' });
       return;
     }
 
@@ -107,10 +107,10 @@ export const createRecipe = async (req: Request, res: Response): Promise<void> =
       },
     });
 
-    res.status(201).json({ recipe, message: 'Przepis zapisany.' });
+    res.status(201).json({ recipe, message: 'Recipe saved.' });
   } catch (error) {
-    console.error('Błąd podczas tworzenia przepisu:', error);
-    res.status(500).json({ error: 'Błąd podczas tworzenia przepisu.' });
+    console.error('Error creating recipe:', error);
+    res.status(500).json({ error: 'Error creating recipe.' });
   }
 };
 
@@ -124,7 +124,7 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
 
     if (name !== undefined) {
       if (!String(name).trim()) {
-        res.status(400).json({ error: 'Nazwa przepisu jest wymagana.' });
+        res.status(400).json({ error: 'Recipe name is required.' });
         return;
       }
       data.name = String(name).trim();
@@ -139,10 +139,10 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
         data.imageUrl = parseImage(imageUrl);
       } catch (error: any) {
         if (error.message === 'IMAGE_TOO_LARGE') {
-          res.status(400).json({ error: 'Zdjęcie przepisu jest zbyt duże.' });
+          res.status(400).json({ error: 'Recipe image is too large.' });
           return;
         }
-        res.status(400).json({ error: 'Nieprawidłowy format zdjęcia przepisu.' });
+        res.status(400).json({ error: 'Invalid recipe image format.' });
         return;
       }
     }
@@ -151,7 +151,7 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
       try {
         data.rating = parseRating(rating);
       } catch {
-        res.status(400).json({ error: 'Ocena przepisu musi być liczbą od 1 do 10.' });
+        res.status(400).json({ error: 'Recipe rating must be a number from 1 to 10.' });
         return;
       }
     }
@@ -162,14 +162,14 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Nie znaleziono przepisu.' });
+      res.status(404).json({ error: 'Recipe not found.' });
       return;
     }
 
-    res.json({ message: 'Przepis zaktualizowany.' });
+    res.json({ message: 'Recipe updated.' });
   } catch (error) {
-    console.error('Błąd podczas edycji przepisu:', error);
-    res.status(500).json({ error: 'Błąd podczas edycji przepisu.' });
+    console.error('Error updating recipe:', error);
+    res.status(500).json({ error: 'Error updating recipe.' });
   }
 };
 
@@ -183,12 +183,12 @@ export const deleteRecipe = async (req: Request, res: Response): Promise<void> =
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Nie znaleziono przepisu.' });
+      res.status(404).json({ error: 'Recipe not found.' });
       return;
     }
 
-    res.json({ message: 'Przepis usunięty.' });
+    res.json({ message: 'Recipe deleted.' });
   } catch (error) {
-    res.status(500).json({ error: 'Błąd podczas usuwania przepisu.' });
+    res.status(500).json({ error: 'Error deleting recipe.' });
   }
 };

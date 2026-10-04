@@ -772,7 +772,7 @@ export const RecipesView: React.FC = () => {
         await api.addShoppingItem(listRes.list.id, {
           name: ingredient,
           quantity: 1,
-          category: 'Inne',
+          category: 'Other',
         });
       }
 
