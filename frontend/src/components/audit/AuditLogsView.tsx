@@ -3,8 +3,8 @@ import { ActivityLog, AuditStats } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLanguage } from '../../i18n/LanguageContext';
-import { Language } from '../../i18n/translations';
+import { useLanguage } from '../../language/LanguageContext';
+import { Language } from '../../language/translations';
 import {
   ShieldAlert,
   Search,

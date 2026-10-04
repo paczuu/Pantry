@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PantryItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { ExpiryBadge } from '../common/ExpiryBadge';
 import { api } from '../../services/api';
 import {

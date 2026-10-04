@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import { ToastProvider } from './contexts/ToastContext';
-import { LanguageProvider } from './i18n/LanguageContext';
+import { LanguageProvider } from './language/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { PantryProvider } from './contexts/PantryContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';

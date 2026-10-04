@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal';
 import { PantryItem, ProductCatalogItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { ExpiryBadge } from '../common/ExpiryBadge';
 import { Minus, Plus, Trash2, Utensils, CheckCircle } from 'lucide-react';
 

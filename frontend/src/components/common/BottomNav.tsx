@@ -10,7 +10,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { NavItemConfig } from '../../types';
 import {
   NAV_CONFIG_UPDATED_EVENT,

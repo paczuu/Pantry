@@ -1,6 +1,6 @@
 import React from 'react';
 import { usePantry } from '../../contexts/PantryContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import {
   Search,
   LayoutGrid,

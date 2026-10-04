@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingList, ShoppingItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
 import { useLiveRefresh } from '../../contexts/RealtimeContext';

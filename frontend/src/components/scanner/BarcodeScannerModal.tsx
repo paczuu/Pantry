@@ -6,7 +6,7 @@ import { ProductCatalogItem, PantryItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { usePantry } from '../../contexts/PantryContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { X, Flashlight, Keyboard, PlusCircle, MinusCircle, Search, Loader2, Camera, ShieldAlert, Sparkles, SwitchCamera, ScanBarcode } from 'lucide-react';
 
 interface BarcodeScannerModalProps {

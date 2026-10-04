@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal';
 import { PantryItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
 import { Tag, Calendar, PackageOpen, Check, Scale, Minus, Plus, Mic, Loader2 } from 'lucide-react';

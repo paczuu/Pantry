@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api';
 import { User, UserRole, NavItemConfig, SystemUser, SystemHousehold } from '../../types';
 import { InstallPwaModal } from '../common/InstallPwaModal';

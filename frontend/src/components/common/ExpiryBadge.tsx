@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, Clock, CheckCircle, PackageOpen } from 'lucide-react';
 import { usePantry } from '../../contexts/PantryContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 
 interface ExpiryBadgeProps {
   expiryDate?: string | null;

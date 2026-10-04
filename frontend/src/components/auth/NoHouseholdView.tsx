@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Home, KeyRound, LogOut, Trash2, UserRoundX } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { api } from '../../services/api';
 
 export const NoHouseholdView: React.FC = () => {

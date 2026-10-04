@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { parseVoiceDate } from '../utils/speechDateParser';
 import { useToast } from '../contexts/ToastContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../language/LanguageContext';
 
 export const useVoiceExpiry = (onDateDetected: (dateStr: string) => void) => {
   const { showToast, playBeep, vibrate } = useToast();

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../language/LanguageContext';
 import { Smartphone, Download, Share, CheckCircle, Monitor } from 'lucide-react';
 
 interface InstallPwaModalProps {
