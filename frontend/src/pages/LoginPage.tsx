@@ -30,42 +30,42 @@ export const LoginPage: React.FC = () => {
         await login(email.trim(), password);
       }
     } catch (e) {
-      // Błąd jest już w Toast
+      // Błąd obsługiwany w Toast
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 sm:p-6 text-slate-100">
-      <div className="w-full max-w-md space-y-6">
+    <div className="h-dvh w-full bg-slate-950 flex flex-col justify-center items-center p-4 overflow-hidden text-slate-100">
+      <div className="w-full max-w-md my-auto space-y-4 sm:space-y-6">
         {/* Logo i Nagłówek */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 items-center justify-center mb-2">
+        <div className="text-center space-y-1.5 sm:space-y-2">
+          <div className="inline-flex w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 items-center justify-center">
             <img
               src="/favicon.png"
               alt="Pantry"
-              className="w-10 h-10 object-contain"
+              className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent">
-          Pantry
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent">
+            Pantry
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto">
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">
             {language === 'en'
               ? 'Smart kitchen inventory management, barcode scanner, and shared grocery lists.'
               : 'Inteligentne zarządzanie zapasami w kuchni, skaner kodów EAN i wspólne listy zakupów.'}
           </p>
         </div>
 
-        {/* Karta Formularza */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl space-y-5">
+        {/* Karta Formularza z obsługą ewentualnego przepełnienia */}
+        <div className="p-5 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl space-y-4 max-h-[calc(100dvh-12rem)] overflow-y-auto">
           {/* Zakładki: Logowanie / Rejestracja */}
           <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold">
             <button
               type="button"
               onClick={() => setIsRegister(false)}
-              className={`py-2.5 rounded-lg transition-all ${
+              className={`py-2 rounded-lg transition-all ${
                 !isRegister ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -74,7 +74,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsRegister(true)}
-              className={`py-2.5 rounded-lg transition-all ${
+              className={`py-2 rounded-lg transition-all ${
                 isRegister ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -82,7 +82,7 @@ export const LoginPage: React.FC = () => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {isRegister && (
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.nameLabel')} *</label>
@@ -92,7 +92,7 @@ export const LoginPage: React.FC = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={language === 'en' ? 'e.g. John, Alex' : 'np. Anna, Jan'}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
                 />
               </div>
             )}
@@ -105,7 +105,7 @@ export const LoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={language === 'en' ? 'your@email.com' : 'twoj@email.pl'}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -118,13 +118,13 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             {isRegister && (
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="block text-[11px] text-slate-400 mb-1">
+              <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                <label className="block text-[11px] text-slate-400">
                   {language === 'en' ? 'Household invite code' : 'Kod zaproszenia do gospodarstwa'}
                 </label>
                 <input
@@ -134,7 +134,7 @@ export const LoginPage: React.FC = () => {
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   placeholder={language === 'en' ? 'e.g. AB12CD' : 'np. AB12CD'}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-emerald-500"
                 />
                 <p className="text-[10px] text-slate-500">
                   {language === 'en'
@@ -147,7 +147,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 mt-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-2.5 mt-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isRegister ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
               {isLoading

@@ -5,33 +5,87 @@ import {
   Search,
   LayoutGrid,
   List,
-  RotateCcw,
   Clock,
   AlertCircle,
   PackageOpen,
   ArrowUpDown,
   ScanBarcode,
+  Boxes,
+  Layers,
 } from 'lucide-react';
+
+export type GroupBy = 'status' | 'category' | 'none';
 
 interface PantryFilterProps {
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
   onOpenScannerSearch?: () => void;
+  groupBy?: GroupBy;
+  setGroupBy?: (g: GroupBy) => void;
 }
+
+interface ChipProps {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  activeCls: string;
+  idleCls: string;
+  title?: string;
+}
+
+const Chip: React.FC<ChipProps> = ({ active, onClick, icon, label, count, activeCls, idleCls, title }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    title={title}
+    className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all active:scale-95 ${
+      active ? activeCls : idleCls
+    }`}
+  >
+    {icon}
+    {label}
+    <span
+      className={`px-1.5 rounded-full text-[11px] font-extrabold ${
+        active ? 'bg-black/20' : 'bg-slate-800/80'
+      }`}
+    >
+      {count}
+    </span>
+  </button>
+);
 
 export const PantryFilter: React.FC<PantryFilterProps> = ({
   viewMode,
   setViewMode,
   onOpenScannerSearch,
+  groupBy,
+  setGroupBy,
 }) => {
-  const { filters, setFilter, resetFilters, categories, stats, expiryWarningDays } = usePantry();
+  const { filters, setFilter, categories, stats, expiryWarningDays } = usePantry();
   const { t, tCategory, language } = useLanguage();
+  const en = language === 'en';
+
+  const toggleExpiry = (value: string) =>
+    setFilter('filterByExpiry', filters.filterByExpiry === value ? 'ALL' : value);
+
+  const expiredCount = stats?.expiredCount || 0;
+  const expiringCount = stats?.expiring3DaysCount || 0;
+  const openedCount = stats?.openedCount || 0;
+
+  const warningUnit = en ? 'd' : expiryWarningDays === 1 ? 'dzień' : 'dni';
+
+  const groupOptions: { key: GroupBy; label: string }[] = [
+    { key: 'status', label: t('pantry.groupStatus') },
+    { key: 'category', label: t('pantry.groupCategory') },
+    { key: 'none', label: t('pantry.groupNone') },
+  ];
 
   return (
-    <div className="space-y-3.5 mb-6">
-      {/* Pasek Wyszukiwania, Sortowania i Przełącznik Widoku */}
+    <div className="space-y-3">
+      {/* Rząd 1: wyszukiwarka + sortowanie + widok */}
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
-        {/* Szukaj */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -55,7 +109,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               <button
                 type="button"
                 onClick={onOpenScannerSearch}
-                className="p-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 px-2 text-[11px] font-bold"
+                className="rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 p-1 px-2 text-[11px] font-bold"
                 title={t('scanner.instructionSearch')}
               >
                 <ScanBarcode className="w-3.5 h-3.5" />
@@ -65,7 +119,6 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           </div>
         </div>
 
-        {/* Sortowanie i Widok */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:flex-none">
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -88,9 +141,9 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               type="button"
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-xl transition-colors ${
-                viewMode === 'grid' ? 'bg-slate-800 text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                viewMode === 'grid' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Grid view"
+              title={en ? 'Grid view' : 'Widok siatki'}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -98,9 +151,9 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               type="button"
               onClick={() => setViewMode('list')}
               className={`p-2 rounded-xl transition-colors ${
-                viewMode === 'list' ? 'bg-slate-800 text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                viewMode === 'list' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="List view"
+              title={en ? 'List view' : 'Widok listy'}
             >
               <List className="w-4 h-4" />
             </button>
@@ -108,87 +161,92 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
         </div>
       </div>
 
-      {/* Szybkie Filtry Ważności i Kategorie */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
-        {/* Filtr terminu */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            onClick={() => setFilter('filterByExpiry', 'ALL')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-              filters.filterByExpiry === 'ALL'
-                ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-950/40'
-                : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
-            }`}
-          >
-            {t('common.all')} ({stats?.totalActive || 0})
-          </button>
+      {/* Rząd 2: chipy statusu (przewijane poziomo na telefonie) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Chip
+          active={filters.filterByExpiry === 'ALL'}
+          onClick={() => setFilter('filterByExpiry', 'ALL')}
+          icon={<Boxes className="w-3.5 h-3.5" />}
+          label={t('common.all')}
+          count={stats?.totalActive || 0}
+          activeCls="bg-emerald-500 text-slate-950 border-emerald-400"
+          idleCls="bg-slate-900/80 text-slate-300 border-slate-800 hover:bg-slate-800"
+        />
 
-          <button
-            onClick={() => setFilter('filterByExpiry', filters.filterByExpiry === 'expiring_3_days' ? 'ALL' : 'expiring_3_days')}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors ${
-              filters.filterByExpiry === 'expiring_3_days'
-                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-amber-300'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
-            {t('dashboard.expiringSoon')} ({expiryWarningDays} {language === 'en' ? (expiryWarningDays === 1 ? 'd' : 'd') : (expiryWarningDays === 1 ? 'dzień' : 'dni')}) ({stats?.expiring3DaysCount || 0})
-          </button>
+        <Chip
+          active={filters.filterByExpiry === 'expired'}
+          onClick={() => toggleExpiry('expired')}
+          icon={<AlertCircle className="w-3.5 h-3.5" />}
+          label={t('dashboard.expired')}
+          count={expiredCount}
+          activeCls="bg-rose-500 text-white border-rose-400"
+          idleCls={
+            expiredCount > 0
+              ? 'bg-rose-950/30 text-rose-300 border-rose-500/40 hover:bg-rose-950/50'
+              : 'bg-slate-900/80 text-slate-500 border-slate-800'
+          }
+        />
 
-          <button
-            onClick={() => setFilter('filterByExpiry', filters.filterByExpiry === 'expired' ? 'ALL' : 'expired')}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors ${
-              filters.filterByExpiry === 'expired'
-                ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 font-bold'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-300'
-            }`}
-          >
-            <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-            {t('dashboard.expired')} ({stats?.expiredCount || 0})
-          </button>
+        <Chip
+          active={filters.filterByExpiry === 'expiring_3_days'}
+          onClick={() => toggleExpiry('expiring_3_days')}
+          icon={<Clock className="w-3.5 h-3.5" />}
+          label={t('dashboard.expiringSoon')}
+          title={`${expiryWarningDays} ${warningUnit}`}
+          count={expiringCount}
+          activeCls="bg-amber-500 text-slate-950 border-amber-400"
+          idleCls={
+            expiringCount > 0
+              ? 'bg-amber-950/30 text-amber-300 border-amber-500/40 hover:bg-amber-950/50'
+              : 'bg-slate-900/80 text-slate-500 border-slate-800'
+          }
+        />
 
-          <button
-            onClick={() => setFilter('filterByExpiry', filters.filterByExpiry === 'opened' ? 'ALL' : 'opened')}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors ${
-              filters.filterByExpiry === 'opened'
-                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 font-bold'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-cyan-300'
-            }`}
-          >
-            <PackageOpen className="w-3.5 h-3.5 text-cyan-400" />
-            {language === 'en' ? 'Opened' : 'Otwarte'} ({stats?.openedCount || 0})
-          </button>
-        </div>
+        <Chip
+          active={filters.filterByExpiry === 'opened'}
+          onClick={() => toggleExpiry('opened')}
+          icon={<PackageOpen className="w-3.5 h-3.5" />}
+          label={en ? 'Opened' : 'Otwarte'}
+          count={openedCount}
+          activeCls="bg-cyan-500 text-slate-950 border-cyan-400"
+          idleCls="bg-slate-900/80 text-slate-400 border-slate-800 hover:text-cyan-300"
+        />
+      </div>
 
-        {/* Wybór kategorii */}
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="relative">
-            <select
-              value={filters.category}
-              onChange={(e) => setFilter('category', e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
-            >
-              <option value="ALL">{t('pantry.categoryAll')}</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {tCategory(c.name)}
-                </option>
+      {/* Rząd 3: kategoria, grupowanie, reset */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <select
+          value={filters.category}
+          onChange={(e) => setFilter('category', e.target.value)}
+          className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
+        >
+          <option value="ALL">{t('pantry.categoryAll')}</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.name}>
+              {tCategory(c.name)}
+            </option>
+          ))}
+        </select>
+
+        {groupBy && setGroupBy && (
+          <div className="flex items-center gap-2">
+            <Layers className="w-3.5 h-3.5 text-slate-500" />
+            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5">
+              {groupOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setGroupBy(opt.key)}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                    groupBy === opt.key ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
-
-          {(filters.category !== 'ALL' ||
-            filters.search ||
-            filters.filterByExpiry !== 'ALL') && (
-            <button
-              onClick={resetFilters}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-              title={t('pantry.resetFilters')}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
