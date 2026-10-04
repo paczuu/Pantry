@@ -22,7 +22,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [permissionState, setPermissionState] = useState<'granted' | 'prompt' | 'denied' | 'checking'>('prompt');
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
-  const [selectedCameraIndex, setSelectedCameraIndex] = useState(0);
+  const [selectedCameraIndex, setSelectedCameraIndex] = useState<number | null>(null);
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -61,15 +61,28 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length > 0) {
         setCameras(devices);
-        const backCamIdx = devices.findIndex((d) => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('tył') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'));
-        setSelectedCameraIndex(backCamIdx !== -1 ? backCamIdx : 0);
+        
+        // Szukaj kamery tylnej po etykiecie
+        const backCamIdx = devices.findIndex((d) => {
+          const lbl = d.label.toLowerCase();
+          return lbl.includes('back') || lbl.includes('tył') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('0, facing back');
+        });
+
+        if (backCamIdx !== -1) {
+          setSelectedCameraIndex(backCamIdx);
+        } else {
+          // Jeśli na iOS etykiety są puste, ustawiamy null, by użyć constraints z facingMode: 'environment'
+          setSelectedCameraIndex(null);
+        }
       } else {
         setCameras([]);
+        setSelectedCameraIndex(null);
       }
       return devices || [];
     } catch (e) {
       console.warn('Nie udało się pobrać listy kamer:', e);
       setCameras([]);
+      setSelectedCameraIndex(null);
       return [];
     }
   }, []);
@@ -102,7 +115,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
             return;
           }
         } catch (e) {
-          // Safari/iOS może nie obsługiwać query dla camera
+          // Safari/iOS nie obsługuje nazwy 'camera' w permissions.query
         }
       }
       setPermissionState('prompt');
@@ -137,6 +150,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
         return;
       }
 
+      // Wymuszamy kamerę tylną przy pierwszym wywołaniu strumienia
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -201,7 +215,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
     }
   }, [isProcessing, mode, playBeep, showToast, soundEnabled, vibrate, stopScanner]);
 
-  // Uruchom skaner zoptymalizowany pod kątem szybkości na iOS
+  // Uruchom skaner
   useEffect(() => {
     let cancelled = false;
 
@@ -217,7 +231,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
         await stopScanner();
         if (cancelled) return;
 
-        // Priorytetowe kody handlowe dla maksymalnej szybkości
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.EAN_13,
           Html5QrcodeSupportedFormats.EAN_8,
@@ -232,29 +245,29 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
           formatsToSupport,
           verbose: false,
           experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true, // Natywny silnik C++ w WebKit / Chromium
+            useBarCodeDetectorIfSupported: true,
           },
         });
 
         html5QrCodeRef.current = qrScanner;
 
-        const cameraId = cameras[selectedCameraIndex]?.id;
+        // Jeśli wybrano konkretną kamerę z listy (i wiemy, że to ta właściwa) - używamy deviceId.
+        // W przeciwnym wypadku (np. na iOS gdy nazwy były puste) wymuszamy 'environment'.
+        const cameraId = selectedCameraIndex !== null && cameras[selectedCameraIndex]?.id ? cameras[selectedCameraIndex].id : null;
+        
         const cameraConfig = cameraId
           ? { deviceId: { exact: cameraId } }
-          : {
-              facingMode: 'environment',
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            };
+          : { facingMode: 'environment' };
 
         await qrScanner.start(
           cameraConfig,
           {
             fps: 25,
             qrbox: (viewfinderWidth, viewfinderHeight) => ({
-              width: Math.floor(viewfinderWidth * 0.94),
-              height: Math.floor(viewfinderHeight * 0.78),
+              width: Math.floor(viewfinderWidth * 0.85),
+              height: Math.floor(viewfinderHeight * 0.65),
             }),
+            aspectRatio: 1.0,
           },
           (decodedText) => {
             if (!cancelled) handleBarcodeScanned(decodedText);
@@ -321,7 +334,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
 
   const switchCamera = () => {
     if (cameras.length > 1) {
-      setSelectedCameraIndex((prev) => (prev + 1) % cameras.length);
+      setSelectedCameraIndex((prev) => (prev === null ? 0 : (prev + 1) % cameras.length));
     }
   };
 
@@ -370,7 +383,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
                 }`}
               >
                 <MinusCircle className="w-3.5 h-3.5" />
-                Szybkie Zużycie
+                Zużyj
               </button>
             </div>
 
@@ -416,11 +429,20 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({ isOpen
           <div className="relative z-0 w-full h-full flex items-center justify-center bg-black overflow-hidden">
             {activeTab === 'camera' ? (
               <>
-                {/* Kontener wideo */}
-                <div
-                  id={scannerContainerId}
-                  className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_video]:!object-center"
-                />
+                {/* Kontener wideo z rozmytym tłem i dopasowanym obrazem w centrum */}
+                <div className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
+                  {/* Wyrenderowany strumień wideo ze sztuczką CSS do rozmytego tła */}
+                  <div
+                    id={scannerContainerId}
+                    className="relative w-full h-full flex items-center justify-center
+                      [&_video]:relative [&_video]:z-10 [&_video]:!max-w-full [&_video]:!max-h-full [&_video]:!w-auto [&_video]:!h-auto [&_video]:!object-contain [&_video]:rounded-2xl [&_video]:shadow-2xl
+                      [&_video]:before:content-['']
+                    "
+                  />
+
+                  {/* Warstwa rozmywająca i przyciemniająca tło po bokach/górze */}
+                  <div className="absolute inset-0 z-0 backdrop-blur-2xl bg-black/60 pointer-events-none" />
+                </div>
 
                 {/* Ekran sprawdzania uprawnień */}
                 {permissionState === 'checking' && (

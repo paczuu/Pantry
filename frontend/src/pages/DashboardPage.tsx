@@ -71,7 +71,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 active:scale-95 font-bold text-xs sm:text-sm transition-all"
           >
             <MinusCircle className="w-4 h-4" />
-            Szybkie Zużycie
+            Zużyj
           </button>
 
           <button
@@ -189,57 +189,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             ))}
           </div>
         )}
-      </div>
-
-      {/* Szybkie skróty do List Zakupów i Notatek */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div
-          onClick={() => setActiveTab('shopping')}
-          className="p-5 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:border-emerald-500/40 shadow-lg group flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
-              <ShoppingCart className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-white text-base">Listy Zakupów</h4>
-              <p className="text-xs text-slate-400">Planuj zakupy i przenoś kupione do spiżarni</p>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
-        </div>
-
-        <div
-          onClick={() => setActiveTab('notes')}
-          className="p-5 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:border-cyan-500/40 shadow-lg group flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-colors">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-white text-base">Notatki & listy zadań</h4>
-              <p className="text-xs text-slate-400">Listy zadań, wskazówki i plany posiłków</p>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
-        </div>
-
-        <div
-          onClick={() => setActiveTab('recipes')}
-          className="p-5 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 cursor-pointer transition-all hover:border-orange-500/40 shadow-lg group flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-400 group-hover:bg-orange-500 group-hover:text-slate-950 transition-colors">
-              <ChefHat className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-white text-base">Przepisy</h4>
-              <p className="text-xs text-slate-400">Nazwa, składniki, treść i ukryte uwagi</p>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
-        </div>
       </div>
     </div>
   );
