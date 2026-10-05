@@ -1,14 +1,19 @@
 # <img src="frontend/public/favicon.png" width="24" alt="Pantry Inventory" /> Pantry
 
-> This project was created for personal use with heavy assistance from Artificial Intelligence (AI). The application is under active development and **requires further testing** in real-world scenarios.
-> 
-> If you encounter any bugs, have ideas for new features, or want to improve the codebase – **any feedback, issue reports, and Pull Requests are deeply appreciated!**
-
-[🇵🇱 Wersja polska](README.pl.md) | [🇬🇧 English Version](README.md)
+[🇵🇱 Wersja polska](README-PL.md) | [🇬🇧 English Version](README.md)
 
 A self-hosted, full-stack **Progressive Web App (PWA)** for household pantry management and kitchen inventory. Scan EAN barcodes, track product expiry dates, share real-time shopping lists, and store notes and recipes in one place.
 
 Built specifically for home servers and private self-hosted environments where you maintain full control over accounts, households, and data privacy.
+
+<details>
+<summary>Extra</summary>
+
+This project was created for personal use with heavy assistance from Artificial Intelligence (AI). The application is under active development and **requires further testing** in real-world scenarios.
+
+If you encounter any bugs, have ideas for new features, or want to improve the codebase – **any feedback, issue reports, and Pull Requests are deeply appreciated!**
+
+</details>
 
 ## Showcase
 

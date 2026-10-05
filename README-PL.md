@@ -1,14 +1,20 @@
 # <img src="frontend/public/favicon.png" width="24" alt="Pantry Inventory" /> Pantry
 
-> Ten projekt został stworzony na potrzeby własne przy dużym wsparciu sztucznej inteligencji (AI). Aplikacja jest aktywnie rozwijana i **wymaga dalszych testów** w rzeczywistych warunkach.
->
-> Jeśli znajdziesz błąd, masz pomysł na nową funkcję lub chcesz ulepszyć kod – **wszelkie opinie, zgłoszenia błędów oraz Pull Requesty są bardzo mile widziane!**
-
-[🇵🇱 Wersja polska](README.pl.md) | [🇬🇧 English Version](README.md)
+[🇵🇱 Wersja polska](README-PL.md) | [🇬🇧 English Version](README.md)
 
 Samodzielnie hostowana **aplikacja Progressive Web App (PWA)** do zarządzania domową spiżarnią i zapasami kuchennymi. Skanuj kody kreskowe EAN, kontroluj daty ważności produktów, współdziel listy zakupów w czasie rzeczywistym oraz przechowuj notatki i przepisy w jednym miejscu.
 
 Projekt został stworzony z myślą o domowych serwerach i prywatnych środowiskach self-hosted, w których użytkownik zachowuje pełną kontrolę nad kontami, gospodarstwami domowymi i prywatnością danych.
+
+<details>
+<summary>Extra</summary>
+
+Ten projekt został stworzony na potrzeby własne przy dużym wsparciu sztucznej inteligencji (AI). Aplikacja jest aktywnie rozwijana i **wymaga dalszych testów** w rzeczywistych warunkach.
+
+Jeśli znajdziesz błąd, masz pomysł na nową funkcję lub chcesz ulepszyć kod – **wszelkie opinie, zgłoszenia błędów oraz Pull Requesty są bardzo mile widziane!**
+
+</details>
+
 
 ## Prezentacja
 
