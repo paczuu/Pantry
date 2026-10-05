@@ -28,7 +28,7 @@ model Household {
   name                  String
   inviteCode            String                 @unique
   inviteCodeExpiresAt   DateTime?
-  expiryWarningDays     Int                    @default(3)
+  expiryWarningDays     Int                    @default(7)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   members               User[]

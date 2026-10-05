@@ -18,11 +18,9 @@ import {
   Scale,
   PackageOpen,
   Mic,
-  MicOff,
   Loader2,
   SearchX,
   Barcode,
-  X,
 } from 'lucide-react';
 
 interface QuickAddModalProps {
