@@ -1,6 +1,5 @@
 # <img src="frontend/public/favicon.png" width="24" alt="Pantry Inventory" /> Pantry
 
-> [!NOTE]
 > This project was created for personal use with heavy assistance from Artificial Intelligence (AI). The application is under active development and **requires further testing** in real-world scenarios.
 > 
 > If you encounter any bugs, have ideas for new features, or want to improve the codebase – **any feedback, issue reports, and Pull Requests are deeply appreciated!**
@@ -13,9 +12,9 @@ Built specifically for home servers and private self-hosted environments where y
 
 ## Showcase
 
-| Dashboard | Barcode Scanner | Recepies |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/dashboard-mobile.png" width="260" alt="Dashboard" /> | <img src="docs/screenshots/scanner-mobile.png" width="260" alt="Barcode Scanner" /> | <img src="docs/screenshots/recepies-mobile.png" width="260" alt="Recepies" /> |
+| Dashboard | Scanner | Recipes | Settings |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/dashboard-mobile.png" height="420" style="object-fit: cover;" alt="Dashboard" /> | <img src="docs/screenshots/scanner-mobile.png" height="420" style="object-fit: cover;" alt="Barcode Scanner" /> | <img src="docs/screenshots/recipes-mobile.png" height="420" style="object-fit: cover;" alt="Recipes" /> | <img src="docs/screenshots/settings-mobile.png" height="420" style="object-fit: cover;" alt="Settings" /> |
 
 ## Features
 
@@ -55,7 +54,7 @@ Built specifically for home servers and private self-hosted environments where y
 | --- | --- |
 | **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons, `html5-qrcode`, Socket.IO Client, `vite-plugin-pwa` |
 | **Backend** | Node.js, Express, TypeScript, Prisma ORM, SQLite, JWT, `bcrypt`, Zod, Socket.IO, Axios |
-| **Product Data** | Open Food Facts, Open Beauty Facts, Open Products Facts, Open Pet Food Facts, Own Data |
+| **Product Data** | Open Food Facts, Open Beauty Facts, Open Products Facts, Open Pet Food Facts, own data |
 | **Deployment** | Docker Compose, Nginx (Frontend & Reverse Proxy), SQLite Volume (`./data`) |
 
 ## Prerequisites
@@ -93,32 +92,7 @@ To stop the stack:
 docker compose down
 ```
 
-### Option B: Portainer / Home Lab NAS Installation
-
-To run **Pantry** on home server setups like Portainer, or CasaOS as a Custom App:
-
-1. Create a dedicated folder on your host storage for application data (e.g., `/DATA/AppData/pantry/data`).
-2. Add the following `docker-compose.yml` configuration:
-
-```yaml
-version: '3.8'
-
-services:
-  pantry:
-    image: pantry-app:latest
-    container_name: pantry
-    restart: unless-stopped
-    ports:
-      - "3200:3200"
-    environment:
-      - NODE_ENV=production
-      - JWT_SECRET=your_super_secret_random_string_here
-      - DATABASE_URL=file:/app/data/pantry.db
-    volumes:
-      - /DATA/AppData/pantry/data:/app/data
-```
-
-### Option C: Local Development (Node.js)
+### Option B: Local Development (Node.js)
 
 #### 1. Backend Setup
 
@@ -161,6 +135,8 @@ npm run build:backend
 npm start              # Runs compiled production backend
 ```
 
+### Option C: Portainer / Home Lab NAS Installation - COMING SOON!
+
 ## Database Management & Prisma Studio
 
 If you need to inspect or modify the database visually via browser GUI:
@@ -177,7 +153,7 @@ Prisma Studio will open at `http://localhost:5555`.
 ## First Login & Onboarding
 
 1. Open the app and **Register** the first user account (with an empty database). This user automatically becomes household `ADMIN` and **System Admin**.
-2. Navigate to **Settings** → **Household** to generate a 6-digit invite code (valid for 5 minutes).
+2. Navigate to **Settings** → **General** to generate a 6-digit invite code (valid for 5 minutes).
 3. Share the invite code with family members so they can register and join your household. Other users cannot create standalone households.
 4. Additional households can be created through the System Admin panel in Settings.
 
@@ -191,4 +167,4 @@ Prisma Studio will open at `http://localhost:5555`.
 
 ## License
 
-Distributed under the **MIT License**. See `LICENSE` for details.
+Distributed under the **MIT License**. See [LICENCE](LICENCE) for details.
