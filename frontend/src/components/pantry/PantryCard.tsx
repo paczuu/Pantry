@@ -4,6 +4,7 @@ import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { ExpiryBadge } from '../common/ExpiryBadge';
+import { PantryItemThumb } from '../common/PantryItemThumb';
 import { api } from '../../services/api';
 import { getExpiryStatus } from '../../utils/expiry';
 import {
@@ -24,19 +25,6 @@ interface PantryCardProps {
 }
 
 /* ---------- Małe, współdzielone elementy ---------- */
-
-const Thumb: React.FC<{ item: PantryItem }> = ({ item }) =>
-  item.imageUrl ? (
-    <img
-      src={item.imageUrl}
-      alt={item.name}
-      className="w-14 h-14 object-cover rounded-xl bg-slate-950 border border-slate-800 shrink-0"
-    />
-  ) : (
-    <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center shrink-0">
-      <Package className="w-6 h-6 text-emerald-400" />
-    </div>
-  );
 
 interface StepperProps {
   quantity: number;
@@ -272,7 +260,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
         className={`relative flex items-center justify-between p-3 sm:p-4 rounded-2xl transition-all gap-3 border cursor-pointer select-none ${statusClasses}`}
       >
         <div className="flex items-center gap-3.5 min-w-0 flex-1">
-          <Thumb item={item} />
+        <PantryItemThumb item={item} />
 
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -348,19 +336,8 @@ export const PantryCard: React.FC<PantryCardProps> = ({
       }`}
     >
       {/* Zdjęcie: kwadrat na całą szerokość kafelka */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-slate-800">
-        {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            loading="lazy"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate-800/80">
-            <Package className="w-1/3 h-1/3 text-emerald-400/70" />
-          </div>
-        )}
+      <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl">
+        <PantryItemThumb item={item} className="w-full h-full object-cover" />
 
         {/* Status terminu — tylko gdy wymaga uwagi */}
         {statusPill && (

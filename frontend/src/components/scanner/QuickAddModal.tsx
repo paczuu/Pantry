@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
+import { PantryItemThumb } from '../common/PantryItemThumb';
 import { ProductCatalogItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -274,17 +275,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         {/* Podgląd po znalezieniu produktu w bazie */}
         {initialProduct ? (
           <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
-            {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt={name}
-                className="w-16 h-16 object-contain rounded-xl bg-slate-950 border border-slate-800 p-1 shrink-0"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-500 shrink-0">
-                <ImageIcon className="w-7 h-7 text-emerald-400/80" />
-              </div>
-            )}
+            <PantryItemThumb src={imageUrl} alt={name} />
+
             <div className="min-w-0 flex-1">
               <div className="font-extrabold text-white truncate text-sm sm:text-base">
                 {initialProduct.name}
@@ -560,27 +552,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             className="hidden"
           />
           <div className="flex items-center gap-3">
-            {imageUrl ? (
-              <div className="relative w-16 h-16 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden shrink-0">
-                <img src={imageUrl} alt="Podgląd" className="w-full h-full object-contain p-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImageUrl('');
-                    if (cameraInputRef.current) cameraInputRef.current.value = '';
-                    if (galleryInputRef.current) galleryInputRef.current.value = '';
-                  }}
-                  className="absolute top-1 right-1 p-0.5 rounded-full bg-slate-900/90 text-slate-300 hover:text-rose-400 transition-colors"
-                  title={t('scanner.removePhoto')}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-500 shrink-0">
-                <ImageIcon className="w-6 h-6 text-slate-400" />
-              </div>
-            )}
+            <PantryItemThumb src={imageUrl} alt="Preview" />
 
             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">

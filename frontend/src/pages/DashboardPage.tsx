@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PantryItemThumb } from '../components/common/PantryItemThumb';
 import { usePantry } from '../contexts/PantryContext';
 import { useLanguage } from '../language/LanguageContext';
 import { useLiveRefresh } from '../contexts/RealtimeContext';
@@ -392,17 +393,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   onClick={() => onEditItem(item)}
                   className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-900 active:bg-slate-800/60 transition-colors select-none"
                 >
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-14 h-14 object-cover rounded-xl bg-slate-950 border border-slate-800 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center shrink-0">
-                      <Package className="w-6 h-6 text-emerald-400" />
-                    </div>
-                  )}
+                  <PantryItemThumb item={item} />
 
                   <div className="min-w-0 flex-1 space-y-1">
                     <h4 className="font-extrabold text-white text-sm truncate leading-snug">{item.name}</h4>
