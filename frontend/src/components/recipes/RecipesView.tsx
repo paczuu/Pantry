@@ -463,7 +463,7 @@ export const RecipesView: React.FC = () => {
     fetchRecipes();
   }, []);
 
-  useLiveRefresh('spizarnia_recipes_refresh', fetchRecipes);
+  useLiveRefresh('pantry_recipes_refresh', fetchRecipes);
   useEditingPresence('recipe', editingRecipe?.id || null, isModalOpen && !!editingRecipe);
 
   const resetForm = () => {

@@ -34,7 +34,7 @@ export interface BarcodeSourceConfig {
 
 class ApiService {
   private getToken(): string | null {
-    return localStorage.getItem('spizarnia_token');
+    return localStorage.getItem('pantry_token');
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -57,12 +57,12 @@ class ApiService {
 
     if (!response.ok) {
       if (response.status === 401) {
-        localStorage.removeItem('spizarnia_token');
+        localStorage.removeItem('pantry_token');
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
         }
       }
-      throw new Error(data.error || data.message || `Błąd serwera (${response.status})`);
+      throw new Error(data.error || data.message || `Server error (${response.status})`);
     }
 
     return data as T;

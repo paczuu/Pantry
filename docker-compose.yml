@@ -4,7 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
 
-    container_name: smart-pantry-backend
+    container_name: pantry-backend
 
     restart: unless-stopped
 
@@ -21,7 +21,7 @@ services:
       - "3001"
 
     networks:
-      - smart-pantry
+      - pantry
 
 
   frontend:
@@ -29,7 +29,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
 
-    container_name: smart-pantry-frontend
+    container_name: pantry-frontend
 
     restart: unless-stopped
 
@@ -40,9 +40,9 @@ services:
       - backend
 
     networks:
-      - smart-pantry
+      - pantry
 
 
 networks:
-  smart-pantry:
+  pantry:
     driver: bridge

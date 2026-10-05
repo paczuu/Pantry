@@ -80,7 +80,7 @@ export const NotesView: React.FC = () => {
     fetchNotes();
   }, []);
 
-  useLiveRefresh('spizarnia_notes_refresh', fetchNotes);
+  useLiveRefresh('pantry_notes_refresh', fetchNotes);
   useEditingPresence('note', editingNote?.id || null, isModalOpen && !!editingNote);
 
   const handleOpenAdd = () => {

@@ -20,7 +20,7 @@ export interface AccentTheme {
 }
 
 export const ACCENT_THEME_STORAGE_KEY =
-  'spizarnia_accent_theme';
+  'pantry_accent_theme';
 
 export const ACCENT_THEMES: AccentTheme[] = [
   {
@@ -127,7 +127,7 @@ export const getStoredAccentTheme =
       }
     } catch (error) {
       console.warn(
-        'Nie udało się odczytać motywu:',
+        'Failed to load theme:',
         error
       );
     }
@@ -152,7 +152,7 @@ export const applyAccentTheme = (
     );
   } catch (error) {
     console.warn(
-      'Nie udało się zapisać motywu:',
+      'Failed to save theme:',
       error
     );
   }
@@ -170,7 +170,7 @@ export const applyAccentTheme = (
   }
 
   window.dispatchEvent(
-    new CustomEvent('spizarnia-theme-changed', {
+    new CustomEvent('pantry-theme-changed', {
       detail: {
         theme: theme.id,
       },

@@ -726,7 +726,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const handleDownloadBackup = async () => {
     try {
-      const token = localStorage.getItem('spizarnia_token');
+      const token = localStorage.getItem('pantry_token');
 
       if (!token) {
         showToast(

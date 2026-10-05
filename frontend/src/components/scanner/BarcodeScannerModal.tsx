@@ -47,7 +47,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const [inPantryItems, setInPantryItems] = useState<PantryItem[]>([]);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  const scannerContainerId = 'spizarnia-fullscreen-barcode-reader';
+  const scannerContainerId = 'pantry-fullscreen-barcode-reader';
   const lastScannedTimeRef = useRef<number>(0);
   const scannerStartingRef = useRef(false);
   const historyPushedRef = useRef(false);

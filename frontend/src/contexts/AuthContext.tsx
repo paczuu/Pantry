@@ -19,12 +19,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('spizarnia_token'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('pantry_token'));
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { showToast } = useToast();
 
   const refreshUser = useCallback(async () => {
-    const savedToken = localStorage.getItem('spizarnia_token');
+    const savedToken = localStorage.getItem('pantry_token');
     if (!savedToken) {
       setUser(null);
       setIsLoading(false);
@@ -35,8 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await api.getMe();
       setUser(data.user);
     } catch (err) {
-      console.error('Błąd weryfikacji sesji:', err);
-      localStorage.removeItem('spizarnia_token');
+      console.error('Error session expired:', err);
+      localStorage.removeItem('pantry_token');
       setUser(null);
       setToken(null);
     } finally {
@@ -51,12 +51,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string) => {
     try {
       const data = await api.login(email, pass);
-      localStorage.setItem('spizarnia_token', data.token);
+      localStorage.setItem('pantry_token', data.token);
       setToken(data.token);
       setUser(data.user);
-      showToast(`Witaj ponownie, ${data.user.name}!`, 'success');
+      showToast(`Welcome back, ${data.user.name}!`, 'success');
     } catch (error: any) {
-      showToast(error.message || 'Błąd logowania.', 'error');
+      showToast(error.message || 'Login error.', 'error');
       throw error;
     }
   };
@@ -69,31 +69,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ) => {
     try {
       const data = await api.register(email, pass, name, inviteCode);
-      localStorage.setItem('spizarnia_token', data.token);
+      localStorage.setItem('pantry_token', data.token);
       setToken(data.token);
       setUser(data.user);
-      showToast(`Konto utworzone pomyślnie! Witaj ${data.user.name}.`, 'success');
+      showToast(`Account created successfully! Welcome ${data.user.name}.`, 'success');
     } catch (error: any) {
-      showToast(error.message || 'Błąd rejestracji.', 'error');
+      showToast(error.message || 'Registration error.', 'error');
       throw error;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('spizarnia_token');
+    localStorage.removeItem('pantry_token');
     setToken(null);
     setUser(null);
-    showToast('Wylogowano pomyślnie.', 'info');
+    showToast('Logout successfully.', 'info');
   };
 
   const joinHousehold = async (inviteCode: string) => {
     try {
       const data = await api.joinHousehold(inviteCode);
       setUser(data.user);
-      showToast('Dołączono do gospodarstwa domowego!', 'success');
+      showToast('Joined new household!', 'success');
       await refreshUser();
     } catch (error: any) {
-      showToast(error.message || 'Błąd dołączania do gospodarstwa.', 'error');
+      showToast(error.message || 'Error while joining household.', 'error');
       throw error;
     }
   };

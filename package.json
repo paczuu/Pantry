@@ -1,6 +1,6 @@
 {
-  "name": "smart-pantry-root",
-  "version": "1.0.0",
+  "name": "pantry-root",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev:backend": "cd backend && npm run dev",

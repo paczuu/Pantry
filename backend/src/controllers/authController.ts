@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smart-pantry-super-secret-key-change-in-production-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
 const INVITE_CODE_TTL_MS = 5 * 60 * 1000;
 

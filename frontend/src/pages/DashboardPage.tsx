@@ -14,7 +14,6 @@ import {
   Plus,
   ArrowRight,
   MinusCircle,
-  Package,
   Utensils,
   Leaf,
   ShoppingCart,
@@ -129,7 +128,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       const res = await api.getShoppingLists();
       setLists(res.lists || []);
     } catch (e) {
-      console.error('Błąd pobierania list zakupów:', e);
+      console.error('Error downloading shopping lists:', e);
     } finally {
       setListsLoaded(true);
     }
@@ -140,7 +139,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       const data = await api.getNotes();
       setNotes(data.notes || []);
     } catch (e) {
-      console.error('Błąd pobierania notatek:', e);
+      console.error('Error downloading notes:', e);
     } finally {
       setNotesLoaded(true);
     }
@@ -151,7 +150,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     fetchNotes();
   }, []);
 
-  useLiveRefresh('spizarnia_notes_refresh', fetchNotes);
+  useLiveRefresh('pantry_notes_refresh', fetchNotes);
 
   const activeLists = useMemo(
     () => lists.filter((l: any) => !(l.isArchived ?? l.archived ?? false)),

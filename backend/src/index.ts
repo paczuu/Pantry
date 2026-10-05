@@ -20,7 +20,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'smart-pantry-api',
+    service: 'pantry-api',
   });
 });
 
@@ -41,5 +41,5 @@ app.use('/api', routes);
 initRealtime(server);
 
 server.listen(PORT, () => {
-  console.log(`🚀 Smart Pantry API running on port ${PORT}`);
+  console.log(`🚀 Pantry API running on port ${PORT}`);
 });

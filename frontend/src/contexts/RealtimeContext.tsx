@@ -14,12 +14,12 @@ interface RealtimeContextType {
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined);
 
 const REFRESH_EVENT: Record<DataScope, string> = {
-  pantry: 'spizarnia_pantry_refresh',
-  shopping: 'spizarnia_shopping_refresh',
-  notes: 'spizarnia_notes_refresh',
-  recipes: 'spizarnia_recipes_refresh',
-  settings: 'spizarnia_settings_refresh',
-  household: 'spizarnia_household_refresh',
+  pantry: 'pantry_pantry_refresh',
+  shopping: 'pantry_shopping_refresh',
+  notes: 'pantry_notes_refresh',
+  recipes: 'pantry_recipes_refresh',
+  settings: 'pantry_settings_refresh',
+  household: 'pantry_household_refresh',
 };
 
 export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

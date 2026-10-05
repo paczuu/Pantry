@@ -1,8 +1,8 @@
 {
-  "name": "smart-pantry-backend",
-  "version": "1.0.0",
+  "name": "pantry-backend",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Smart Pantry API server with OpenFoodFacts and SQLite",
+  "description": "Pantry API server with OpenFoodFacts and SQLite",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 
 const JWT_SECRET =
-  process.env.JWT_SECRET || 'smart-pantry-super-secret-key-change-in-production-2026';
+  process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
 export type DataScope = 'pantry' | 'shopping' | 'notes' | 'recipes' | 'settings' | 'household';
 

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smart-pantry-super-secret-key-change-in-production-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
 export interface AuthUser {
   id: string;

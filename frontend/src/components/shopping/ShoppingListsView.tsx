@@ -44,7 +44,7 @@ export const ShoppingListsView: React.FC = () => {
         setActiveListId(data.lists[0].id);
       }
     } catch (e: any) {
-      console.error('Błąd pobierania list zakupów:', e);
+      console.error('Error downloading shopping list:', e);
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +54,7 @@ export const ShoppingListsView: React.FC = () => {
     fetchLists();
   }, []);
 
-  useLiveRefresh('spizarnia_shopping_refresh', () => fetchLists(true));
+  useLiveRefresh('pantry_shopping_refresh', () => fetchLists(true));
 
   const activeList = lists.find((l) => l.id === activeListId) || lists[0];
 
@@ -329,24 +329,24 @@ export const ShoppingListsView: React.FC = () => {
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={t('shopping.addItemPlaceholder')}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 min-w-0"
               />
 
               {/* Ilość w sztukach */}
-              <div className="flex items-center bg-slate-800 border border-slate-700 rounded-2xl p-0.5">
+              <div className="flex items-center bg-slate-800 border border-slate-700 rounded-2xl p-0.5 shrink-0">
                 <input
                   type="number"
                   min="1"
                   value={newItemQty}
                   onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-12 text-center bg-transparent text-white text-sm font-bold focus:outline-none"
+                  className="w-10 sm:w-12 text-center bg-transparent text-white text-sm font-bold focus:outline-none"
                 />
                 <span className="text-xs text-slate-400 pr-2 font-medium">{t('common.pcs')}</span>
               </div>
 
               <button
                 type="submit"
-                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold rounded-2xl text-sm transition-all shadow-lg"
+                className="px-3.5 sm:px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold rounded-2xl text-sm transition-all shadow-lg shrink-0"
               >
                 <Plus className="w-5 h-5 stroke-[2.5]" />
               </button>
