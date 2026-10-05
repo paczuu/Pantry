@@ -1,17 +1,17 @@
 import { NavItemConfig } from '../types';
 
-export const NAV_CONFIG_STORAGE_KEY = 'spizarnia_nav_config';
-export const NAV_CONFIG_UPDATED_EVENT = 'spizarnia_nav_updated';
+export const NAV_CONFIG_STORAGE_KEY = 'pantry_nav_config';
+export const NAV_CONFIG_UPDATED_EVENT = 'pantry_nav_updated';
 
 export const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
-  { id: 'dashboard', label: 'Pulpit', visible: true, order: 1 },
-  { id: 'pantry', label: 'Spiżarnia', visible: true, order: 2 },
-  { id: 'scan-action', label: 'Skaner', visible: true, order: 3 },
-  { id: 'shopping', label: 'Zakupy', visible: true, order: 4 },
-  { id: 'notes', label: 'Notatki', visible: true, order: 5 },
-  { id: 'recipes', label: 'Przepisy', visible: true, order: 6 },
-  { id: 'audit', label: 'Audyt', visible: true, order: 7 },
-  { id: 'settings', label: 'Opcje', visible: true, order: 8 },
+  { id: 'dashboard', label: 'Dashboard', visible: true, order: 1 },
+  { id: 'pantry', label: 'Pantry', visible: true, order: 2 },
+  { id: 'shopping', label: 'Shopping', visible: true, order: 3 },
+  { id: 'scan-action', label: 'Scanner', visible: true, order: 4 },
+  { id: 'notes', label: 'Notes', visible: true, order: 5 },
+  { id: 'recipes', label: 'Recipes', visible: true, order: 6 },
+  { id: 'audit', label: 'Audit', visible: true, order: 7 },
+  { id: 'settings', label: 'Settings', visible: true, order: 8 },
 ];
 
 export function loadNavConfig(): NavItemConfig[] {

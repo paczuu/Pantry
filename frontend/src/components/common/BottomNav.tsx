@@ -26,8 +26,8 @@ interface BottomNavProps {
 const ICONS_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   pantry: Boxes,
-  'scan-action': QrCode,
   shopping: ShoppingCart,
+  'scan-action': QrCode,
   notes: BookOpen,
   recipes: ChefHat,
   audit: History,
