@@ -174,4 +174,4 @@ Prisma Studio will open at `http://localhost:5555`.
 
 ## License
 
-Distributed under the **MIT License**. See [LICENCE](LICENCE) for details.
+Distributed under the **GPLv3** license. See [LICENSE](LICENSE) for details.

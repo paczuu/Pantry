@@ -179,4 +179,4 @@ Prisma Studio zostanie uruchomione pod adresem `http://localhost:5555`.
 
 ## Licencja
 
-Projekt jest rozpowszechniany na warunkach **licencji MIT**. Szczegóły znajdują się w pliku [LICENCE](LICENCE).
+Projekt jest rozpowszechniany na warunkach licencji **GPLv3**. Szczegóły znajdują się w pliku [LICENSE](LICENSE).
