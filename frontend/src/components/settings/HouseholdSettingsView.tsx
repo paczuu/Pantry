@@ -5,7 +5,6 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api';
 import { User, UserRole, NavItemConfig, SystemUser, SystemHousehold } from '../../types';
-import { InstallPwaModal } from '../common/InstallPwaModal';
 import {
   DEFAULT_NAV_ITEMS,
   loadNavConfig,
@@ -49,6 +48,10 @@ import {
   Languages,
   ChevronLeft,
   ChevronRight,
+  Share,
+  MoreVertical,
+  Monitor,
+  CheckCircle2,
 } from 'lucide-react';
 
 /* -------------------------------------------------------------------------- */
@@ -163,6 +166,36 @@ const SettingsRow: React.FC<{
   </div>
 );
 
+/**
+ * Pole ustawienia z układem „pionowym": nagłówek (ikona + tytuł + opis),
+ * a pod nim kontrolki wyrównane do tekstu. Dobre dla formularzy i kodów,
+ * które potrzebują więcej miejsca niż wiersz SettingsRow.
+ */
+const SettingsField: React.FC<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, description, icon, children }) => (
+  <div className="p-4 sm:p-5 space-y-3.5">
+    <div className="flex items-start gap-3 min-w-0">
+      {icon && (
+        <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="text-sm font-bold text-white">{title}</div>
+        {description && (
+          <div className="text-xs text-slate-400 mt-0.5">{description}</div>
+        )}
+      </div>
+    </div>
+
+    <div className={icon ? 'pl-11' : ''}>{children}</div>
+  </div>
+);
+
 /** Pełnoszerokościowy blok wewnątrz karty (listy, siatki). */
 const SettingsBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="p-4 sm:p-5 space-y-3">{children}</div>
@@ -224,12 +257,15 @@ export const HouseholdSettingsView: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [inviteTimeLeft, setInviteTimeLeft] = useState(0);
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [backupRestoring, setBackupRestoring] = useState(false);
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [systemHouseholds, setSystemHouseholds] = useState<SystemHousehold[]>([]);
   const [systemLoading, setSystemLoading] = useState(false);
   const [newSystemHouseholdName, setNewSystemHouseholdName] = useState('');
+
+  // Instalacja PWA
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const [householdNameInput, setHouseholdNameInput] = useState(
     user?.household?.name || ''
@@ -309,6 +345,16 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const resetAccentTheme = () => {
     handleAccentThemeChange('emerald');
+  };
+
+  /* ------------------------------ Instalacja PWA --------------------------- */
+
+  const handleNativeInstall = async () => {
+    if (!installPrompt) return;
+
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
   };
 
   /* ------------------------------ Źródła EAN ------------------------------- */
@@ -551,6 +597,33 @@ export const HouseholdSettingsView: React.FC = () => {
       fetchSystemAdminData();
     }
   }, [user?.isSystemAdmin]);
+
+  // Instalacja PWA: wykrycie trybu standalone i natywnego promptu
+  useEffect(() => {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+
+    setIsStandalone(standalone);
+
+    const onBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    const onInstalled = () => {
+      setInstallPrompt(null);
+      setIsStandalone(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
 
   /* ------------------------------ Gospodarstwo ----------------------------- */
 
@@ -1119,10 +1192,10 @@ export const HouseholdSettingsView: React.FC = () => {
     'px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500';
 
   const primaryButtonClass =
-    'px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors';
+    'px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap';
 
   const secondaryButtonClass =
-    'px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40';
+    'px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 whitespace-nowrap';
 
   const sortedNavItems = [...navConfig].sort((a, b) => a.order - b.order);
 
@@ -1258,286 +1331,448 @@ export const HouseholdSettingsView: React.FC = () => {
   );
 
   const renderNavigation = () => (
-    <div className="space-y-3">
-      <SettingsCard>
-        <SettingsRow
-          title={t('settings.navBarTitle')}
-          description={L(
-            'Pokaż, ukryj i zmień kolejność pozycji. Zapisane tylko na tym urządzeniu.',
-            'Show, hide, and reorder items. Stored on this device only.'
-          )}
-        >
-          <button
-            onClick={resetNavConfig}
-            className={secondaryButtonClass}
-            title={t('settings.navBarResetTooltip')}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t('settings.navBarResetBtn')}</span>
-          </button>
-        </SettingsRow>
-
-        {sortedNavItems.map((item, index) => {
-          if (item.id === 'audit' && !isAdmin) return null;
-          const localizedLabel = (t as any)(`nav.${item.id}`) || item.label;
-
-          return (
-            <div
-              key={item.id}
-              className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <button
-                  onClick={() => toggleNavVisibility(item.id)}
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    item.visible
-                      ? 'text-emerald-400 bg-emerald-500/10'
-                      : 'text-slate-500 bg-slate-900'
-                  }`}
-                  title={
-                    item.visible
-                      ? t('settings.navHideItem')
-                      : t('settings.navShowItem')
-                  }
-                >
-                  {item.visible ? (
-                    <Eye className="w-4 h-4" />
-                  ) : (
-                    <EyeOff className="w-4 h-4" />
-                  )}
-                </button>
-
-                <span
-                  className={`text-sm font-semibold truncate ${
-                    item.visible ? 'text-white' : 'text-slate-500 line-through'
-                  }`}
-                >
-                  {localizedLabel}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => moveNavItem(index, 'up')}
-                  disabled={index === 0}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => moveNavItem(index, 'down')}
-                  disabled={index === sortedNavItems.length - 1}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </SettingsCard>
-    </div>
-  );
-
-  const renderInstall = () => (
     <SettingsCard>
-      <SettingsRow
-        icon={
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-950/60">
-            <Smartphone className="w-5 h-5" />
-          </div>
-        }
-        title={t('settings.installApp')}
-        description={t('settings.installAppDesc')}
-      >
+      {/* Pasek narzędzi: bez powtarzania tytułu i opisu (są już w nagłówku sekcji) */}
+      <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+        <p className="text-xs text-slate-400 min-w-0">
+          {L('Zapisane tylko na tym urządzeniu.', 'Stored on this device only.')}
+        </p>
+
         <button
-          onClick={() => setIsInstallModalOpen(true)}
-          className={primaryButtonClass}
+          type="button"
+          onClick={resetNavConfig}
+          className={`${secondaryButtonClass} shrink-0`}
+          title={t('settings.navBarResetTooltip')}
         >
-          {t('settings.installGuideBtn')}
+          <RotateCcw className="w-3.5 h-3.5" />
+          {t('settings.navBarResetBtn')}
         </button>
-      </SettingsRow>
+      </div>
+
+      {sortedNavItems.map((item, index) => {
+        if (item.id === 'audit' && !isAdmin) return null;
+        const localizedLabel = (t as any)(`nav.${item.id}`) || item.label;
+
+        return (
+          <div
+            key={item.id}
+            className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => toggleNavVisibility(item.id)}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  item.visible
+                    ? 'text-emerald-400 bg-emerald-500/10'
+                    : 'text-slate-500 bg-slate-900'
+                }`}
+                title={
+                  item.visible
+                    ? t('settings.navHideItem')
+                    : t('settings.navShowItem')
+                }
+              >
+                {item.visible ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <EyeOff className="w-4 h-4" />
+                )}
+              </button>
+
+              <span
+                className={`text-sm font-semibold truncate ${
+                  item.visible ? 'text-white' : 'text-slate-500 line-through'
+                }`}
+              >
+                {localizedLabel}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => moveNavItem(index, 'up')}
+                disabled={index === 0}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+              >
+                <ArrowUp className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => moveNavItem(index, 'down')}
+                disabled={index === sortedNavItems.length - 1}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+              >
+                <ArrowDown className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </SettingsCard>
   );
 
-  const renderGeneral = () => (
-    <div className="space-y-5">
-      <SettingsCard>
-        {/* Nazwa gospodarstwa */}
-        {isAdmin ? (
-          <form onSubmit={handleSaveHouseholdName}>
-            <SettingsRow
-              icon={<PencilLine className="w-4 h-4 text-emerald-400" />}
-              title={t('settings.householdName')}
-              description={`${t('settings.householdNameNotice')} · ${
-                householdNameInput.length
-              }/60 ${t('settings.charCount')}`}
-            >
-              <input
-                type="text"
-                value={householdNameInput}
-                onChange={(e) => setHouseholdNameInput(e.target.value)}
-                minLength={2}
-                maxLength={60}
-                placeholder={t('settings.householdNamePlaceholder')}
-                className={`${inputClass} w-full sm:w-52`}
-              />
+  const renderInstall = () => {
+    const installGuides: Array<{
+      id: string;
+      icon: React.ReactNode;
+      title: string;
+      browser: string;
+      steps: React.ReactNode[];
+    }> = [
+      {
+        id: 'ios',
+        icon: <Smartphone className="w-4 h-4" />,
+        title: 'iPhone / iPad',
+        browser: L('Tylko Safari', 'Safari only'),
+        steps: [
+          L('Otwórz aplikację w przeglądarce Safari.', 'Open the app in Safari.'),
+          <span key="s2" className="inline-flex flex-wrap items-center gap-1">
+            {L('Stuknij przycisk „Udostępnij”', 'Tap the “Share” button')}
+            <Share className="w-3.5 h-3.5 text-emerald-400" />
+            {L('na pasku narzędzi.', 'in the toolbar.')}
+          </span>,
+          L(
+            'Wybierz „Dodaj do ekranu początkowego”.',
+            'Choose “Add to Home Screen”.'
+          ),
+          L('Potwierdź przyciskiem „Dodaj”.', 'Confirm with “Add”.'),
+        ],
+      },
+      {
+        id: 'android',
+        icon: <Smartphone className="w-4 h-4" />,
+        title: 'Android',
+        browser: 'Chrome / Edge / Samsung Internet',
+        steps: [
+          L('Otwórz aplikację w Chrome.', 'Open the app in Chrome.'),
+          <span key="a2" className="inline-flex flex-wrap items-center gap-1">
+            {L('Stuknij menu', 'Tap the menu')}
+            <MoreVertical className="w-3.5 h-3.5 text-emerald-400" />
+            {L('w prawym górnym rogu.', 'in the top-right corner.')}
+          </span>,
+          L(
+            'Wybierz „Zainstaluj aplikację” lub „Dodaj do ekranu głównego”.',
+            'Choose “Install app” or “Add to Home screen”.'
+          ),
+          L('Potwierdź instalację.', 'Confirm the installation.'),
+        ],
+      },
+      {
+        id: 'desktop',
+        icon: <Monitor className="w-4 h-4" />,
+        title: L('Komputer', 'Desktop'),
+        browser: 'Chrome / Edge',
+        steps: [
+          L('Otwórz aplikację w Chrome lub Edge.', 'Open the app in Chrome or Edge.'),
+          L(
+            'Kliknij ikonę instalacji po prawej stronie paska adresu.',
+            'Click the install icon on the right side of the address bar.'
+          ),
+          L('Wybierz „Zainstaluj”.', 'Choose “Install”.'),
+          L(
+            'Aplikacja otworzy się we własnym oknie.',
+            'The app will open in its own window.'
+          ),
+        ],
+      },
+    ];
 
+    return (
+      <div className="space-y-5">
+        {/* Status instalacji (bez powtarzania tytułu sekcji) */}
+        <SettingsCard>
+          <SettingsRow
+            icon={
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-950/60">
+                {isStandalone ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : (
+                  <Smartphone className="w-5 h-5" />
+                )}
+              </div>
+            }
+            title={
+              isStandalone
+                ? L('Aplikacja jest zainstalowana', 'App is installed')
+                : installPrompt
+                ? L('Zainstaluj jednym kliknięciem', 'Install with one tap')
+                : L('Instalacja ręczna', 'Manual installation')
+            }
+            description={
+              isStandalone
+                ? L(
+                    'Korzystasz z aplikacji w trybie instalacji na tym urządzeniu.',
+                    'You are using the installed version on this device.'
+                  )
+                : installPrompt
+                ? L(
+                    'Twoja przeglądarka obsługuje szybką instalację.',
+                    'Your browser supports quick installation.'
+                  )
+                : L(
+                    'Skorzystaj z instrukcji poniżej dla swojego urządzenia.',
+                    'Use the instructions below for your device.'
+                  )
+            }
+          >
+            {!isStandalone && installPrompt && (
               <button
-                type="submit"
-                disabled={
-                  householdNameSaving ||
-                  !householdNameInput.trim() ||
-                  householdNameInput.trim() === user?.household?.name
-                }
+                type="button"
+                onClick={handleNativeInstall}
                 className={primaryButtonClass}
               >
-                <Save className="w-3.5 h-3.5" />
-                {householdNameSaving
-                  ? t('settings.savingBtn')
-                  : t('settings.changeNameBtn')}
+                <Download className="w-3.5 h-3.5" />
+                {L('Zainstaluj teraz', 'Install now')}
               </button>
-            </SettingsRow>
-          </form>
-        ) : (
-          <SettingsRow
-            icon={<Home className="w-4 h-4 text-emerald-400" />}
-            title={t('settings.householdName')}
-          >
-            <span className="text-sm font-semibold text-slate-200">
-              {user?.household?.name}
-            </span>
+            )}
           </SettingsRow>
-        )}
+        </SettingsCard>
 
-        {/* Kod zaproszenia */}
-        {isAdmin && (
-          <SettingsRow
-            icon={<KeyRound className="w-4 h-4 text-emerald-400" />}
-            title={t('settings.inviteCode')}
-            description={t('settings.inviteCodeNotice')}
-          >
-            {inviteTimeLeft > 0 && user?.household?.inviteCode ? (
-              <>
-                <div className="flex items-center gap-3 bg-slate-950 pl-3 pr-1.5 py-1.5 rounded-2xl border border-emerald-500/40">
-                  <div>
-                    <div className="font-mono text-lg font-extrabold text-emerald-400 tracking-widest leading-tight">
-                      {user.household.inviteCode}
+        {/* Instrukcje dla wszystkich platform */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {installGuides.map((guide) => (
+            <SettingsCard key={guide.id}>
+              <SettingsBlock>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-emerald-400 flex items-center justify-center shrink-0">
+                    {guide.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-white">{guide.title}</div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {guide.browser}
                     </div>
+                  </div>
+                </div>
 
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-emerald-400" />
-                      {t('settings.expiresNotice')}
-                      <span
-                        className={`font-mono font-bold ${
-                          inviteTimeLeft <= 60 ? 'text-rose-400' : 'text-emerald-400'
-                        }`}
-                      >
-                        {String(Math.floor(inviteTimeLeft / 60)).padStart(2, '0')}:
-                        {String(inviteTimeLeft % 60).padStart(2, '0')}
+                <ol className="space-y-2.5 pt-1">
+                  {guide.steps.map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                        {i + 1}
                       </span>
+                      <span className="text-xs text-slate-300 leading-relaxed">
+                        {step}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </SettingsBlock>
+            </SettingsCard>
+          ))}
+        </div>
+
+        <p className="text-[11px] text-slate-500 px-1">
+          {L(
+            'Po instalacji aplikacja działa jak zwykła aplikacja – z własną ikoną i bez paska przeglądarki.',
+            'Once installed, the app works like a native one – with its own icon and no browser bar.'
+          )}
+        </p>
+      </div>
+    );
+  };
+
+  const renderGeneral = () => {
+    const inviteCode = user?.household?.inviteCode;
+    const inviteActive = inviteTimeLeft > 0 && !!inviteCode;
+    const minutes = String(Math.floor(inviteTimeLeft / 60)).padStart(2, '0');
+    const seconds = String(inviteTimeLeft % 60).padStart(2, '0');
+
+    const nameUnchanged =
+      !householdNameInput.trim() ||
+      householdNameInput.trim() === user?.household?.name;
+
+    return (
+      <div className="space-y-5">
+        <SettingsCard>
+          {/* Nazwa gospodarstwa */}
+          {isAdmin ? (
+            <form onSubmit={handleSaveHouseholdName}>
+              <SettingsField
+                icon={<PencilLine className="w-4 h-4 text-emerald-400" />}
+                title={t('settings.householdName')}
+                description={t('settings.householdNameNotice')}
+              >
+                <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
+                  <input
+                    type="text"
+                    value={householdNameInput}
+                    onChange={(e) => setHouseholdNameInput(e.target.value)}
+                    minLength={2}
+                    maxLength={60}
+                    placeholder={t('settings.householdNamePlaceholder')}
+                    className={`${inputClass} flex-1 min-w-0`}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={householdNameSaving || nameUnchanged}
+                    className={`${primaryButtonClass} sm:w-auto`}
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {householdNameSaving
+                      ? t('settings.savingBtn')
+                      : t('settings.changeNameBtn')}
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-slate-500 mt-1.5">
+                  {householdNameInput.length}/60 {t('settings.charCount')}
+                </div>
+              </SettingsField>
+            </form>
+          ) : (
+            <SettingsRow
+              icon={<Home className="w-4 h-4 text-emerald-400" />}
+              title={t('settings.householdName')}
+            >
+              <span className="text-sm font-semibold text-slate-200">
+                {user?.household?.name}
+              </span>
+            </SettingsRow>
+          )}
+
+          {/* Kod zaproszenia */}
+          {isAdmin && (
+            <SettingsField
+              icon={<KeyRound className="w-4 h-4 text-emerald-400" />}
+              title={t('settings.inviteCode')}
+              description={t('settings.inviteCodeNotice')}
+            >
+              {inviteActive ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 max-w-lg">
+                  <div className="flex-1 min-w-0 flex items-center justify-between gap-3 bg-slate-950 px-4 py-3 rounded-2xl border border-emerald-500/40">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xl font-extrabold text-emerald-400 tracking-widest leading-tight truncate">
+                        {inviteCode}
+                      </div>
+
+                      <div className="mt-1 text-[11px] text-slate-400 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        {t('settings.expiresNotice')}
+                        <span
+                          className={`font-mono font-bold ${
+                            inviteTimeLeft <= 60 ? 'text-rose-400' : 'text-emerald-400'
+                          }`}
+                        >
+                          {minutes}:{seconds}
+                        </span>
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteCode!);
+                        showToast(
+                          `${t('settings.inviteCodeCopySuccess')} ${inviteCode}`,
+                          'success'
+                        );
+                      }}
+                      className="p-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95 shrink-0"
+                      title={t('settings.copyInviteTooltip')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(user.household!.inviteCode);
-                      showToast(
-                        `${t('settings.inviteCodeCopySuccess')} ${user.household!.inviteCode}`,
-                        'success'
-                      );
-                    }}
-                    className="p-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all active:scale-95"
-                    title={t('settings.copyInviteTooltip')}
+                    onClick={handleGenerateInviteCode}
+                    className={`${secondaryButtonClass} sm:self-stretch`}
                   >
-                    <Copy className="w-4 h-4" />
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    {t('settings.newCodeBtn')}
                   </button>
                 </div>
-
+              ) : (
                 <button
                   type="button"
                   onClick={handleGenerateInviteCode}
-                  className={secondaryButtonClass}
+                  className={primaryButtonClass}
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  {t('settings.newCodeBtn')}
+                  <KeyRound className="w-4 h-4" />
+                  {t('settings.generateCodeBtn')}
                 </button>
-              </>
-            ) : (
+              )}
+            </SettingsField>
+          )}
+
+          {/* Termin ważności */}
+          <SettingsField
+            icon={<Clock className="w-4 h-4 text-amber-400" />}
+            title={t('settings.expiryWarningDaysTitle')}
+            description={t('settings.expiryWarningDaysDesc')}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={warningDaysInput}
+                  onChange={(e) => setWarningDaysInput(e.target.value)}
+                  aria-label={t('settings.warningDaysInputLabel')}
+                  className={`${inputClass} w-20 text-center`}
+                />
+                <span className="text-xs text-slate-400">
+                  {Number(warningDaysInput) === 1
+                    ? t('settings.daySingular')
+                    : t('settings.daysPlural')}
+                </span>
+              </div>
+
               <button
                 type="button"
-                onClick={handleGenerateInviteCode}
+                onClick={handleSaveExpiryWarningDays}
+                disabled={warningDaysSaving}
                 className={primaryButtonClass}
               >
-                <KeyRound className="w-4 h-4" />
-                {t('settings.generateCodeBtn')}
+                <Save className="w-3.5 h-3.5" />
+                {warningDaysSaving
+                  ? t('settings.savingBtn')
+                  : t('settings.saveWarningDays')}
               </button>
-            )}
-          </SettingsRow>
-        )}
-
-        {/* Termin ważności */}
-        <SettingsRow
-          icon={<Clock className="w-4 h-4 text-amber-400" />}
-          title={t('settings.expiryWarningDaysTitle')}
-          description={t('settings.expiryWarningDaysDesc')}
-        >
-          <input
-            type="number"
-            min={1}
-            max={90}
-            value={warningDaysInput}
-            onChange={(e) => setWarningDaysInput(e.target.value)}
-            aria-label={t('settings.warningDaysInputLabel')}
-            className={`${inputClass} w-20`}
-          />
-
-          <button
-            type="button"
-            onClick={handleSaveExpiryWarningDays}
-            disabled={warningDaysSaving}
-            className={primaryButtonClass}
-          >
-            <Save className="w-3.5 h-3.5" />
-            {warningDaysSaving
-              ? t('settings.savingBtn')
-              : t('settings.saveWarningDays')}
-          </button>
-        </SettingsRow>
-      </SettingsCard>
-
-      {/* Zmiana gospodarstwa (tylko zwykli użytkownicy) */}
-      {!isAdmin && (
-        <SettingsCard>
-          <form onSubmit={handleJoinOtherHousehold}>
-            <SettingsRow
-              icon={<KeyRound className="w-4 h-4 text-amber-400" />}
-              title={t('settings.changeHouseholdTitle')}
-              description={t('settings.changeHouseholdDesc')}
-            >
-              <input
-                type="text"
-                value={inviteCodeInput}
-                onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
-                placeholder={t('settings.inviteCodePlaceholder')}
-                className={`${inputClass} w-full sm:w-40 font-mono tracking-wider`}
-              />
-
-              <button
-                type="submit"
-                disabled={!inviteCodeInput.trim()}
-                className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40"
-              >
-                {t('settings.joinWithCodeBtn')}
-              </button>
-            </SettingsRow>
-          </form>
+            </div>
+          </SettingsField>
         </SettingsCard>
-      )}
-    </div>
-  );
+
+        {/* Zmiana gospodarstwa (tylko zwykli użytkownicy) */}
+        {!isAdmin && (
+          <SettingsCard>
+            <form onSubmit={handleJoinOtherHousehold}>
+              <SettingsField
+                icon={<KeyRound className="w-4 h-4 text-amber-400" />}
+                title={t('settings.changeHouseholdTitle')}
+                description={t('settings.changeHouseholdDesc')}
+              >
+                <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
+                  <input
+                    type="text"
+                    value={inviteCodeInput}
+                    onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                    placeholder={t('settings.inviteCodePlaceholder')}
+                    className={`${inputClass} flex-1 min-w-0 font-mono tracking-wider`}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={!inviteCodeInput.trim()}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-colors disabled:opacity-40 whitespace-nowrap"
+                  >
+                    {t('settings.joinWithCodeBtn')}
+                  </button>
+                </div>
+              </SettingsField>
+            </form>
+          </SettingsCard>
+        )}
+      </div>
+    );
+  };
 
   const renderMembers = () => (
     <SettingsCard>
@@ -2206,11 +2441,6 @@ export const HouseholdSettingsView: React.FC = () => {
           </div>
         )}
       </div>
-
-      <InstallPwaModal
-        isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
-      />
     </div>
   );
 };
