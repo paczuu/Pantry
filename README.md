@@ -1,6 +1,6 @@
 # <img src="frontend/public/favicon.png" width="24" alt="Pantry Inventory" /> Pantry
 
-[🇵🇱 Wersja polska](README-PL.md) | [🇬🇧 English Version](README.md)
+[🇵🇱 Wersja polska](README-PL.md) | [🇬🇧 English Version](README.md) | [🌐 Website & more screenshots](https://paczuu.pl/pantry)
 
 A self-hosted, full-stack **Progressive Web App (PWA)** for household pantry management and kitchen inventory. Scan EAN barcodes, track product expiry dates, share real-time shopping lists, and store notes and recipes in one place.
 
@@ -20,6 +20,8 @@ If you encounter any bugs, have ideas for new features, or want to improve the c
 | Dashboard | Scanner | Recipes | Settings |
 | :---: | :---: | :---: | :---: |
 | <img src="docs/screenshots/dashboard-mobile.png" height="420" style="object-fit: cover;" alt="Dashboard" /> | <img src="docs/screenshots/scanner-mobile.png" height="420" style="object-fit: cover;" alt="Barcode Scanner" /> | <img src="docs/screenshots/recipes-mobile.png" height="420" style="object-fit: cover;" alt="Recipes" /> | <img src="docs/screenshots/settings-mobile.png" height="420" style="object-fit: cover;" alt="Settings" /> |
+
+📸 **More screenshots available at:** [paczuu.pl/pantry](https://paczuu.pl/pantry)
 
 ## Features
 

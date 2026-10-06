@@ -1,6 +1,6 @@
 # <img src="frontend/public/favicon.png" width="24" alt="Pantry Inventory" /> Pantry
 
-[🇵🇱 Wersja polska](README-PL.md) | [🇬🇧 English Version](README.md)
+[🇵🇱 Wersja polska](README-PL.md) | [🇬🇧 English Version](README.md) | [🌐 Strona projektu i więcej zrzutów](https://paczuu.pl/pantry)
 
 Samodzielnie hostowana **aplikacja Progressive Web App (PWA)** do zarządzania domową spiżarnią i zapasami kuchennymi. Skanuj kody kreskowe EAN, kontroluj daty ważności produktów, współdziel listy zakupów w czasie rzeczywistym oraz przechowuj notatki i przepisy w jednym miejscu.
 
@@ -15,12 +15,13 @@ Jeśli znajdziesz błąd, masz pomysł na nową funkcję lub chcesz ulepszyć ko
 
 </details>
 
-
 ## Prezentacja
 
 | Pulpit | Skaner | Przepisy | Ustawienia |
 | :---: | :---: | :---: | :---: |
 | <img src="docs/screenshots/dashboard-mobile.pl.png" height="420" style="object-fit: cover;" alt="Panel główny" /> | <img src="docs/screenshots/scanner-mobile.pl.png" height="420" style="object-fit: cover;" alt="Skaner kodów kreskowych" /> | <img src="docs/screenshots/recipes-mobile.pl.png" height="420" style="object-fit: cover;" alt="Przepisy" /> | <img src="docs/screenshots/settings-mobile.pl.png" height="420" style="object-fit: cover;" alt="Ustawienia" /> |
+
+📸 **Więcej zrzutów ekranu dostępnych na:** [paczuu.pl/pantry](https://paczuu.pl/pantry)
 
 ## Funkcje
 
