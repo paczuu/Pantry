@@ -12,7 +12,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
-import { Calendar, Tag, Image as ImageIcon, Camera, Scale, PackageOpen, SearchX, Barcode } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, Tag, Image as ImageIcon, Camera, Scale, PackageOpen, SearchX, Barcode } from 'lucide-react';
 
 /** Quick expiry shortcuts: translation key, unit (days / months) and amount. */
 const QUICK_DATES = [
@@ -54,6 +54,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [notes, setNotes] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -133,6 +134,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     }
 
     setExpiryDate('');
+    setShowMore(false);
     setIsOpened(false);
     setOpenedDate('');
     setNotes('');
@@ -174,16 +176,12 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     }
   };
 
-  const addDaysToExpiry = (days: number) => {
+  /** Today plus N days / months as a local `YYYY-MM-DD` date. */
+  const quickDate = (unit: 'd' | 'm', amount: number) => {
     const d = new Date();
-    d.setDate(d.getDate() + days);
-    setExpiryDate(d.toISOString().split('T')[0]);
-  };
-
-  const addMonthsToExpiry = (months: number) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + months);
-    setExpiryDate(d.toISOString().split('T')[0]);
+    if (unit === 'd') d.setDate(d.getDate() + amount);
+    else d.setMonth(d.getMonth() + amount);
+    return d.toLocaleDateString('sv-SE');
   };
 
   const handleOpenedToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,7 +218,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
       showToast(res.message || t('scanner.productAddedSuccess'), 'success');
       playBeep(880, 'sine', 0.12);
-      await Promise.all([refreshPantry(), refreshStats()]);
+      // Refresh in the background: the form closes right away so the next scan can start
+      void Promise.all([refreshPantry(), refreshStats()]);
 
       if (onSuccess) onSuccess();
       onClose();
@@ -230,6 +229,30 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  const nameAndBrandFields = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <FieldLabel>{t('pantry.nameLabel')}</FieldLabel>
+        <Input
+          type="text"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={language === 'en' ? 'e.g. Milk 3.2%, Pasta...' : 'np. Mleko 3.2%, Makaron...'}
+        />
+      </div>
+      <div>
+        <FieldLabel>{t('pantry.brandLabel')}</FieldLabel>
+        <Input
+          type="text"
+          value={brand}
+          onChange={(e) => setBrand(e.target.value)}
+          placeholder={language === 'en' ? 'e.g. Barilla, Heinz' : 'np. Łaciate, Barilla, Piątnica'}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <Modal
@@ -248,7 +271,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         <ModalActions formId="quick-add-form" submitLabel={t('common.add')} isSubmitting={isSubmitting} onCancel={onClose} />
       }
     >
-      <form id="quick-add-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="quick-add-form" onSubmit={handleSubmit} className="space-y-3">
         {/* Preview when the product was found in the catalog */}
         {initialProduct ? (
           <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
@@ -295,42 +318,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           </div>
         ) : null}
 
-        {/* Name and brand */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <FieldLabel>{t('pantry.nameLabel')}</FieldLabel>
-            <Input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={language === 'en' ? 'e.g. Milk 3.2%, Pasta...' : 'np. Mleko 3.2%, Makaron...'}
-            />
-          </div>
-          <div>
-            <FieldLabel>{t('pantry.brandLabel')}</FieldLabel>
-            <Input
-              type="text"
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder={language === 'en' ? 'e.g. Barilla, Heinz' : 'np. Łaciate, Barilla, Piątnica'}
-            />
-          </div>
-        </div>
+        {/* Unknown product: the name has to be typed */}
+        {!initialProduct && nameAndBrandFields}
 
         {/* Quantity (pieces only) + read-only capacity as information */}
-        <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between gap-3">
+        <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between gap-3">
           <div>
             <FieldLabel className="mb-0">{t('pantry.quantity')} ({t('common.pieces')})</FieldLabel>
-            <p className="text-[11px] text-slate-400">
-              {capacity ? (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
-                  <Scale className="w-3 h-3" /> {t('pantry.capacity')}: {capacity}
-                </span>
-              ) : (
-                language === 'en' ? 'Specify how many pieces you are adding' : 'Podaj ile sztuk dodajesz do spiżarni'
-              )}
-            </p>
+            {capacity && (
+              <p className="text-emerald-400 text-[11px] font-semibold flex items-center gap-1 mt-0.5">
+                <Scale className="w-3 h-3" /> {t('pantry.capacity')}: {capacity}
+              </p>
+            )}
           </div>
 
           <QuantityStepper
@@ -342,25 +341,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           />
         </div>
 
-        {/* Category */}
-        <div>
-          <FieldLabel className="flex items-center gap-1">
-            <Tag className="w-3.5 h-3.5 text-cyan-400" /> {t('pantry.categoryLabel')}
-          </FieldLabel>
-          <Select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.name}>
-                {tCategory(cat.name)}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {/* Expiry date + voice input (microphone) */}
-        <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-2.5">
+        {/* Expiry date: one tap on a shortcut is the fast path, the date field and voice are the fallback */}
+        <div className="p-3.5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-2.5">
           <div className="flex items-center justify-between">
             <FieldLabel className="flex items-center gap-1.5 mb-0">
               <Calendar className="w-4 h-4 text-amber-400" /> {t('pantry.expiryDate')}
@@ -376,100 +358,135 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             )}
           </div>
 
-          <VoiceDateInput value={expiryDate} onChange={setExpiryDate} voice={voice} />
-
-          {/* Quick date buttons */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {QUICK_DATES.map(({ labelKey, unit, amount }) => (
-              <Button
-                key={labelKey}
-                size="sm"
-                className="text-[11px] font-semibold text-slate-300"
-                onClick={() => (unit === 'd' ? addDaysToExpiry(amount) : addMonthsToExpiry(amount))}
-              >
-                {t(labelKey)}
-              </Button>
-            ))}
+          <div className="grid grid-cols-3 gap-2">
+            {QUICK_DATES.map(({ labelKey, unit, amount }) => {
+              const value = quickDate(unit, amount);
+              return (
+                <Button
+                  key={labelKey}
+                  variant={expiryDate === value ? 'primary' : 'secondary'}
+                  className="py-2.5 text-xs font-semibold"
+                  onClick={() => setExpiryDate(value)}
+                >
+                  {t(labelKey)}
+                </Button>
+              );
+            })}
           </div>
+
+          <VoiceDateInput value={expiryDate} onChange={setExpiryDate} voice={voice} />
         </div>
 
-        {/* Opened date */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50">
-          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 font-medium">
-            <input
-              type="checkbox"
-              checked={isOpened}
-              onChange={handleOpenedToggle}
-              className="w-5 h-5 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500 cursor-pointer"
-            />
-            <PackageOpen className="w-4 h-4 text-cyan-400" />
-            <span>{t('pantry.openedToggle')}</span>
-          </label>
-          {isOpened && (
-            <Input
-              type="date"
-              value={openedDate}
-              onChange={(e) => setOpenedDate(e.target.value)}
-              className="w-auto py-2 text-xs"
-            />
-          )}
-        </div>
+        <Button variant="primary" size="lg" type="submit" fullWidth disabled={isSubmitting} icon={<Check className="w-4 h-4 stroke-[2.5]" />}>
+          {t('common.add')}
+        </Button>
 
-        {/* Product photo */}
-        <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-2">
-          <FieldLabel className="mb-0">{t('scanner.photoSection')}</FieldLabel>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handlePhotoUpload}
-            className="hidden"
-          />
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoUpload}
-            className="hidden"
-          />
-          <div className="flex items-center gap-3">
-            <PantryItemThumb src={imageUrl} alt="Preview" />
+        {/* Everything else is optional and stays out of the way */}
+        <button
+          type="button"
+          onClick={() => setShowMore((open) => !open)}
+          aria-expanded={showMore}
+          className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+        >
+          {showMore ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {t('scanner.moreDetails')}
+        </button>
 
-            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  icon={<Camera className="w-3.5 h-3.5 text-emerald-400" />}
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  {t('scanner.takePhoto')}
-                </Button>
-                <Button
-                  size="sm"
-                  icon={<ImageIcon className="w-3.5 h-3.5 text-slate-300" />}
-                  onClick={() => galleryInputRef.current?.click()}
-                >
-                  {t('scanner.chooseGallery')}
-                </Button>
+        {showMore && (
+          <div className="space-y-4">
+            {initialProduct && nameAndBrandFields}
+
+            {/* Category */}
+            <div>
+              <FieldLabel className="flex items-center gap-1">
+                <Tag className="w-3.5 h-3.5 text-cyan-400" /> {t('pantry.categoryLabel')}
+              </FieldLabel>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {tCategory(cat.name)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* Opened date */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50">
+              <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 font-medium">
+                <input
+                  type="checkbox"
+                  checked={isOpened}
+                  onChange={handleOpenedToggle}
+                  className="w-5 h-5 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500 cursor-pointer"
+                />
+                <PackageOpen className="w-4 h-4 text-cyan-400" />
+                <span>{t('pantry.openedToggle')}</span>
+              </label>
+              {isOpened && (
+                <Input
+                  type="date"
+                  value={openedDate}
+                  onChange={(e) => setOpenedDate(e.target.value)}
+                  className="w-auto py-2 text-xs"
+                />
+              )}
+            </div>
+
+            {/* Product photo */}
+            <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-2">
+              <FieldLabel className="mb-0">{t('scanner.photoSection')}</FieldLabel>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              <div className="flex items-center gap-3">
+                <PantryItemThumb src={imageUrl} alt="Preview" />
+
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      icon={<Camera className="w-3.5 h-3.5 text-emerald-400" />}
+                      onClick={() => cameraInputRef.current?.click()}
+                    >
+                      {t('scanner.takePhoto')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      icon={<ImageIcon className="w-3.5 h-3.5 text-slate-300" />}
+                      onClick={() => galleryInputRef.current?.click()}
+                    >
+                      {t('scanner.chooseGallery')}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">{t('scanner.photoSavedWithEan')}</p>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500">
-                {t('scanner.photoSavedWithEan')}
-              </p>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <FieldLabel>{t('pantry.notes')}</FieldLabel>
+              <Input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={language === 'en' ? 'e.g. Opened sauce, consume within 3 days' : 'np. Otwarto sos, zjeść w 3 dni'}
+              />
             </div>
           </div>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <FieldLabel>{t('pantry.notes')}</FieldLabel>
-          <Input
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={language === 'en' ? 'e.g. Opened sauce, consume within 3 days' : 'np. Otwarto sos, zjeść w 3 dni'}
-          />
-        </div>
+        )}
       </form>
     </Modal>
   );

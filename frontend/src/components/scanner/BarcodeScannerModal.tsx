@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/FormControls';
 import { SegmentedControl } from '../ui/SegmentedControl';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScannerState, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { QuickAddModal } from './QuickAddModal';
 import { QuickRemoveModal } from './QuickRemoveModal';
 import { ProductCatalogItem, PantryItem } from '../../types';
@@ -12,6 +12,7 @@ import { usePantry } from '../../contexts/PantryContext';
 import { useLanguage } from '../../language/LanguageContext';
 import {
   X,
+  Check,
   Flashlight,
   Keyboard,
   PlusCircle,
@@ -53,6 +54,10 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  // Products added or removed since the scanner was opened (shown as a badge)
+  const [sessionCount, setSessionCount] = useState(0);
+  // Bumped to force a full camera restart when resuming a paused stream fails
+  const [scannerRestartKey, setScannerRestartKey] = useState(0);
 
   // Submodals
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -64,11 +69,15 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'pantry-fullscreen-barcode-reader';
   const lastScannedTimeRef = useRef<number>(0);
+  const lastBarcodeRef = useRef('');
+  // After resuming, the product that was just handled is usually still in view: ignore it for a moment
+  const ignoreSameCodeUntilRef = useRef(0);
   const scannerStartingRef = useRef(false);
   const historyPushedRef = useRef(false);
 
   useEffect(() => {
     setMode(defaultMode === 'SEARCH' && !allowSearch ? 'ADD' : defaultMode);
+    setSessionCount(0);
   }, [defaultMode, allowSearch, isOpen]);
 
   const stopScanner = useCallback(async () => {
@@ -84,6 +93,28 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       }
     } catch (e) { console.warn('Błąd zatrzymywania skanera:', e); }
     try { scanner.clear(); } catch (e) {}
+  }, []);
+
+  /** Freezes the stream without releasing the camera, so resuming is instant (even on iPhone). */
+  const pauseScanner = useCallback(() => {
+    try {
+      html5QrCodeRef.current?.pause(true);
+    } catch {
+      // not scanning (e.g. manual entry tab)
+    }
+  }, []);
+
+  /** Continues scanning after a product was handled; falls back to a camera restart if resuming fails. */
+  const resumeScanner = useCallback(() => {
+    ignoreSameCodeUntilRef.current = Date.now() + 4000;
+    lastScannedTimeRef.current = Date.now();
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) return;
+    try {
+      if (scanner.getState() === Html5QrcodeScannerState.PAUSED) scanner.resume();
+    } catch {
+      setScannerRestartKey((key) => key + 1);
+    }
   }, []);
 
   const loadCameras = useCallback(async () => {
@@ -263,6 +294,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
       const handlePopState = () => {
         if (!historyPushedRef.current) return;
+        // A sub-modal (add / remove) closing also fires popstate; we are then still on our own entry
+        if (window.history.state?.scannerId === scannerId) return;
         historyPushedRef.current = false;
         isOpenRef.current = false;
         stopScanner();
@@ -292,18 +325,17 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
   const handleBarcodeScanned = useCallback(async (barcode: string) => {
     const now = Date.now();
-    if (now - lastScannedTimeRef.current < 2000 || isProcessing) return;
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode || now - lastScannedTimeRef.current < 2000 || isProcessing) return;
+    if (cleanBarcode === lastBarcodeRef.current && now < ignoreSameCodeUntilRef.current) return;
     lastScannedTimeRef.current = now;
+    lastBarcodeRef.current = cleanBarcode;
     if (soundEnabled) playBeep(950, 'sine', 0.15);
     vibrate([60, 40, 60]);
-
-    const cleanBarcode = barcode.trim();
-    if (!cleanBarcode) return;
     setIsProcessing(true);
 
-    await stopScanner();
-
     if (mode === 'SEARCH') {
+      await stopScanner();
       setIsProcessing(false);
       if (onScanSearch) {
         onScanSearch(cleanBarcode);
@@ -313,6 +345,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       onCloseRef.current();
       return;
     }
+
+    pauseScanner();
 
     try {
       const res = await api.lookupBarcode(cleanBarcode);
@@ -328,6 +362,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             'warning',
             language === 'en' ? 'Not in pantry' : 'Brak w spiżarni'
           );
+          resumeScanner();
         } else {
           setIsQuickRemoveOpen(true);
         }
@@ -342,10 +377,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             : 'Błąd podczas sprawdzania kodu EAN.'),
         'error'
       );
+      resumeScanner();
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, mode, onScanSearch, setFilter, onClose, playBeep, showToast, soundEnabled, vibrate, stopScanner, language]);
+  }, [isProcessing, pauseScanner, resumeScanner, mode, onScanSearch, setFilter, onClose, playBeep, showToast, soundEnabled, vibrate, stopScanner, language]);
 
   // The scanner always calls the latest handler through a ref, so changing the mode,
   // language or processing state does NOT restart the camera (a restart takes seconds on iPhone).
@@ -357,7 +393,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     let cancelled = false;
 
     const startScanner = async () => {
-      if (!isOpen || activeTab !== 'camera' || isQuickAddOpen || isQuickRemoveOpen || permissionState !== 'granted' || scannerStartingRef.current) return;
+      if (!isOpen || activeTab !== 'camera' || permissionState !== 'granted' || scannerStartingRef.current) return;
       const containerElem = document.getElementById(scannerContainerId);
       if (!containerElem) return;
 
@@ -449,7 +485,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       window.clearTimeout(timer);
       stopScanner();
     };
-  }, [isOpen, activeTab, selectedCameraIndex, isQuickAddOpen, isQuickRemoveOpen, cameras, permissionState, stopScanner, language]);
+  }, [isOpen, activeTab, selectedCameraIndex, scannerRestartKey, cameras, permissionState, stopScanner, language]);
 
   const processBarcode = async (barcode: string) => {
     const cleanBarcode = barcode.trim();
@@ -549,275 +585,281 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
   return (
     <>
-      {/* Fullscreen scanner view */}
-      {!isQuickAddOpen && !isQuickRemoveOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between overflow-hidden">
-          {/* Top control bar */}
-          <div className="absolute top-0 inset-x-0 z-40 p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-gradient-to-b from-black/90 via-black/60 to-transparent flex items-center justify-between gap-3">
-            {/* Mode switch: add / consume / search */}
-            <SegmentedControl
-              size="sm"
-              className="min-w-0 bg-slate-900/90 rounded-2xl border-slate-700/80 shadow-2xl p-1"
-              value={mode}
-              onChange={setMode}
-              options={[
-                {
-                  value: 'ADD',
-                  icon: <PlusCircle className="w-3.5 h-3.5" />,
-                  label: <span className={mode === 'ADD' ? '' : 'hidden sm:inline'}>{t('common.add')}</span>,
-                },
-                {
-                  value: 'REMOVE',
-                  icon: <MinusCircle className="w-3.5 h-3.5" />,
-                  label: (
-                    <span className={mode === 'REMOVE' ? '' : 'hidden sm:inline'}>
-                      {language === 'en' ? 'Consume' : 'Zużyj'}
-                    </span>
-                  ),
-                  activeClassName: 'bg-rose-500 text-white shadow-md',
-                },
-                ...(allowSearch
-                  ? [
-                      {
-                        value: 'SEARCH' as const,
-                        icon: <Search className="w-3.5 h-3.5" />,
-                        label: <span className={mode === 'SEARCH' ? '' : 'hidden sm:inline'}>{t('common.search')}</span>,
-                        activeClassName: 'bg-cyan-500 text-slate-950 shadow-md',
-                      },
-                    ]
-                  : []),
-              ]}
-            />
+      {/* Fullscreen scanner view (stays mounted under the add / remove modals so the camera keeps running) */}
+      <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between overflow-hidden">
+        {/* Top control bar */}
+        <div className="absolute top-0 inset-x-0 z-40 p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-gradient-to-b from-black/90 via-black/60 to-transparent flex items-center justify-between gap-3">
+          {/* Mode switch: add / consume / search */}
+          <SegmentedControl
+            size="sm"
+            className="min-w-0 bg-slate-900/90 rounded-2xl border-slate-700/80 shadow-2xl p-1"
+            value={mode}
+            onChange={setMode}
+            options={[
+              {
+                value: 'ADD',
+                icon: <PlusCircle className="w-3.5 h-3.5" />,
+                label: <span className={mode === 'ADD' ? '' : 'hidden sm:inline'}>{t('common.add')}</span>,
+              },
+              {
+                value: 'REMOVE',
+                icon: <MinusCircle className="w-3.5 h-3.5" />,
+                label: (
+                  <span className={mode === 'REMOVE' ? '' : 'hidden sm:inline'}>
+                    {language === 'en' ? 'Consume' : 'Zużyj'}
+                  </span>
+                ),
+                activeClassName: 'bg-rose-500 text-white shadow-md',
+              },
+              ...(allowSearch
+                ? [
+                    {
+                      value: 'SEARCH' as const,
+                      icon: <Search className="w-3.5 h-3.5" />,
+                      label: <span className={mode === 'SEARCH' ? '' : 'hidden sm:inline'}>{t('common.search')}</span>,
+                      activeClassName: 'bg-cyan-500 text-slate-950 shadow-md',
+                    },
+                  ]
+                : []),
+            ]}
+          />
 
-            {/* Actions: camera switch, torch, close */}
-            <div className="flex items-center gap-2">
-              {cameras.length > 1 && (
-                <button
-                  type="button"
-                  onClick={switchCamera}
-                  className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:text-white transition-all"
-                  title={t('scanner.switchCamera')}
-                >
-                  <SwitchCamera className="w-4 h-4" />
-                </button>
-              )}
-
+          {/* Actions: session counter, camera switch, torch, close */}
+          <div className="flex items-center gap-2">
+            {sessionCount > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-2 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                {sessionCount}
+              </span>
+            )}
+            {cameras.length > 1 && (
               <button
                 type="button"
-                onClick={toggleTorch}
-                disabled={!isScanning}
-                className={`p-2.5 rounded-2xl border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                  isTorchOn
-                    ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-lg shadow-amber-500/50'
-                    : 'bg-slate-900/80 border-slate-700 text-slate-200'
-                }`}
-                title={isTorchOn ? t('scanner.torchOff') : t('scanner.torchOn')}
+                onClick={switchCamera}
+                className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:text-white transition-all"
+                title={t('scanner.switchCamera')}
               >
-                <Flashlight className="w-4 h-4" />
+                <SwitchCamera className="w-4 h-4" />
               </button>
-
-              <button
-                type="button"
-                onClick={handleClose}
-                className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-all"
-                title={t('common.close')}
-              >
-                <X className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </div>
-          </div>
-
-          {/* Camera / permissions area */}
-          <div className="relative z-0 w-full h-full flex items-center justify-center bg-black overflow-hidden">
-            {activeTab === 'camera' ? (
-              <>
-                {/* Video container: blurred backdrop with the fitted image centred */}
-                <div className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
-                  {/* Video stream with a CSS trick for the blurred backdrop */}
-                  <div
-                    id={scannerContainerId}
-                    className="relative w-full h-full flex items-center justify-center
-                      [&_video]:relative [&_video]:z-10 [&_video]:!max-w-full [&_video]:!max-h-full [&_video]:!w-auto [&_video]:!h-auto [&_video]:!object-contain [&_video]:rounded-2xl [&_video]:shadow-2xl
-                      [&_video]:before:content-['']
-                    "
-                  />
-
-                  {/* Dimmed backdrop (no backdrop-blur — on iOS blurring over live video is very GPU-heavy) */}
-                  <div className="absolute inset-0 z-0 bg-black/60 pointer-events-none" />
-                </div>
-
-                {/* Checking permissions screen */}
-                {permissionState === 'checking' && (
-                  <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
-                    <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-white">
-                        {language === 'en' ? 'Starting camera' : 'Uruchamianie aparatu'}
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        {language === 'en' ? 'Initializing fast barcode scanner...' : 'Inicjalizacja szybkiego skanera kodów...'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Camera permission request screen */}
-                {permissionState === 'prompt' && !cameraError && (
-                  <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-5">
-                    <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 flex items-center justify-center">
-                      <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
-                        <Camera className="w-10 h-10 text-emerald-400" />
-                      </div>
-                    </div>
-                    <div className="space-y-2 max-w-sm">
-                      <h3 className="text-xl font-extrabold text-white tracking-tight">
-                        {language === 'en' ? 'Enable camera' : 'Włącz aparat w telefonie'}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                        {t('scanner.permissionDesc')}
-                      </p>
-                    </div>
-                    <div className="flex flex-col w-full max-w-xs gap-2.5 pt-2">
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        icon={<Sparkles className="w-4 h-4" />}
-                        onClick={handleRequestPermissionClick}
-                      >
-                        {language === 'en' ? 'Grant access & start scanner' : 'Zezwól i uruchom skaner'}
-                      </Button>
-                      <Button fullWidth onClick={() => setActiveTab('manual')}>
-                        {t('scanner.manualInput')}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error / blocked permission screen */}
-                {(permissionState === 'denied' || cameraError) && permissionState !== 'checking' && (
-                  <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
-                    <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
-                      <ShieldAlert className="w-8 h-8" />
-                    </div>
-                    <div className="space-y-2 max-w-sm">
-                      <h3 className="text-lg font-bold text-white">{t('scanner.permissionDenied')}</h3>
-                      <p className="text-xs text-slate-300 leading-relaxed">
-                        {cameraError || (language === 'en' ? 'Camera access is denied. Enable camera in your browser settings.' : 'Dostęp do aparatu został zablokowany. Włącz uprawnienia do kamery w ustawieniach przeglądarki.')}
-                      </p>
-                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 text-left space-y-1">
-                        <div><strong>iOS Safari:</strong> {language === 'en' ? 'Settings → Safari → Camera → Allow' : 'Ustawienia → Safari → Aparat → Zezwól'}</div>
-                        <div><strong>Android Chrome:</strong> {language === 'en' ? 'Lock icon next to URL → Permissions → Camera' : 'Ikona kłódki przy adresie → Uprawnienia → Aparat'}</div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                      <Button variant="primary" icon={<Camera className="w-4 h-4" />} onClick={handleRequestPermissionClick}>
-                        {language === 'en' ? 'Try again' : 'Spróbuj ponownie'}
-                      </Button>
-                      <Button onClick={() => setActiveTab('manual')}>{t('scanner.manualInput')}</Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Fullscreen frame and scanning laser */}
-                {isScanning && !cameraError && permissionState === 'granted' && (
-                  <div className="absolute z-20 inset-x-6 sm:inset-x-24 top-1/2 -translate-y-1/2 h-64 sm:h-72 border-2 border-emerald-500/70 rounded-3xl pointer-events-none flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.25)]">
-                    <div className="w-full h-0.5 bg-emerald-400 shadow-[0_0_16px_#10b981] scanner-laser absolute [--laser-range:13rem] sm:[--laser-range:15rem]" />
-                    <div className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-                    <div className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-                    <div className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-                    <div className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
-                  </div>
-                )}
-              </>
-            ) : (
-              /* Manual entry view */
-              <div className="w-full max-w-md p-6 space-y-4">
-                <div className="text-center space-y-1">
-                  <h3 className="font-extrabold text-white text-lg">
-                    {language === 'en' ? 'Enter barcode' : 'Wpisz kod kreskowy'}
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    {language === 'en' ? 'Enter EAN-13 / EAN-8 barcode digits' : 'Wprowadź cyfry kodu EAN-13 / EAN-8'}
-                  </p>
-                </div>
-                <form onSubmit={handleManualSubmit} className="space-y-3">
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={manualCode}
-                      onChange={(e) => setManualCode(e.target.value)}
-                      placeholder="np. 5900820000010"
-                      className="pl-4 pr-12 py-3.5 rounded-2xl bg-slate-900 font-mono text-lg"
-                    />
-                    <Button
-                      variant="primary"
-                      type="submit"
-                      size="icon"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10"
-                      disabled={isProcessing || !manualCode.trim()}
-                      icon={isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 stroke-[2.5]" />}
-                    />
-                  </div>
-                </form>
-              </div>
             )}
 
-            {/* Processing spinner */}
-            {isProcessing && (
-              <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3 text-white z-50">
-                <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
-                <span className="text-sm font-bold tracking-tight">{t('scanner.searching')}</span>
-              </div>
-            )}
-          </div>
+            <button
+              type="button"
+              onClick={toggleTorch}
+              disabled={!isScanning}
+              className={`p-2.5 rounded-2xl border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                isTorchOn
+                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-lg shadow-amber-500/50'
+                  : 'bg-slate-900/80 border-slate-700 text-slate-200'
+              }`}
+              title={isTorchOn ? t('scanner.torchOff') : t('scanner.torchOn')}
+            >
+              <Flashlight className="w-4 h-4" />
+            </button>
 
-          {/* Scanner bottom bar */}
-          <div className="absolute bottom-0 inset-x-0 z-40 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col items-center gap-3">
-            <p className="text-xs text-slate-300 font-medium text-center drop-shadow-md">
-              {mode === 'ADD'
-                ? (language === 'en' ? '⚡ Point camera at barcode to add or increase quantity' : '⚡ Skieruj aparat na kod kreskowy, aby dodać lub zwiększyć ilość')
-                : mode === 'REMOVE'
-                ? (language === 'en' ? '⚡ Scan barcode to instantly deduct pieces from pantry' : '⚡ Zeskanuj kod EAN, aby natychmiast odliczyć sztuki ze spiżarni')
-                : (language === 'en' ? '⚡ Scan barcode to filter pantry items' : '⚡ Zeskanuj kod EAN, aby przefiltrować artykuły w spiżarni')}
-            </p>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveTab(activeTab === 'camera' ? 'manual' : 'camera')}
-                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-xl"
-              >
-                {activeTab === 'camera' ? (
-                  <>
-                    <Keyboard className="w-4 h-4 text-emerald-400" />
-                    {t('scanner.manualInput')}
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4 text-emerald-400" />
-                    {language === 'en' ? 'Back to camera' : 'Wróć do kamery'}
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-2.5 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-all"
+              title={t('common.close')}
+            >
+              <X className="w-5 h-5 stroke-[2.5]" />
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Camera / permissions area */}
+        <div className="relative z-0 w-full h-full flex items-center justify-center bg-black overflow-hidden">
+          {activeTab === 'camera' ? (
+            <>
+              {/* Video container: blurred backdrop with the fitted image centred */}
+              <div className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
+                {/* Video stream with a CSS trick for the blurred backdrop */}
+                <div
+                  id={scannerContainerId}
+                  className="relative w-full h-full flex items-center justify-center
+                    [&_video]:relative [&_video]:z-10 [&_video]:!max-w-full [&_video]:!max-h-full [&_video]:!w-auto [&_video]:!h-auto [&_video]:!object-contain [&_video]:rounded-2xl [&_video]:shadow-2xl
+                    [&_video]:before:content-['']
+                  "
+                />
+
+                {/* Dimmed backdrop (no backdrop-blur — on iOS blurring over live video is very GPU-heavy) */}
+                <div className="absolute inset-0 z-0 bg-black/60 pointer-events-none" />
+              </div>
+
+              {/* Checking permissions screen */}
+              {permissionState === 'checking' && (
+                <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
+                  <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-white">
+                      {language === 'en' ? 'Starting camera' : 'Uruchamianie aparatu'}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      {language === 'en' ? 'Initializing fast barcode scanner...' : 'Inicjalizacja szybkiego skanera kodów...'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Camera permission request screen */}
+              {permissionState === 'prompt' && !cameraError && (
+                <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-5">
+                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 flex items-center justify-center">
+                    <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
+                      <Camera className="w-10 h-10 text-emerald-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-w-sm">
+                    <h3 className="text-xl font-extrabold text-white tracking-tight">
+                      {language === 'en' ? 'Enable camera' : 'Włącz aparat w telefonie'}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      {t('scanner.permissionDesc')}
+                    </p>
+                  </div>
+                  <div className="flex flex-col w-full max-w-xs gap-2.5 pt-2">
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      fullWidth
+                      icon={<Sparkles className="w-4 h-4" />}
+                      onClick={handleRequestPermissionClick}
+                    >
+                      {language === 'en' ? 'Grant access & start scanner' : 'Zezwól i uruchom skaner'}
+                    </Button>
+                    <Button fullWidth onClick={() => setActiveTab('manual')}>
+                      {t('scanner.manualInput')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Error / blocked permission screen */}
+              {(permissionState === 'denied' || cameraError) && permissionState !== 'checking' && (
+                <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
+                  <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-2 max-w-sm">
+                    <h3 className="text-lg font-bold text-white">{t('scanner.permissionDenied')}</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {cameraError || (language === 'en' ? 'Camera access is denied. Enable camera in your browser settings.' : 'Dostęp do aparatu został zablokowany. Włącz uprawnienia do kamery w ustawieniach przeglądarki.')}
+                    </p>
+                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 text-left space-y-1">
+                      <div><strong>iOS Safari:</strong> {language === 'en' ? 'Settings → Safari → Camera → Allow' : 'Ustawienia → Safari → Aparat → Zezwól'}</div>
+                      <div><strong>Android Chrome:</strong> {language === 'en' ? 'Lock icon next to URL → Permissions → Camera' : 'Ikona kłódki przy adresie → Uprawnienia → Aparat'}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <Button variant="primary" icon={<Camera className="w-4 h-4" />} onClick={handleRequestPermissionClick}>
+                      {language === 'en' ? 'Try again' : 'Spróbuj ponownie'}
+                    </Button>
+                    <Button onClick={() => setActiveTab('manual')}>{t('scanner.manualInput')}</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Fullscreen frame and scanning laser */}
+              {isScanning && !cameraError && permissionState === 'granted' && (
+                <div className="absolute z-20 inset-x-6 sm:inset-x-24 top-1/2 -translate-y-1/2 h-64 sm:h-72 border-2 border-emerald-500/70 rounded-3xl pointer-events-none flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.25)]">
+                  <div className="w-full h-0.5 bg-emerald-400 shadow-[0_0_16px_#10b981] scanner-laser absolute [--laser-range:13rem] sm:[--laser-range:15rem]" />
+                  <div className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+                  <div className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+                  <div className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+                  <div className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
+                </div>
+              )}
+            </>
+          ) : (
+            /* Manual entry view */
+            <div className="w-full max-w-md p-6 space-y-4">
+              <div className="text-center space-y-1">
+                <h3 className="font-extrabold text-white text-lg">
+                  {language === 'en' ? 'Enter barcode' : 'Wpisz kod kreskowy'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {language === 'en' ? 'Enter EAN-13 / EAN-8 barcode digits' : 'Wprowadź cyfry kodu EAN-13 / EAN-8'}
+                </p>
+              </div>
+              <form onSubmit={handleManualSubmit} className="space-y-3">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    placeholder="np. 5900820000010"
+                    className="pl-4 pr-12 py-3.5 rounded-2xl bg-slate-900 font-mono text-lg"
+                  />
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    size="icon"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10"
+                    disabled={isProcessing || !manualCode.trim()}
+                    icon={isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 stroke-[2.5]" />}
+                  />
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Processing spinner */}
+          {isProcessing && (
+            <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3 text-white z-50">
+              <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
+              <span className="text-sm font-bold tracking-tight">{t('scanner.searching')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Scanner bottom bar */}
+        <div className="absolute bottom-0 inset-x-0 z-40 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col items-center gap-3">
+          <p className="text-xs text-slate-300 font-medium text-center drop-shadow-md">
+            {mode === 'ADD'
+              ? (language === 'en' ? '⚡ Point camera at barcode to add or increase quantity' : '⚡ Skieruj aparat na kod kreskowy, aby dodać lub zwiększyć ilość')
+              : mode === 'REMOVE'
+              ? (language === 'en' ? '⚡ Scan barcode to instantly deduct pieces from pantry' : '⚡ Zeskanuj kod EAN, aby natychmiast odliczyć sztuki ze spiżarni')
+              : (language === 'en' ? '⚡ Scan barcode to filter pantry items' : '⚡ Zeskanuj kod EAN, aby przefiltrować artykuły w spiżarni')}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab(activeTab === 'camera' ? 'manual' : 'camera')}
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-xl"
+            >
+              {activeTab === 'camera' ? (
+                <>
+                  <Keyboard className="w-4 h-4 text-emerald-400" />
+                  {t('scanner.manualInput')}
+                </>
+              ) : (
+                <>
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  {language === 'en' ? 'Back to camera' : 'Wróć do kamery'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Add product modal */}
       <QuickAddModal
         isOpen={isQuickAddOpen}
         onClose={() => {
           setIsQuickAddOpen(false);
-          onClose();
+          resumeScanner();
         }}
         initialProduct={scannedProduct}
         barcode={scannedBarcode}
         onSuccess={() => {
           setIsQuickAddOpen(false);
-          onClose();
+          setSessionCount((count) => count + 1);
+          setManualCode('');
+          resumeScanner();
         }}
       />
 
@@ -826,14 +868,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         isOpen={isQuickRemoveOpen}
         onClose={() => {
           setIsQuickRemoveOpen(false);
-          onClose();
+          resumeScanner();
         }}
         barcode={scannedBarcode}
         inPantryItems={inPantryItems}
         productCatalog={scannedProduct}
         onSuccess={() => {
           setIsQuickRemoveOpen(false);
-          onClose();
+          setSessionCount((count) => count + 1);
+          setManualCode('');
+          resumeScanner();
         }}
       />
     </>

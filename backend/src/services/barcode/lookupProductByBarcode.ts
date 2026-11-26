@@ -95,7 +95,7 @@ export const lookupProductByBarcode = async (
   const cleanBarcode = barcode.trim();
   if (!cleanBarcode) return null;
 
-  // 1. Produkt dodany ręcznie zawsze ma najwyższy priorytet.
+  // 1. A manually added product always has the highest priority.
   const customProduct = await prisma.productCatalog.findUnique({
     where: {
       barcode_source: {
@@ -109,35 +109,35 @@ export const lookupProductByBarcode = async (
     return toStandardProduct(customProduct);
   }
 
-  // 2. Pobierz aktywne źródła gospodarstwa w ustawionej kolejności.
+  // 2. Active sources of the household, in priority order.
   const sources = await getHouseholdSources(householdId);
+  const sourceKeys = sources.map(getSourceKey);
 
-  for (const source of sources) {
-    const sourceKey = getSourceKey(source);
+  // 3. One query for the cache of every source; the highest-priority cached source wins.
+  const cached = await prisma.productCatalog.findMany({
+    where: { barcode: cleanBarcode, source: { in: sourceKeys } },
+  });
 
-    // 3. Najpierw cache konkretnego źródła.
-    const cachedProduct = await prisma.productCatalog.findUnique({
-      where: {
-        barcode_source: {
-          barcode: cleanBarcode,
-          source: sourceKey,
-        },
-      },
-    });
+  for (const key of sourceKeys) {
+    const hit = cached.find((product) => product.source === key);
+    if (hit) return toStandardProduct(hit);
+  }
 
-    if (cachedProduct) {
-      return toStandardProduct(cachedProduct);
-    }
+  // 4. Ask all external providers at once (so a miss costs one round trip, not one per source),
+  //    then take the answer of the highest-priority source that knows the product.
+  const lookups = sources.map((source) =>
+    openFactsProvider.lookup(cleanBarcode, source).catch(() => null)
+  );
 
-    // 4. Dopiero potem zewnętrzny provider.
-    const product = await openFactsProvider.lookup(cleanBarcode, source);
+  for (let index = 0; index < lookups.length; index++) {
+    const product = await lookups[index];
     if (!product) continue;
 
     try {
       await cacheExternalProduct(product);
     } catch (error) {
       console.warn(
-        `Error caching for ${sourceKey} / ${cleanBarcode}:`,
+        `Error caching for ${sourceKeys[index]} / ${cleanBarcode}:`,
         error instanceof Error ? error.message : error
       );
     }

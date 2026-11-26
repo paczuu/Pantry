@@ -134,7 +134,8 @@ export const PantryProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       showToast(res.message || 'Usunięto produkt kodem EAN.', 'success');
       playBeep(700, 'sine', 0.15);
       vibrate([40, 30, 40]);
-      await Promise.all([refreshPantry(), refreshStats()]);
+      // Refresh in the background so the scanner can continue immediately
+      void Promise.all([refreshPantry(), refreshStats()]);
       return res;
     } catch (error: any) {
       showToast(error.message || 'Błąd szybkiego usuwania kodem.', 'error');
