@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
 import { MessageCode, apiError, apiMessage, auditDetails } from '../utils/messages.js';
+import { JWT_SECRET } from '../utils/jwtSecret.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
 const INVITE_CODE_TTL_MS = 5 * 60 * 1000;
 

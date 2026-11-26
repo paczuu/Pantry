@@ -77,12 +77,45 @@ If you encounter any bugs, have ideas for new features, or want to improve the c
 | --- | --- | --- |
 | `PORT` | `3001` | HTTP port for the Express backend server |
 | `DATABASE_URL` | `file:./data/pantry.db` | SQLite database connection string |
-| `JWT_SECRET` | *Required* | Secret key used for signing JWT authentication tokens |
+| `JWT_SECRET` | *Auto-generated in Docker*, dev default otherwise | Secret key used for signing JWT authentication tokens |
 | `NODE_ENV` | `development` | Application environment (`development` / `production`) |
 
 ## Deployment & Installation
 
-### Option A: Standard Docker Compose (Recommended)
+### Option A: Pre-built Docker image (Recommended)
+
+Nothing is built on your machine and you don't need the source code, only Docker. The images are published to GitHub Container Registry for `amd64` and `arm64` (PCs, servers, Raspberry Pi, ARM NAS).
+
+```bash
+mkdir pantry && cd pantry
+curl -O https://raw.githubusercontent.com/paczuu/Pantry/main/docker-compose.ghcr.yml
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+> On Windows PowerShell use `curl.exe -O ...` (plain `curl` is an alias of another command).
+
+* **Application URL:** `http://localhost:3200` — register the first account (see [First Login & Onboarding](#first-login--onboarding)).
+* **Database Location:** `./data/pantry.db` (persisted on host volume).
+* **Security:** a random `JWT_SECRET` is generated on first start and stored in `./data/.jwt_secret`; nothing to configure. Set `JWT_SECRET` yourself only if you want to.
+
+Optional settings go to a `.env` file next to the compose file:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PANTRY_VERSION` | `latest` | Image tag to run, e.g. `0.5.0` (pin it for predictable updates) |
+| `PANTRY_PORT` | `3200` | Port of the web app |
+| `JWT_SECRET` | *auto-generated* | Your own signing secret (optional) |
+
+Update to the newest release (your data stays in `./data`; the database schema is migrated on start):
+
+```bash
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Stop the stack with `docker compose -f docker-compose.ghcr.yml down`.
+
+### Option B: Build from source with Docker Compose
 
 Run the container stack directly from the repository root:
 
@@ -99,7 +132,7 @@ To stop the stack:
 docker compose down
 ```
 
-### Option B: Local Development (Node.js)
+### Option C: Local Development (Node.js)
 
 #### 1. Backend Setup
 
@@ -142,7 +175,9 @@ npm run build:backend
 npm start              # Runs compiled production backend
 ```
 
-### Option C: Portainer / Home Lab NAS Installation - COMING SOON!
+### Option D: Portainer / Home Lab NAS
+
+Create a new **Stack** in Portainer (or the compose editor of your NAS) and paste the contents of [`docker-compose.ghcr.yml`](docker-compose.ghcr.yml). Pick a persistent folder for the `./data` volume.
 
 ## Database Management & Prisma Studio
 
@@ -169,7 +204,7 @@ Prisma Studio will open at `http://localhost:5555`.
 * **In-App Backup & Restore:** An admin can create a backup directly from **Settings**, which downloads a `.json` file with your data. The same file can later be uploaded in Settings to restore the data.
 * **Database Backup (manual):** All inventory data, accounts, notes, and logs are stored inside a single SQLite file (`./data/pantry.db`). Simply back up the `./data` folder regularly.
  
-* **JWT Secret:** Always set a strong, unique `JWT_SECRET`. Changing this secret will invalidate active user sessions, requiring everyone to re-login.
+* **JWT Secret:** The pre-built Docker setup generates a strong random one for you (`./data/.jwt_secret`; keep it with your backups). If you set `JWT_SECRET` yourself, make it strong and unique. Changing this secret will invalidate active user sessions, requiring everyone to re-login.
 * **HTTPS Requirement:** Always serve the app over **HTTPS** (e.g. via Cloudflare Tunnels, Nginx Proxy Manager, or Caddy) when accessing remotely. Browsers restrict camera permissions (required for barcode scanning) and PWA installation on insecure `http://` connections.
 
 ## License

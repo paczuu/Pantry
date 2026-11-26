@@ -82,12 +82,45 @@ Jeśli znajdziesz błąd, masz pomysł na nową funkcję lub chcesz ulepszyć ko
 | --- | --- | --- |
 | `PORT` | `3001` | Port HTTP serwera backendu Express |
 | `DATABASE_URL` | `file:./data/pantry.db` | Connection string bazy danych SQLite |
-| `JWT_SECRET` | *\*Wymagane\** | Tajny klucz używany do podpisywania tokenów uwierzytelniających JWT |
+| `JWT_SECRET` | *Generowany automatycznie w Dockerze*, w dev wartość domyślna | Tajny klucz używany do podpisywania tokenów uwierzytelniających JWT |
 | `NODE_ENV` | `development` | Środowisko aplikacji (`development` / `production`) |
 
 ## Wdrożenie i instalacja
 
-### Opcja A: Standardowy Docker Compose (zalecane)
+### Opcja A: Gotowy obraz Dockera (zalecane)
+
+Nic nie jest budowane na Twoim komputerze i nie potrzebujesz kodu źródłowego, wystarczy Docker. Obrazy są publikowane w GitHub Container Registry dla `amd64` i `arm64` (komputery, serwery, Raspberry Pi, NAS-y z ARM).
+
+```bash
+mkdir pantry && cd pantry
+curl -O https://raw.githubusercontent.com/paczuu/Pantry/main/docker-compose.ghcr.yml
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+> W Windows PowerShell użyj `curl.exe -O ...` (samo `curl` jest aliasem innego polecenia).
+
+- **Adres aplikacji:** `http://localhost:3200` — zarejestruj pierwsze konto (zobacz [Pierwsze logowanie i konfiguracja](#pierwsze-logowanie-i-konfiguracja)).
+- **Lokalizacja bazy danych:** `./data/pantry.db` (dane są przechowywane na trwałym wolumenie hosta).
+- **Bezpieczeństwo:** losowy `JWT_SECRET` jest generowany przy pierwszym uruchomieniu i zapisywany w `./data/.jwt_secret`; nie trzeba nic konfigurować. Własny `JWT_SECRET` ustaw tylko wtedy, gdy chcesz.
+
+Opcjonalne ustawienia wpisz do pliku `.env` obok pliku compose:
+
+| Zmienna | Domyślnie | Opis |
+| --- | --- | --- |
+| `PANTRY_VERSION` | `latest` | Tag obrazu do uruchomienia, np. `0.5.0` (przypnij wersję dla przewidywalnych aktualizacji) |
+| `PANTRY_PORT` | `3200` | Port aplikacji webowej |
+| `JWT_SECRET` | *generowany automatycznie* | Własny sekret podpisywania (opcjonalnie) |
+
+Aktualizacja do najnowszego wydania (dane zostają w `./data`, schemat bazy jest migrowany przy starcie):
+
+```bash
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Zatrzymanie: `docker compose -f docker-compose.ghcr.yml down`.
+
+### Opcja B: Budowanie ze źródeł przez Docker Compose
 
 Uruchom stos kontenerów bezpośrednio z katalogu głównego repozytorium:
 
@@ -104,7 +137,7 @@ Aby zatrzymać stos kontenerów:
 docker compose down
 ```
 
-### Opcja B: Lokalne środowisko deweloperskie (Node.js)
+### Opcja C: Lokalne środowisko deweloperskie (Node.js)
 
 #### 1. Konfiguracja backendu
 
@@ -147,7 +180,9 @@ npm run build:backend
 npm start              # Uruchamia skompilowany backend produkcyjny
 ```
 
-### Opcja C: Instalacja przez Portainer / Home Lab NAS — WKRÓTCE!
+### Opcja D: Portainer / Home Lab NAS
+
+Utwórz nowy **Stack** w Portainerze (lub w edytorze compose swojego NAS-a) i wklej zawartość pliku [`docker-compose.ghcr.yml`](docker-compose.ghcr.yml). Wskaż trwały folder dla wolumenu `./data`.
 
 ## Zarządzanie bazą danych i Prisma Studio
 
@@ -174,7 +209,7 @@ Prisma Studio zostanie uruchomione pod adresem `http://localhost:5555`.
 
 - **Kopia zapasowa i przywracanie w aplikacji:** Administrator może utworzyć kopię zapasową bezpośrednio z poziomu **Ustawień**. Kopia zostanie pobrana jako plik `.json`. Ten sam plik można później przesłać w Ustawieniach, aby przywrócić dane.
 - **Ręczna kopia bazy danych:** Wszystkie dane dotyczące zapasów, kont, notatek i logów są przechowywane w jednym pliku SQLite (`./data/pantry.db`). Zaleca się regularne wykonywanie kopii zapasowej całego katalogu `./data`.
-- **JWT Secret:** Zawsze ustawiaj silny i unikalny `JWT_SECRET`. Zmiana tego sekretu spowoduje unieważnienie aktywnych sesji użytkowników i konieczność ponownego zalogowania się wszystkich użytkowników.
+- **JWT Secret:** Gotowa instalacja Dockera generuje silny losowy sekret za Ciebie (`./data/.jwt_secret`; trzymaj go razem z kopiami zapasowymi). Jeśli ustawiasz `JWT_SECRET` samodzielnie, niech będzie silny i unikalny. Zmiana tego sekretu spowoduje unieważnienie aktywnych sesji użytkowników i konieczność ponownego zalogowania się wszystkich użytkowników.
 - **Wymóg HTTPS:** Zawsze udostępniaj aplikację przez **HTTPS** (np. za pomocą Cloudflare Tunnels, Nginx Proxy Manager lub Caddy), jeśli korzystasz z niej zdalnie. Przeglądarki ograniczają dostęp do aparatu na niezabezpieczonych połączeniach `http://`, a aparat jest wymagany do skanowania kodów kreskowych. HTTPS jest również wymagane do poprawnej instalacji PWA.
 
 ## Licencja

@@ -40,7 +40,9 @@ Always run `npx tsc --noEmit` in the project(s) you touched before reporting a t
 .
 ├── AGENTS.md / CLAUDE.md / GEMINI.md   agent instructions (this file + thin wrappers)
 ├── .claude/                            Claude Code settings, slash commands, subagents
-├── docker-compose.yml                  backend (:3001, internal) + frontend nginx (:3200)
+├── docker-compose.yml                  build from source: backend (:3001, internal) + frontend nginx (:3200)
+├── docker-compose.ghcr.yml             same stack from the published ghcr.io images (user-facing install)
+├── .github/workflows/release.yml       on tag v*: multi-arch images to GHCR + GitHub release
 ├── data/                               SQLite database used by Docker and by the real dev setup (gitignored)
 ├── docs/screenshots/                   README images
 ├── README.md / README-PL.md            user-facing docs (keep both in sync)
@@ -143,7 +145,9 @@ To add a message: add the code + English template (`{param}` placeholders) to `b
   The scanner is tuned for iOS (limited formats, centre-strip scan region, no `backdrop-blur` over live video,
   one shared `AudioContext`); keep those choices when editing `BarcodeScannerModal.tsx`.
 - Windows host: paths may be CRLF; prefer the editor/Edit tools over ad-hoc `sed` on `.tsx` files.
-- `JWT_SECRET` falls back to a development default — never rely on it in production configs; don't commit real secrets.
+- `JWT_SECRET` resolves in `backend/src/utils/jwtSecret.ts`: env value, else a random secret persisted as `.jwt_secret` next to an
+  absolute-path SQLite file (Docker), else a development default. Import it from there; never re-declare it. Don't commit real secrets.
+- Releases: bump `version` in the three `package.json` files (and lock files), merge to `main`, push tag `vX.Y.Z`; the workflow publishes the images.
 - Old audit rows may be stored as Polish text (parsed by `formatAuditDetails`) or as English text; new rows carry
   `messageCode`. Keep that legacy path working.
 - `frontend/dist`, `backend/dist`, `node_modules`, `data/` are gitignored.

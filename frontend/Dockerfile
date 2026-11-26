@@ -1,7 +1,8 @@
 # =========================
 # BUILD
 # =========================
-FROM node:22-alpine AS builder
+# Static output is platform-independent, so build it natively even for arm64 images
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 
 WORKDIR /app
 

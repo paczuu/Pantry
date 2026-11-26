@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 import { apiError } from '../utils/messages.js';
+import { JWT_SECRET } from '../utils/jwtSecret.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
 export interface AuthUser {
   id: string;
