@@ -1,10 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ModalActions } from '../ui/ModalActions';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { EmptyState } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
-import { FieldLabel, Input, SearchInput, Textarea } from '../ui/FormControls';
+import { SearchInput } from '../ui/FormControls';
+import {
+  SheetFooter,
+  SheetIconButton,
+  SheetListEditor,
+  SheetPopover,
+  SheetTextArea,
+  SheetTitleInput,
+} from '../ui/SheetParts';
 import { Note, NoteColor, ChecklistItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,7 +21,6 @@ import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
 import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
 import { cn } from '../../utils/cn';
-import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
 import {
   BookOpen,
   Plus,
@@ -52,26 +59,8 @@ export const NotesView: React.FC = () => {
   const [content, setContent] = useState('');
   const [isChecklist, setIsChecklist] = useState(false);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [newChecklistText, setNewChecklistText] = useState('');
   const [color, setColor] = useState<NoteColor>('default');
   const [isPinned, setIsPinned] = useState(false);
-  const checklistInputRef = useRef<HTMLInputElement>(null);
-  const colorMenuRef = useRef<HTMLDivElement>(null);
-  const [showColors, setShowColors] = useState(false);
-
-  useEffect(() => {
-    if (!isModalOpen) setShowColors(false);
-  }, [isModalOpen]);
-
-  // Close the colour palette on a tap outside it
-  useEffect(() => {
-    if (!showColors) return;
-    const handleOutside = (event: PointerEvent) => {
-      if (!colorMenuRef.current?.contains(event.target as Node)) setShowColors(false);
-    };
-    document.addEventListener('pointerdown', handleOutside);
-    return () => document.removeEventListener('pointerdown', handleOutside);
-  }, [showColors]);
 
   // Initial snapshot to track isDirty
   const [initialSnapshot, setInitialSnapshot] = useState<{
@@ -123,7 +112,6 @@ export const NotesView: React.FC = () => {
     setContent('');
     setIsChecklist(false);
     setChecklistItems([]);
-    setNewChecklistText('');
     setColor('default');
     setIsPinned(false);
     setInitialSnapshot({
@@ -149,7 +137,6 @@ export const NotesView: React.FC = () => {
       } catch (e) {}
     }
     setChecklistItems(items);
-    setNewChecklistText('');
     setColor(note.color);
     setIsPinned(note.isPinned);
     setInitialSnapshot({
@@ -180,38 +167,6 @@ export const NotesView: React.FC = () => {
       setContent(checklistItems.map((item) => item.text).join('\n'));
     }
     setIsChecklist(toChecklist);
-  };
-
-  const handleClearCompleted = () => {
-    setChecklistItems((prev) => prev.filter((item) => !item.completed));
-  };
-
-  const handleAddChecklistItem = () => {
-    if (!newChecklistText.trim()) return;
-    const newItem: ChecklistItem = {
-      id: Math.random().toString(36).substring(2, 9),
-      text: newChecklistText.trim(),
-      completed: false,
-    };
-    setChecklistItems((prev) => [...prev, newItem]);
-    setNewChecklistText('');
-    window.setTimeout(() => focusAndKeepVisible(checklistInputRef.current), 0);
-  };
-
-  const handleUpdateChecklistItemText = (id: string, newText: string) => {
-    setChecklistItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, text: newText } : item))
-    );
-  };
-
-  const handleToggleModalChecklistItem = (id: string) => {
-    setChecklistItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
-    );
-  };
-
-  const handleRemoveChecklistItem = (id: string) => {
-    setChecklistItems((prev) => prev.filter((i) => i.id !== id));
   };
 
   const handleToggleCardChecklistItem = async (e: React.MouseEvent, note: Note, itemId: string) => {
@@ -533,56 +488,38 @@ export const NotesView: React.FC = () => {
           <div className="flex-1 flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0">
-                <Input
-                  type="text"
-                  required
+                <SheetTitleInput
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={setTitle}
                   placeholder={t('notes.noteTitlePlaceholder')}
-                  aria-label={language === 'en' ? 'Title' : 'Tytuł'}
-                  className="px-0 py-1 bg-transparent border-transparent rounded-none focus:border-transparent text-xl font-extrabold tracking-tight placeholder:font-bold"
+                  ariaLabel={language === 'en' ? 'Title' : 'Tytuł'}
                   autoFocus={!editingNote}
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsPinned((pinned) => !pinned)}
+              <SheetIconButton
+                active={isPinned}
                 aria-pressed={isPinned}
                 title={isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
-                aria-label={isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
-                className={cn(
-                  'w-9 h-9 shrink-0 rounded-xl border flex items-center justify-center transition-colors',
-                  isPinned
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
-                )}
+                onClick={() => setIsPinned((pinned) => !pinned)}
               >
                 <Pin className="w-3.5 h-3.5" />
-              </button>
+              </SheetIconButton>
 
               {/* Card colour: one button showing the current colour, the palette opens on tap */}
-              <div className="relative shrink-0" ref={colorMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowColors((open) => !open)}
-                  aria-expanded={showColors}
-                  title={t('notes.noteColor')}
-                  aria-label={t('notes.noteColor')}
-                  className="w-9 h-9 rounded-xl border bg-slate-800 border-slate-700 hover:border-slate-500 flex items-center justify-center transition-colors"
-                >
-                  <span className={cn('w-4 h-4 rounded-full border border-white/30', NOTE_COLOR_DOT[color])} />
-                </button>
-
-                {showColors && (
-                  <div className="absolute right-0 top-full mt-2 z-20 flex items-center gap-2 p-2.5 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl animate-slide-up">
+              <SheetPopover
+                title={t('notes.noteColor')}
+                trigger={<span className={cn('w-4 h-4 rounded-full border border-white/30', NOTE_COLOR_DOT[color])} />}
+              >
+                {(close) => (
+                  <div className="flex items-center gap-2">
                     {NOTE_COLORS.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => {
                           setColor(c);
-                          setShowColors(false);
+                          close();
                         }}
                         aria-label={c}
                         aria-pressed={color === c}
@@ -597,149 +534,42 @@ export const NotesView: React.FC = () => {
                     ))}
                   </div>
                 )}
-              </div>
+              </SheetPopover>
             </div>
 
             {isChecklist ? (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <FieldLabel className="mb-0">
-                    {language === 'en' ? 'Checklist items' : 'Elementy listy'}
-                  </FieldLabel>
-                  {checklistItems.length > 0 && (
-                    <span className="text-[11px] text-slate-300 font-semibold">
-                      {t('notes.itemsProgress')
-                        .replace('{done}', String(checklistItems.filter((i) => i.completed).length))
-                        .replace('{total}', String(checklistItems.length))}
-                    </span>
-                  )}
-                </div>
-
-                {checklistItems.length > 0 && (
-                  <div className="h-1 rounded-full bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 transition-all"
-                      style={{
-                        width: `${(checklistItems.filter((i) => i.completed).length / checklistItems.length) * 100}%`,
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Items: tick, edit inline, remove */}
-                {checklistItems.length > 0 && (
-                  <div className="space-y-1.5 max-h-[40dvh] overflow-y-auto pr-1">
-                    {checklistItems.map((item) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleModalChecklistItem(item.id)}
-                          className={cn(
-                            'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all',
-                            item.completed
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'border border-slate-600 bg-slate-900/60 hover:border-emerald-500/60'
-                          )}
-                          title={
-                            item.completed
-                              ? language === 'en' ? 'Mark incomplete' : 'Oznacz jako niewykonane'
-                              : language === 'en' ? 'Mark complete' : 'Oznacz jako wykonane'
-                          }
-                        >
-                          {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </button>
-
-                        <Input
-                          type="text"
-                          value={item.text}
-                          onChange={(e) => handleUpdateChecklistItemText(item.id, e.target.value)}
-                          placeholder={language === 'en' ? 'Item text...' : 'Treść punktu...'}
-                          className={cn(
-                            'flex-1 px-1 py-2 text-sm bg-transparent border-transparent rounded-none border-b-slate-800 focus:border-b-emerald-500',
-                            item.completed && 'line-through text-slate-400'
-                          )}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveChecklistItem(item.id)}
-                          className="text-slate-400 hover:text-rose-400 w-9 h-9 flex items-center justify-center rounded-lg transition-colors shrink-0"
-                          title={language === 'en' ? 'Delete item' : 'Usuń pozycję'}
-                          aria-label={language === 'en' ? 'Delete item' : 'Usuń pozycję'}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* New item goes below the list, like in a notebook */}
-                <div className="flex gap-2">
-                  <Input
-                    ref={checklistInputRef}
-                    type="text"
-                    value={newChecklistText}
-                    onChange={(e) => setNewChecklistText(e.target.value)}
-                    enterKeyHint="enter"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddChecklistItem();
-                      }
-                    }}
-                    placeholder={t('notes.newChecklistItemPlaceholder')}
-                    className="flex-1 text-sm"
-                  />
-                  <Button variant="primary" icon={<Plus className="w-4 h-4 stroke-[2.5]" />} onClick={handleAddChecklistItem}>
-                    {t('common.add')}
-                  </Button>
-                </div>
-
-                {checklistItems.some((i) => i.completed) && (
-                  <Button variant="ghost" size="sm" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={handleClearCompleted}>
-                    {t('notes.clearCompleted')}
-                  </Button>
-                )}
-              </div>
+              <SheetListEditor
+                checkable
+                items={checklistItems}
+                onChange={(items) => setChecklistItems(items.map((item) => ({ ...item, completed: !!item.completed })))}
+                label={language === 'en' ? 'Checklist items' : 'Elementy listy'}
+                itemPlaceholder={language === 'en' ? 'Item text...' : 'Treść punktu...'}
+                newItemPlaceholder={t('notes.newChecklistItemPlaceholder')}
+                addLabel={t('common.add')}
+                progressText={(done, total) =>
+                  t('notes.itemsProgress').replace('{done}', String(done)).replace('{total}', String(total))
+                }
+                clearCompletedLabel={t('notes.clearCompleted')}
+              />
             ) : (
-              // The text fills the rest of the sheet and scrolls inside it
-              <div className="relative flex-1 min-h-[30dvh]">
-                <Textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder={t('notes.noteContentPlaceholder')}
-                  aria-label={language === 'en' ? 'Note content' : 'Treść notatki'}
-                  className="absolute inset-0 h-full px-0 py-1 bg-transparent border-transparent rounded-none focus:border-transparent font-sans leading-relaxed resize-none overflow-y-auto"
-                />
-              </div>
+              <SheetTextArea
+                value={content}
+                onChange={setContent}
+                placeholder={t('notes.noteContentPlaceholder')}
+                ariaLabel={language === 'en' ? 'Note content' : 'Treść notatki'}
+              />
             )}
           </div>
 
-          {/* Existing note: dates and delete */}
           {editingNote && (
-            <div className="mt-auto flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
-              <span className="text-[11px] text-slate-500 min-w-0">
-                {t('notes.createdLabel')} {new Date(editingNote.createdAt).toLocaleDateString(locale)}
-                {editingNote.updatedAt &&
-                  new Date(editingNote.updatedAt).toDateString() !== new Date(editingNote.createdAt).toDateString() && (
-                    <>
-                      {' · '}
-                      {t('notes.updatedLabel')} {new Date(editingNote.updatedAt).toLocaleDateString(locale)}
-                    </>
-                  )}
-              </span>
-              <Button
-                variant="danger"
-                size="sm"
-                icon={<Trash2 className="w-3.5 h-3.5" />}
-                onClick={async () => {
-                  if (await deleteNote(editingNote.id)) setIsModalOpen(false);
-                }}
-              >
-                {t('common.delete')}
-              </Button>
-            </div>
+            <SheetFooter
+              createdAt={editingNote.createdAt}
+              updatedAt={editingNote.updatedAt}
+              deleteLabel={t('common.delete')}
+              onDelete={async () => {
+                if (await deleteNote(editingNote.id)) setIsModalOpen(false);
+              }}
+            />
           )}
         </form>
       </Modal>

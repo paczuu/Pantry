@@ -4,7 +4,15 @@ import { EmptyState } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
 import { SegmentedControl } from '../ui/SegmentedControl';
-import { FieldLabel, Input, SearchInput, Textarea } from '../ui/FormControls';
+import { FieldLabel, SearchInput, Textarea } from '../ui/FormControls';
+import {
+  SheetFooter,
+  SheetListEditor,
+  SheetPopover,
+  SheetTextArea,
+  SheetTitleInput,
+} from '../ui/SheetParts';
+import { PhotoField } from '../common/PhotoField';
 import { Recipe } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -12,19 +20,13 @@ import { useLanguage } from '../../language/LanguageContext';
 import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
 import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
-import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
 import {
   ChefHat,
   Plus,
-  Trash2,
   Eye,
   EyeOff,
-  X,
   ListChecks,
   StickyNote,
-  ImagePlus,
-  Camera,
-  Image as ImageIcon,
   Loader2,
   Star,
   ShoppingCart,
@@ -404,7 +406,6 @@ export const RecipesView: React.FC = () => {
   const [name, setName] = useState('');
   const [instructions, setInstructions] = useState('');
   const [ingredients, setIngredients] = useState<string[]>([]);
-  const [newIngredient, setNewIngredient] = useState('');
   const [notes, setNotes] = useState('');
   const [showNotesField, setShowNotesField] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -447,10 +448,6 @@ export const RecipesView: React.FC = () => {
   const [missingIngredients, setMissingIngredients] = useState<string[]>([]);
   const [isShoppingChoiceOpen, setIsShoppingChoiceOpen] = useState(false);
 
-  const ingredientInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-
   const fetchRecipes = async () => {
     setIsLoading(true);
     try {
@@ -475,7 +472,6 @@ export const RecipesView: React.FC = () => {
     setName('');
     setInstructions('');
     setIngredients([]);
-    setNewIngredient('');
     setNotes('');
     setShowNotesField(false);
     setImageUrl(null);
@@ -489,8 +485,6 @@ export const RecipesView: React.FC = () => {
       imageUrl: null,
       rating: 5,
     });
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
-    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const handleOpenAdd = () => {
@@ -504,7 +498,6 @@ export const RecipesView: React.FC = () => {
     setName(recipe.name);
     setInstructions(recipe.instructions || '');
     setIngredients(ings);
-    setNewIngredient('');
     setNotes(recipe.notes || '');
     setShowNotesField(Boolean(recipe.notes));
     setImageUrl(recipe.imageUrl || null);
@@ -518,51 +511,7 @@ export const RecipesView: React.FC = () => {
       imageUrl: recipe.imageUrl || null,
       rating: recipe.rating || 5,
     });
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
-    if (galleryInputRef.current) galleryInputRef.current.value = '';
     setIsModalOpen(true);
-  };
-
-  const handleAddIngredient = () => {
-    if (!newIngredient.trim()) return;
-    setIngredients((prev) => [...prev, newIngredient.trim()]);
-    setNewIngredient('');
-    window.setTimeout(() => focusAndKeepVisible(ingredientInputRef.current), 0);
-  };
-
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsImageProcessing(true);
-      const compressed = await compressRecipeImage(file);
-      setImageUrl(compressed);
-      showToast(
-        language === 'en'
-          ? 'Image processed successfully.'
-          : 'Zdjęcie zostało przygotowane.',
-        'success'
-      );
-    } catch (error: any) {
-      showToast(
-        error?.message ||
-          (language === 'en'
-            ? 'Failed to process image.'
-            : 'Nie udało się przygotować zdjęcia.'),
-        'error'
-      );
-    } finally {
-      setIsImageProcessing(false);
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
-      if (galleryInputRef.current) galleryInputRef.current.value = '';
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setImageUrl(null);
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
-    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -1203,6 +1152,7 @@ export const RecipesView: React.FC = () => {
         }}
         title={editingRecipe ? (language === 'en' ? 'Edit Recipe' : 'Edytuj przepis') : t('recipes.addRecipe')}
         maxWidth="lg"
+        tall
         isDirty={isDirty}
         headerActions={
           <ModalActions
@@ -1213,251 +1163,124 @@ export const RecipesView: React.FC = () => {
           />
         }
       >
-        <form id="recipe-edit-form" onSubmit={handleSave} className="space-y-4">
-          <div>
-            <FieldLabel>{t('recipes.recipeNameLabel')}</FieldLabel>
-            <Input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={language === 'en' ? 'e.g. Spaghetti Bolognese' : 'np. Zupa pomidorowa'}
-              autoFocus={!editingRecipe}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <FieldLabel className="mb-0">{t('recipes.ratingLabel')}</FieldLabel>
-              <span className="text-xs font-extrabold text-emerald-400">
-                {rating}/10
-              </span>
-            </div>
-
-            <div className="grid grid-cols-10 gap-1.5">
-              {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => {
-                const selected = value === rating;
-                const filled = value <= rating;
-
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setRating(value)}
-                    className={`aspect-square rounded-xl text-xs font-extrabold border transition-all ${
-                      selected
-                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-lg shadow-emerald-950/40 scale-105'
-                        : filled
-                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
-                          : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-white hover:border-slate-600'
-                    }`}
-                    title={`${language === 'en' ? 'Rating' : 'Ocena'} ${value}/10`}
-                  >
-                    {value}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-between text-[11px] text-slate-500 px-0.5">
-              <span>{t('recipes.ratingPoor')}</span>
-              <span>{t('recipes.ratingGreat')}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <FieldLabel className="mb-0">{t('recipes.recipePhoto')}</FieldLabel>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-            <input
-              ref={galleryInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-
-            {imageUrl ? (
-              <div className="space-y-2">
-                <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-950 border border-slate-700">
-                  <img src={imageUrl} alt="Recipe preview" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    disabled={isImageProcessing}
-                    className="absolute top-2 right-2 p-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-rose-400 transition-colors disabled:opacity-50"
-                    title={t('recipes.removePhoto')}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    disabled={isImageProcessing}
-                    className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
-                  >
-                    {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5 text-emerald-400" />}
-                    {isImageProcessing ? (language === 'en' ? 'Processing...' : 'Przetwarzanie...') : t('recipes.takePhoto')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => galleryInputRef.current?.click()}
-                    disabled={isImageProcessing}
-                    className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
-                    {t('recipes.chooseGallery')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    disabled={isImageProcessing}
-                    className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs disabled:opacity-50 transition-colors"
-                  >
-                    {t('recipes.removePhoto')}
-                  </button>
-                </div>
+        <form id="recipe-edit-form" onSubmit={handleSave} className="flex-1 flex flex-col gap-4">
+          {/* Same sheet as notes: title and text sit directly on the background */}
+          <div className="flex-1 flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <SheetTitleInput
+                  value={name}
+                  onChange={setName}
+                  placeholder={language === 'en' ? 'e.g. Spaghetti Bolognese' : 'np. Zupa pomidorowa'}
+                  ariaLabel={t('recipes.recipeNameLabel')}
+                  autoFocus={!editingRecipe}
+                />
               </div>
-            ) : (
-              <div className="p-4 rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/50 flex flex-col items-center justify-center gap-3">
-                {isImageProcessing ? (
-                  <div className="flex flex-col items-center gap-2 py-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                    <span className="text-xs font-bold text-slate-300">
-                      {language === 'en' ? 'Processing image...' : 'Przetwarzanie zdjęcia...'}
-                    </span>
-                  </div>
-                ) : (
+
+              {/* Rating: one button with the current value, the scale opens on tap */}
+              <SheetPopover
+                title={`${t('recipes.ratingLabel')}: ${rating}/10`}
+                triggerClassName="w-auto px-2.5 gap-1"
+                trigger={
                   <>
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <ImagePlus className="w-6 h-6 text-emerald-400" />
-                      <span className="text-xs font-bold text-slate-300">
-                        {language === 'en' ? 'Add photo to recipe' : 'Dodaj zdjęcie do przepisu'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-sm">
-                      <button
-                        type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <Camera className="w-4 h-4 text-emerald-400" />
-                        {t('recipes.takePhoto')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => galleryInputRef.current?.click()}
-                        className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <ImageIcon className="w-4 h-4 text-slate-300" />
-                        {t('recipes.chooseGallery')}
-                      </button>
-                    </div>
-                    <span className="text-[11px] text-slate-500">JPG, PNG, WEBP • max 15 MB</span>
+                    <Star className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-extrabold text-white">{rating}</span>
                   </>
+                }
+              >
+                {(close) => (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-[11px] text-slate-500 px-0.5">
+                      <span>{t('recipes.ratingPoor')}</span>
+                      <span>{t('recipes.ratingGreat')}</span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            setRating(value);
+                            close();
+                          }}
+                          aria-pressed={value === rating}
+                          className={`w-9 h-9 rounded-xl text-xs font-extrabold border transition-all ${
+                            value === rating
+                              ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                              : value < rating
+                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
+                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-600'
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </div>
-            )}
-
-            <p className="text-[11px] text-slate-500">
-              {language === 'en'
-                ? 'Photo will be automatically resized and compressed before saving.'
-                : 'Zdjęcie zostanie automatycznie zmniejszone i skompresowane przed zapisaniem.'}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <FieldLabel className="mb-0">{t('recipes.ingredientsLabel')}</FieldLabel>
-            <div className="flex gap-2">
-              <Input
-                ref={ingredientInputRef}
-                type="text"
-                value={newIngredient}
-                onChange={(e) => setNewIngredient(e.target.value)}
-                enterKeyHint="enter"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddIngredient();
-                  }
-                }}
-                placeholder={t('recipes.ingredientPlaceholder')}
-                className="flex-1 py-2 text-xs sm:text-sm"
-              />
-              <Button variant="primary" onClick={handleAddIngredient}>
-                {t('recipes.addIngredientBtn')}
-              </Button>
+              </SheetPopover>
             </div>
-            <div className="space-y-1.5 overflow-y-auto">
-              {ingredients.map((item, index) => (
-                <div
-                  key={`${item}-${index}`}
-                  className="flex items-center justify-between p-2 rounded-xl bg-slate-800/80 border border-slate-700 text-xs"
-                >
-                  <span className="text-white truncate flex-1">{item}</span>
-                  <button
-                    type="button"
-                    onClick={() => setIngredients((prev) => prev.filter((_, i) => i !== index))}
-                    className="text-slate-500 hover:text-rose-400 p-2"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          <div>
-            <FieldLabel>{t('recipes.instructionsLabel')}</FieldLabel>
-            <Textarea
-              rows={6}
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder={t('recipes.instructionsPlaceholder')}
+            <PhotoField
+              value={imageUrl ?? ''}
+              onChange={(value) => setImageUrl(value || null)}
+              compress={compressRecipeImage}
+              onBusyChange={setIsImageProcessing}
+              successMessage={language === 'en' ? 'Image processed successfully.' : 'Zdjęcie zostało przygotowane.'}
+              hint={
+                language === 'en'
+                  ? 'Photo will be automatically resized and compressed before saving.'
+                  : 'Zdjęcie zostanie automatycznie zmniejszone i skompresowane przed zapisaniem.'
+              }
             />
-          </div>
 
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowNotesField((prev) => !prev)}
-              className="text-xs font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1.5"
-            >
-              <StickyNote className="w-3.5 h-3.5" />
-              {showNotesField ? t('recipes.hideNotes') : t('recipes.showNotes')}
-            </button>
-            {showNotesField && (
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('recipes.notesPlaceholder')}
-                className="mt-2 w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-amber-500/30 text-white text-sm focus:outline-none focus:border-amber-400"
+            <SheetListEditor
+              items={ingredients.map((text, index) => ({ id: String(index), text }))}
+              onChange={(items) => setIngredients(items.map((item) => item.text))}
+              label={t('recipes.ingredientsLabel')}
+              itemPlaceholder={language === 'en' ? 'Ingredient...' : 'Składnik...'}
+              newItemPlaceholder={t('recipes.ingredientPlaceholder')}
+              addLabel={t('common.add')}
+            />
+
+            <div className="flex-1 flex flex-col gap-2">
+              <FieldLabel className="mb-0">{t('recipes.instructionsLabel')}</FieldLabel>
+              <SheetTextArea
+                value={instructions}
+                onChange={setInstructions}
+                placeholder={t('recipes.instructionsPlaceholder')}
+                ariaLabel={t('recipes.instructionsLabel')}
               />
-            )}
-          </div>
+            </div>
 
-          {/* Delete recipe option inside the modal */}
-          {editingRecipe && (
-            <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
+            <div>
               <button
                 type="button"
-                onClick={handleDeleteInModal}
-                className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold text-xs flex items-center gap-1.5 transition-colors"
+                onClick={() => setShowNotesField((prev) => !prev)}
+                className="text-xs font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1.5"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                {language === 'en' ? 'Delete this recipe' : 'Usuń ten przepis'}
+                <StickyNote className="w-3.5 h-3.5" />
+                {showNotesField ? t('recipes.hideNotes') : t('recipes.showNotes')}
               </button>
+              {showNotesField && (
+                <Textarea
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={t('recipes.notesPlaceholder')}
+                  className="mt-2 border-amber-500/30 focus:border-amber-400"
+                />
+              )}
             </div>
+          </div>
+
+          {editingRecipe && (
+            <SheetFooter
+              createdAt={editingRecipe.createdAt}
+              updatedAt={editingRecipe.updatedAt}
+              deleteLabel={t('common.delete')}
+              onDelete={handleDeleteInModal}
+            />
           )}
         </form>
       </Modal>
