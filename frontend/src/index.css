@@ -82,12 +82,14 @@
 }
 
 /* Scanner target box animation */
+/* Animacja przez transform (GPU) zamiast `top` — nie wymusza przeliczania układu nad żywym wideo */
 @keyframes scanLaser {
-  0% { top: 10%; opacity: 0.8; }
-  50% { top: 90%; opacity: 1; }
-  100% { top: 10%; opacity: 0.8; }
+  from { transform: translateY(0); }
+  to { transform: translateY(var(--laser-range, 13rem)); }
 }
 
 .scanner-laser {
-  animation: scanLaser 2s infinite ease-in-out;
+  top: 8%;
+  will-change: transform;
+  animation: scanLaser 1s infinite ease-in-out alternate;
 }

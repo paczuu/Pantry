@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -22,12 +22,22 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Jeden współdzielony AudioContext — iOS ogranicza liczbę jednocześnie istniejących kontekstów,
+  // a tworzenie nowego przy każdym piknięciu powodowało przycinanie i zanik dźwięku.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
   // Web Audio API beep sound (zero external audio files needed!)
   const playBeep = useCallback((frequency = 800, type: OscillatorType = 'sine', duration = 0.12) => {
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
-      const ctx = new AudioContext();
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioContext();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
