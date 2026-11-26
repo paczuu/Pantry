@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { translateApiMessage } from '../../language/apiMessages';
 import { PageHeader } from '../ui/PageHeader';
-import { FieldLabel, Input } from '../ui/FormControls';
+import { FieldLabel, Input, Select } from '../ui/FormControls';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
@@ -11,6 +11,10 @@ import { api, BarcodeProviderKey, BarcodeSourceConfig } from '../../services/api
 import { User, UserRole, NavItemConfig, SystemUser, SystemHousehold } from '../../types';
 import {
   DEFAULT_NAV_ITEMS,
+  getStartScreenOptions,
+  persistStartTab,
+  readStoredStartTab,
+  resolveStartTab,
   loadNavConfig,
   persistNavConfig,
 } from '../../utils/navConfig';
@@ -301,7 +305,15 @@ export const HouseholdSettingsView: React.FC = () => {
     loadNavConfig()
   );
 
+  const [storedStartTab, setStoredStartTab] = useState<string | null>(readStoredStartTab);
+
   /* ------------------------------ Navigation ------------------------------- */
+
+  const handleStartTabChange = (id: string) => {
+    persistStartTab(id);
+    setStoredStartTab(id);
+    showToast(t('settings.navBarSavedToast'), 'success');
+  };
 
   const saveNavConfig = (newConfig: NavItemConfig[]) => {
     setNavConfig(newConfig);
@@ -1345,6 +1357,20 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const renderNavigation = () => (
     <SettingsCard>
+      <SettingsRow title={t('settings.startScreen')} description={t('settings.startScreenDesc')}>
+        <Select
+          value={resolveStartTab(storedStartTab, navConfig, isAdmin)}
+          onChange={(e) => handleStartTabChange(e.target.value)}
+          className="w-auto min-w-[10rem]"
+        >
+          {getStartScreenOptions(navConfig, isAdmin).map((item) => (
+            <option key={item.id} value={item.id}>
+              {(t as any)(`nav.${item.id}`) || item.label}
+            </option>
+          ))}
+        </Select>
+      </SettingsRow>
+
       {/* Toolbar: no repeated title and description (already in the section header) */}
       <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
         <p className="text-xs text-slate-400 min-w-0">

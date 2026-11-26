@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { NoHouseholdView } from './components/auth/NoHouseholdView';
@@ -16,17 +16,25 @@ import { QuickAddModal } from './components/scanner/QuickAddModal';
 import { EditPantryItemModal } from './components/pantry/EditPantryItemModal';
 import { usePantry } from './contexts/PantryContext';
 import { PantryItem } from './types';
+import { loadNavConfig, readStoredStartTab, resolveStartTab } from './utils/navConfig';
 import { Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAdmin } = useAuth();
   const { setFilter } = usePantry();
 
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Start on the screen chosen in settings (the audit log is guarded below once the role is known)
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    resolveStartTab(readStoredStartTab(), loadNavConfig(), true)
+  );
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerMode, setScannerMode] = useState<'ADD' | 'REMOVE' | 'SEARCH'>('ADD');
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PantryItem | null>(null);
+
+  useEffect(() => {
+    if (user && !isAdmin && activeTab === 'audit') setActiveTab('dashboard');
+  }, [user, isAdmin, activeTab]);
 
   if (isLoading) {
     return (

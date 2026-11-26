@@ -2,6 +2,7 @@ import { NavItemConfig } from '../types';
 
 export const NAV_CONFIG_STORAGE_KEY = 'pantry_nav_config';
 export const NAV_CONFIG_UPDATED_EVENT = 'pantry_nav_updated';
+export const START_TAB_STORAGE_KEY = 'pantry_start_tab';
 
 export const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
   { id: 'dashboard', label: 'Dashboard', visible: true, order: 1 },
@@ -60,4 +61,30 @@ export function mergeNavConfig(saved: NavItemConfig[]): NavItemConfig[] {
   return merged
     .sort((a, b) => a.order - b.order)
     .map((item, index) => ({ ...item, order: index + 1 }));
+}
+
+/** Screens that can be the start screen: visible nav items except the scanner action (and audit for non-admins). */
+export function getStartScreenOptions(config: NavItemConfig[], isAdmin: boolean): NavItemConfig[] {
+  return [...config]
+    .filter((item) => item.visible && item.id !== 'scan-action' && (item.id !== 'audit' || isAdmin))
+    .sort((a, b) => a.order - b.order);
+}
+
+/** The stored start screen if it is still available, otherwise the dashboard (or the first available screen). */
+export function resolveStartTab(stored: string | null, config: NavItemConfig[], isAdmin: boolean): string {
+  const options = getStartScreenOptions(config, isAdmin);
+  if (stored && options.some((item) => item.id === stored)) return stored;
+  return options.some((item) => item.id === 'dashboard') ? 'dashboard' : options[0]?.id ?? 'dashboard';
+}
+
+export function readStoredStartTab(): string | null {
+  try {
+    return localStorage.getItem(START_TAB_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function persistStartTab(id: string): void {
+  localStorage.setItem(START_TAB_STORAGE_KEY, id);
 }
