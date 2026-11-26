@@ -73,7 +73,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     'soda', 'cola', 'cider', 'energy drink', 'isotonic', 'lemonade',
     // PL
     'napój', 'napoj', 'napoje', 'napojów', 'sok', 'soki', 'soków', 'woda',
-    'wody', 'herbata', 'herbaty', 'kawa, kawy', 'piwo', 'piwa', 'wino',
+    'wody', 'herbata', 'herbaty', 'kawa', 'kawy', 'piwo', 'piwa', 'wino',
     'wina', 'oranżada', 'oranzada', 'kompot', 'cola', 'energetyk', 'izotonik',
     'cytrynada', 'lemoniada'
   ],
@@ -121,7 +121,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     // PL
     'przekąska', 'przekaska', 'przekąski', 'przekaski', 'ciastko', 'ciastka',
     'ciasteczka', 'herbatniki', 'chipsy', 'chrupki', 'krakersy', 'popcorn',
-    'paluszki', 'precle', 'orzechy', 'orzeszki', 'migdały', 'migdaly', 'płatki'
+    'paluszki', 'precle', 'orzechy', 'orzeszki', 'migdały', 'migdaly'
   ],
 
   Bakery: [
@@ -130,13 +130,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     'croissant', 'toast', 'tortilla', 'bagel', 'pita', 'doughnut', 'donut',
     // PL
     'pieczywo', 'chleb', 'chleby', 'bułka', 'bulka', 'bułki', 'bulki',
-    'bagietka', 'rogai', 'rogalik', 'rogaliki', 'toast', 'tosty', 'tortilla',
+    'bagietka', 'rogal', 'rogalik', 'rogaliki', 'toast', 'tosty', 'tortilla',
     'pączek', 'paczek', 'drożdżówka', 'drozdzowka', 'kajzerka', 'kajzerki'
   ],
 
   FrozenFoods: [
     // EN
-    'frozen', 'ice cream', 'icecreams', 'sorbet', 'gelato', 'deep frozen',
+    'frozen', 'ice cream', 'icecream', 'sorbet', 'gelato', 'deep frozen',
     // PL
     'mrożonka', 'mrozonka', 'mrożonki', 'mrozonki', 'mrożony', 'mrozony',
     'mrożone', 'mrozone', 'lody', 'lód', 'lod', 'sorbet', 'frytki'
@@ -153,16 +153,48 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   ]
 };
 
-const mapCategoryFromTags = (tags: string[] = [], categoriesString = ''): string => {
-  const combined = `${tags.join(' ')} ${categoriesString}`.toLowerCase();
+/** Checked in this order within one tag: specific categories first, broad ones (dairy, grains) last. */
+const CATEGORY_PRIORITY = [
+  'FrozenFoods',
+  'CannedPreserves',
+  'Sweets',
+  'Snacks',
+  'Bakery',
+  'Beverages',
+  'Dairy',
+  'Meat',
+  'FruitsVegetables',
+  'DryGrains',
+  'SpicesSauces',
+];
 
-  // Przeglądamy po kolei kategorie z zdefiniowanej tablicy
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((keyword) => combined.includes(keyword))) {
+/** Lower-cases and splits into whole words, so `en:conserves` can no longer match the keyword `ser`. */
+const normalize = (text: string): string =>
+  ` ${text.toLowerCase().split(/[^\p{L}]+/u).filter(Boolean).join(' ')} `;
+
+const matchesKeyword = (text: string, keyword: string): boolean =>
+  [keyword, `${keyword}s`, `${keyword}es`].some((form) => text.includes(` ${form} `));
+
+const mapSegment = (segment: string): string | null => {
+  const text = normalize(segment);
+  for (const category of CATEGORY_PRIORITY) {
+    if (CATEGORY_KEYWORDS[category].some((keyword) => matchesKeyword(text, keyword))) {
       return category;
     }
   }
+  return null;
+};
 
+/**
+ * Open Food Facts lists categories from general to specific (`plant-based-foods-and-beverages` ... `fruit-juices`),
+ * so the last tag that matches wins; otherwise broad parent tags would decide for every product.
+ */
+const mapCategoryFromTags = (tags: string[] = [], categoriesString = ''): string => {
+  const segments = tags.length > 0 ? tags : categoriesString.split(',');
+  for (const segment of [...segments].reverse()) {
+    const category = mapSegment(segment);
+    if (category) return category;
+  }
   return 'Other';
 };
 
@@ -212,10 +244,9 @@ export class OpenFactsProvider implements BarcodeProvider {
         prod.brands ||
         'Product';
 
-      const mappedCategory = mapCategoryFromTags(
-        prod.categories_tags || [],
-        prod.categories || ''
-      );
+      // Many products have no category tags at all: fall back to the product name (e.g. "Energy Drink")
+      const fromTags = mapCategoryFromTags(prod.categories_tags || [], prod.categories || '');
+      const mappedCategory = fromTags !== 'Other' ? fromTags : mapSegment(String(name)) || 'Other';
 
       return {
         barcode: cleanBarcode,

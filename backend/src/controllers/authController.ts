@@ -54,7 +54,8 @@ const DEFAULT_CATEGORIES = [
   { name: 'Bakery', icon: 'croissant', color: 'yellow', order: 8 },
   { name: 'FrozenFoods', icon: 'ice-cream', color: 'sky', order: 9 },
   { name: 'CannedPreserves', icon: 'soup', color: 'teal', order: 10 },
-  { name: 'Other', icon: 'tag', color: 'gray', order: 11 },
+  { name: 'Sweets', icon: 'candy', color: 'pink', order: 11 },
+  { name: 'Other', icon: 'tag', color: 'gray', order: 12 },
 ];
 
 export const initHouseholdDefaults = async (householdId: string) => {

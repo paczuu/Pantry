@@ -88,7 +88,13 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     if (initialProduct) {
       const initName = initialProduct.name || '';
       const initBrand = initialProduct.brand || '';
-      const initCat = initialProduct.category || (categories[0]?.name || 'Other');
+      // Providers can return a category this household does not have: fall back to "Other"
+      const known = (name?: string | null) => !!name && categories.some((cat) => cat.name === name);
+      const initCat = known(initialProduct.category)
+        ? initialProduct.category!
+        : known('Other')
+          ? 'Other'
+          : categories[0]?.name || 'Other';
       const initCap = initialProduct.capacity || '';
       const initImg = initialProduct.imageUrl || '';
 
