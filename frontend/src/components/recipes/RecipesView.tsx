@@ -37,6 +37,15 @@ import {
   Download,
 } from 'lucide-react';
 
+const RatingPill: React.FC<{ rating?: number; className?: string }> = ({ rating, className }) => (
+  <span
+    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[11px] font-extrabold text-amber-300 ${className ?? ''}`}
+  >
+    <Star className="w-3 h-3 fill-current" />
+    {rating || 5}/10
+  </span>
+);
+
 type RecipeWithExtras = Recipe & {
   imageUrl?: string | null;
   rating?: number;
@@ -900,10 +909,7 @@ export const RecipesView: React.FC = () => {
                     <span className="text-[11px] text-slate-400 font-medium">
                       {items.length} {language === 'en' ? (items.length === 1 ? 'ingredient' : 'ingredients') : (items.length === 1 ? 'składnik' : 'składników')}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-[11px] font-extrabold text-amber-300">
-                      <Star className="w-2.5 h-2.5 fill-current" />
-                      {recipe.rating || 5}/10
-                    </span>
+                    <RatingPill rating={recipe.rating} />
                   </div>
                 </div>
 
@@ -937,67 +943,77 @@ export const RecipesView: React.FC = () => {
               <article
                 key={recipe.id}
                 onClick={() => handleOpenEdit(recipe)}
-                className="rounded-3xl border border-slate-800 bg-slate-900/80 hover:bg-slate-900 hover:border-slate-700/80 shadow-lg overflow-hidden flex flex-col cursor-pointer select-none transition-all hover:scale-[1.01]"
+                className="group rounded-3xl border border-slate-800 bg-slate-900/80 hover:bg-slate-900 hover:border-slate-700 shadow-lg overflow-hidden flex flex-col cursor-pointer select-none transition-all hover:-translate-y-0.5"
               >
                 {recipe.imageUrl && (
-                  <div className="w-full aspect-[16/9] bg-slate-950 overflow-hidden">
+                  <div className="relative w-full aspect-[16/9] bg-slate-950 overflow-hidden">
                     <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-full object-cover" loading="lazy" />
+                    {/* Rating and share sit on the photo */}
+                    <div className="absolute inset-x-0 top-0 p-3 flex items-start justify-between" onClick={(e) => e.stopPropagation()}>
+                      <RatingPill rating={recipe.rating} className="bg-slate-950/80 border-amber-500/40" />
+                      <button
+                        type="button"
+                        onClick={() => setSharingRecipe(recipe)}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-950/80 text-slate-100 hover:text-emerald-400 transition-colors"
+                        title={t('recipes.shareTitle')}
+                        aria-label={t('recipes.shareTitle')}
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 <div className="p-4 sm:p-5 flex flex-col gap-3 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="font-extrabold text-base text-white tracking-tight">{recipe.name}</h3>
+                      <h3 className="font-extrabold text-lg text-white tracking-tight leading-snug break-words">{recipe.name}</h3>
                       <LiveEditorsBadge entityType="recipe" entityId={recipe.id} className="mt-1" />
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <p className="text-[11px] text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        {!recipe.imageUrl && <RatingPill rating={recipe.rating} />}
+                        <span className="text-[11px] text-slate-400 font-medium">
                           {items.length} {language === 'en' ? (items.length === 1 ? 'ingredient' : 'ingredients') : (items.length === 1 ? 'składnik' : 'składników')}
-                        </p>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] font-bold text-amber-300">
-                          <Star className="w-3 h-3 fill-current" />
-                          {recipe.rating || 5}/10
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!recipe.imageUrl && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSharingRecipe(recipe);
                         }}
-                        className="p-2.5 text-slate-400 hover:text-emerald-400 rounded-xl hover:bg-slate-800 transition-colors"
+                        className="w-9 h-9 -mr-1 -mt-1 shrink-0 flex items-center justify-center text-slate-400 hover:text-emerald-400 rounded-xl hover:bg-slate-800 transition-colors"
                         title={t('recipes.shareTitle')}
+                        aria-label={t('recipes.shareTitle')}
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
-                    </div>
+                    )}
                   </div>
 
+                  {/* Ingredients as chips (the rest is in the editor) */}
                   {items.length > 0 && (
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-400 mb-1.5 flex items-center gap-1.5">
-                        <ListChecks className="w-3.5 h-3.5" />
-                        {t('recipes.ingredientsLabel')}
-                      </div>
-                      <ul className="space-y-1">
-                        {items.map((item, index) => (
-                          <li key={`${recipe.id}-ing-${index}`} className="text-xs text-slate-300 flex gap-2">
-                            <span className="text-emerald-400">•</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="flex flex-wrap gap-1.5">
+                      {items.slice(0, 6).map((item, index) => (
+                        <span
+                          key={`${recipe.id}-ing-${index}`}
+                          className="max-w-[11rem] truncate px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-medium text-emerald-200"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                      {items.length > 6 && (
+                        <span className="px-2.5 py-1 rounded-full bg-slate-800 text-[11px] font-bold text-slate-400">
+                          +{items.length - 6}
+                        </span>
+                      )}
                     </div>
                   )}
 
                   {recipe.instructions && (
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{t('recipes.instructionsLabel')}</div>
-                      <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">{recipe.instructions}</p>
-                    </div>
+                    <p className="text-sm text-slate-300 whitespace-pre-line leading-relaxed line-clamp-3">{recipe.instructions}</p>
                   )}
 
                   {recipe.notes && (
@@ -1021,17 +1037,17 @@ export const RecipesView: React.FC = () => {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={(e) => handlePrepareShoppingList(e, recipe)}
+                  <Button
+                    fullWidth
+                    className="mt-auto"
+                    icon={isCreatingList ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <ShoppingCart className="w-4 h-4 text-emerald-400" />}
                     disabled={isCreatingList || items.length === 0}
-                    className="mt-auto w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-colors disabled:opacity-40"
+                    onClick={(e) => handlePrepareShoppingList(e, recipe)}
                   >
-                    {isCreatingList ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <ShoppingCart className="w-4 h-4 text-emerald-400" />}
                     {isCreatingList
                       ? (language === 'en' ? 'Checking pantry...' : 'Sprawdzanie składników...')
                       : t('recipes.makeShoppingList')}
-                  </button>
+                  </Button>
                 </div>
               </article>
             );

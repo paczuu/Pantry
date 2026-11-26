@@ -273,11 +273,6 @@ export const NotesView: React.FC = () => {
     }
   };
 
-  const handleDeleteNote = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    await deleteNote(id);
-  };
-
   const filteredNotes = notes.filter(
     (n) =>
       n.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -352,90 +347,95 @@ export const NotesView: React.FC = () => {
             }
             const completedCount = items.filter((i) => i.completed).length;
 
+            const MAX_VISIBLE_ITEMS = 6;
+            const hiddenItems = Math.max(0, items.length - MAX_VISIBLE_ITEMS);
+
             return (
               <div
                 key={note.id}
                 onClick={() => handleOpenEdit(note)}
-                className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between shadow-lg relative group cursor-pointer select-none hover:scale-[1.01] hover:border-slate-700 ${getColorClasses(
-                  note.color
-                )}`}
+                className={cn(
+                  'group relative overflow-hidden rounded-3xl border p-4 pt-5 sm:p-5 sm:pt-6 flex flex-col gap-3 cursor-pointer select-none transition-all hover:-translate-y-0.5 hover:border-slate-600',
+                  getColorClasses(note.color)
+                )}
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-0.5">
-                        {note.isChecklist ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                            <CheckSquare className="w-3 h-3" /> {language === 'en' ? 'Checklist' : 'Lista zadań'} ({completedCount}/{items.length})
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-slate-400">
-                            <FileText className="w-3 h-3" /> {language === 'en' ? 'Text note' : 'Notatka tekstowa'}
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="font-extrabold text-base text-white tracking-tight line-clamp-1">
-                        {note.title}
-                      </h4>
-                      <LiveEditorsBadge entityType="note" entityId={note.id} className="mt-1" />
-                    </div>
+                {/* Colour accent along the top edge */}
+                {note.color !== 'default' && (
+                  <span className={cn('absolute inset-x-0 top-0 h-1', NOTE_COLOR_DOT[note.color])} />
+                )}
 
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => handleTogglePin(e, note)}
-                        className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-                          note.isPinned
-                            ? 'text-amber-400 bg-amber-500/10'
-                            : 'text-slate-500 hover:text-slate-300'
-                        }`}
-                        title={note.isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
-                      >
-                        <Pin className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteNote(e, note.id)}
-                        className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-rose-400 rounded-xl transition-colors"
-                        title={t('common.delete')}
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-extrabold text-base text-white tracking-tight line-clamp-2 break-words">
+                      {note.title}
+                    </h4>
+                    <LiveEditorsBadge entityType="note" entityId={note.id} className="mt-1" />
                   </div>
 
-                  {/* Body / checklist */}
-                  {note.isChecklist ? (
-                    <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto">
-                      {items.map((item) => (
+                  <button
+                    type="button"
+                    onClick={(e) => handleTogglePin(e, note)}
+                    className={cn(
+                      'w-8 h-8 -mr-1 -mt-1 shrink-0 flex items-center justify-center rounded-xl transition-all',
+                      note.isPinned
+                        ? 'text-amber-300 bg-amber-500/15'
+                        : 'text-slate-500 hover:text-slate-200 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100'
+                    )}
+                    title={note.isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
+                    aria-label={note.isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
+                  >
+                    <Pin className={cn('w-4 h-4', note.isPinned && 'fill-current')} />
+                  </button>
+                </div>
+
+                {/* Body / checklist preview */}
+                {note.isChecklist ? (
+                  items.length > 0 && (
+                    <div className="space-y-0.5">
+                      {items.slice(0, MAX_VISIBLE_ITEMS).map((item) => (
                         <div
                           key={item.id}
                           onClick={(e) => handleToggleCardChecklistItem(e, note, item.id)}
-                          className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer select-none py-1 hover:text-white transition-colors"
+                          className="flex items-center gap-2.5 text-sm py-1 cursor-pointer select-none"
                         >
                           <div
-                            className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
-                              item.completed
-                                ? 'bg-emerald-500 text-slate-950'
-                                : 'border border-slate-600'
-                            }`}
+                            className={cn(
+                              'w-[18px] h-[18px] rounded-md flex items-center justify-center shrink-0 transition-all',
+                              item.completed ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600'
+                            )}
                           >
                             {item.completed && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
-                          <span className={`truncate ${item.completed ? 'line-through text-slate-500' : ''}`}>
+                          <span className={cn('truncate', item.completed ? 'line-through text-slate-500' : 'text-slate-200')}>
                             {item.text}
                           </span>
                         </div>
                       ))}
+                      {hiddenItems > 0 && (
+                        <p className="text-[11px] text-slate-500 pl-7 pt-0.5">
+                          +{hiddenItems} {language === 'en' ? 'more' : 'więcej'}
+                        </p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-xs text-slate-300 whitespace-pre-line line-clamp-6 leading-relaxed mb-4">
+                  )
+                ) : (
+                  note.content && (
+                    <p className="text-sm text-slate-300 whitespace-pre-line line-clamp-6 leading-relaxed break-words">
                       {note.content}
                     </p>
-                  )}
-                </div>
+                  )
+                )}
 
-                <div className="flex items-center justify-end pt-2.5 border-t border-white/5 text-[11px] text-slate-400">
+                {/* Footer: date and type / progress */}
+                <div className="mt-auto flex items-center justify-between pt-2.5 border-t border-white/5 text-[11px] text-slate-400">
                   <span>{new Date(note.createdAt).toLocaleDateString(locale)}</span>
+                  {note.isChecklist ? (
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-400">
+                      <CheckSquare className="w-3.5 h-3.5" /> {completedCount}/{items.length}
+                    </span>
+                  ) : (
+                    <FileText className="w-3.5 h-3.5" />
+                  )}
                 </div>
               </div>
             );
