@@ -112,10 +112,11 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               <button
                 type="button"
                 onClick={onOpenScannerSearch}
-                className="rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 p-1 px-2 text-[11px] font-bold"
+                className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 p-1.5 text-[11px] font-bold"
                 title={t('scanner.instructionSearch')}
+                aria-label={t('scanner.instructionSearch')}
               >
-                <ScanBarcode className="w-3.5 h-3.5" />
+                <ScanBarcode className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('pantry.scanProduct')}</span>
               </button>
             )}

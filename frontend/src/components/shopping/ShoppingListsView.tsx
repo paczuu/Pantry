@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingList, ShoppingItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -10,7 +10,6 @@ import {
   Plus,
   Trash2,
   ShoppingBag,
-  Minus,
   Check,
   ListPlus,
   Scale,
@@ -30,6 +29,7 @@ export const ShoppingListsView: React.FC = () => {
   const [newItemCapacity, setNewItemCapacity] = useState('');
   const [showCapInput, setShowCapInput] = useState(false);
   const [newItemCategory, setNewItemCategory] = useState('Other');
+  const newItemNameRef = useRef<HTMLInputElement>(null);
 
   // Modals
   const [isNewListModalOpen, setIsNewListModalOpen] = useState(false);
@@ -131,6 +131,8 @@ export const ShoppingListsView: React.FC = () => {
       setNewItemCapacity('');
       setShowCapInput(false);
       playBeep(750, 'sine', 0.08);
+      // Zostajemy w polu nazwy, żeby od razu wpisywać kolejną pozycję
+      newItemNameRef.current?.focus();
     } catch (err: any) {
       showToast(
         language === 'en' ? 'Error adding item.' : 'Błąd dodawania pozycji.',
@@ -160,30 +162,6 @@ export const ShoppingListsView: React.FC = () => {
 
     try {
       await api.updateShoppingItem(item.id, { isChecked: newChecked });
-    } catch (e: any) {
-      fetchLists();
-    }
-  };
-
-  const handleUpdateItemQty = async (item: ShoppingItem, newQty: number) => {
-    if (newQty <= 0) {
-      handleDeleteItem(item.id);
-      return;
-    }
-
-    setLists((prev) =>
-      prev.map((l) =>
-        l.id === activeList.id
-          ? {
-              ...l,
-              items: l.items.map((i) => (i.id === item.id ? { ...i, quantity: newQty } : i)),
-            }
-          : l
-      )
-    );
-
-    try {
-      await api.updateShoppingItem(item.id, { quantity: newQty });
     } catch (e: any) {
       fetchLists();
     }
@@ -325,8 +303,10 @@ export const ShoppingListsView: React.FC = () => {
           <form onSubmit={handleAddItem} className="space-y-2">
             <div className="flex gap-2">
               <input
+                ref={newItemNameRef}
                 type="text"
                 required
+                enterKeyHint="enter"
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={t('shopping.addItemPlaceholder')}
@@ -399,7 +379,7 @@ export const ShoppingListsView: React.FC = () => {
               activeList.items.map((item) => (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                  className={`flex items-center justify-between px-3 py-1.5 rounded-2xl border transition-all ${
                     item.isChecked
                       ? 'bg-slate-950/40 border-slate-800/40 opacity-60'
                       : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/60'
@@ -439,25 +419,10 @@ export const ShoppingListsView: React.FC = () => {
 
                   {/* Ilość i Usuń */}
                   <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5">
-                      <button
-                        onClick={() => handleUpdateItemQty(item, item.quantity - 1)}
-                        className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-rose-400 rounded-lg transition-colors"
-                        aria-label="-1"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="px-1 text-xs font-bold text-slate-200 min-w-[2.2rem] text-center whitespace-nowrap">
-                        {item.quantity} <span className="hidden sm:inline text-[11px] text-slate-400 font-normal">{t('common.pcs')}</span>
-                      </span>
-                      <button
-                        onClick={() => handleUpdateItemQty(item, item.quantity + 1)}
-                        className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-emerald-400 rounded-lg transition-colors"
-                        aria-label="+1"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {/* Sama ilość, bez steppera — zmiana ilości odbywa się przy dodawaniu pozycji */}
+                    <span className="bg-slate-800 rounded-lg px-2 py-1 text-xs font-medium text-slate-200 whitespace-nowrap">
+                      ×{item.quantity}
+                    </span>
 
                     <button
                       onClick={() => handleDeleteItem(item.id)}
