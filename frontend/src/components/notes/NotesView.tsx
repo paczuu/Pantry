@@ -12,6 +12,7 @@ import { useLanguage } from '../../language/LanguageContext';
 import { Modal } from '../common/Modal';
 import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
 import { useLiveRefresh, useEditingPresence } from '../../contexts/RealtimeContext';
+import { cn } from '../../utils/cn';
 import { focusAndKeepVisible } from '../../hooks/useVisualViewport';
 import {
   BookOpen,
@@ -24,6 +25,17 @@ import {
   Check,
   X,
 } from 'lucide-react';
+
+const NOTE_COLORS: NoteColor[] = ['default', 'emerald', 'blue', 'amber', 'rose', 'purple'];
+
+const NOTE_COLOR_DOT: Record<NoteColor, string> = {
+  default: 'bg-slate-600',
+  emerald: 'bg-emerald-500',
+  blue: 'bg-blue-500',
+  amber: 'bg-amber-500',
+  rose: 'bg-rose-500',
+  purple: 'bg-purple-500',
+};
 
 export const NotesView: React.FC = () => {
   const { showToast, playBeep } = useToast();
@@ -44,6 +56,22 @@ export const NotesView: React.FC = () => {
   const [color, setColor] = useState<NoteColor>('default');
   const [isPinned, setIsPinned] = useState(false);
   const checklistInputRef = useRef<HTMLInputElement>(null);
+  const colorMenuRef = useRef<HTMLDivElement>(null);
+  const [showColors, setShowColors] = useState(false);
+
+  useEffect(() => {
+    if (!isModalOpen) setShowColors(false);
+  }, [isModalOpen]);
+
+  // Close the colour palette on a tap outside it
+  useEffect(() => {
+    if (!showColors) return;
+    const handleOutside = (event: PointerEvent) => {
+      if (!colorMenuRef.current?.contains(event.target as Node)) setShowColors(false);
+    };
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
+  }, [showColors]);
 
   // Initial snapshot to track isDirty
   const [initialSnapshot, setInitialSnapshot] = useState<{
@@ -133,6 +161,29 @@ export const NotesView: React.FC = () => {
       isPinned: note.isPinned,
     });
     setIsModalOpen(true);
+  };
+
+  /** Switches between text and checklist; the existing content is converted so nothing is lost. */
+  const handleFormatChange = (format: 'text' | 'checklist') => {
+    const toChecklist = format === 'checklist';
+    if (toChecklist === isChecklist) return;
+
+    if (toChecklist && checklistItems.length === 0 && content.trim()) {
+      setChecklistItems(
+        content
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((text) => ({ id: Math.random().toString(36).substring(2, 9), text, completed: false }))
+      );
+    } else if (!toChecklist && !content.trim() && checklistItems.length > 0) {
+      setContent(checklistItems.map((item) => item.text).join('\n'));
+    }
+    setIsChecklist(toChecklist);
+  };
+
+  const handleClearCompleted = () => {
+    setChecklistItems((prev) => prev.filter((item) => !item.completed));
   };
 
   const handleAddChecklistItem = () => {
@@ -247,29 +298,29 @@ export const NotesView: React.FC = () => {
     }
   };
 
+  /** Asks for confirmation and deletes the note; resolves to `true` when it was deleted. */
+  const deleteNote = async (id: string): Promise<boolean> => {
+    const confirmed = window.confirm(
+      language === 'en'
+        ? 'Are you sure you want to delete this note?'
+        : 'Czy na pewno chcesz usunąć tę notatkę?'
+    );
+    if (!confirmed) return false;
+
+    try {
+      await api.deleteNote(id);
+      showToast(language === 'en' ? 'Note deleted.' : 'Notatka usunięta.', 'info');
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      return true;
+    } catch (e: any) {
+      showToast(language === 'en' ? 'Error deleting note.' : 'Błąd usuwania notatki.', 'error');
+      return false;
+    }
+  };
+
   const handleDeleteNote = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (
-      window.confirm(
-        language === 'en'
-          ? 'Are you sure you want to delete this note?'
-          : 'Czy na pewno chcesz usunąć tę notatkę?'
-      )
-    ) {
-      try {
-        await api.deleteNote(id);
-        showToast(
-          language === 'en' ? 'Note deleted.' : 'Notatka usunięta.',
-          'info'
-        );
-        setNotes((prev) => prev.filter((n) => n.id !== id));
-      } catch (e: any) {
-        showToast(
-          language === 'en' ? 'Error deleting note.' : 'Błąd usuwania notatki.',
-          'error'
-        );
-      }
-    }
+    await deleteNote(id);
   };
 
   const filteredNotes = notes.filter(
@@ -447,179 +498,249 @@ export const NotesView: React.FC = () => {
             : (language === 'en' ? 'New note / checklist' : 'Nowa notatka / lista zadań')
         }
         maxWidth="lg"
+        tall
         isDirty={isDirty}
         headerActions={
-          <ModalActions
-            formId="note-edit-form"
-            submitLabel={editingNote ? t('common.save') : language === 'en' ? 'Create' : 'Utwórz'}
-            onCancel={() => setIsModalOpen(false)}
-          />
-        }
-      >
-        <form id="note-edit-form" onSubmit={handleSaveNote} className="space-y-4">
-          {/* Format switch: only when creating a new note */}
-          {!editingNote && (
+          <>
+            {/* Text / checklist (existing notes are converted) */}
             <SegmentedControl
-              fill
+              size="sm"
               value={isChecklist ? 'checklist' : 'text'}
-              onChange={(format) => setIsChecklist(format === 'checklist')}
+              onChange={handleFormatChange}
               options={[
                 {
                   value: 'text',
-                  icon: <FileText className="w-4 h-4" />,
-                  label: language === 'en' ? 'Text note' : 'Notatka tekstowa',
+                  label: <FileText className="w-4 h-4" />,
+                  title: language === 'en' ? 'Text note' : 'Notatka tekstowa',
                 },
                 {
                   value: 'checklist',
-                  icon: <CheckSquare className="w-4 h-4" />,
-                  label: language === 'en' ? 'Checklist' : 'Lista zadań',
+                  label: <CheckSquare className="w-4 h-4" />,
+                  title: language === 'en' ? 'Checklist' : 'Lista zadań',
                 },
               ]}
             />
-          )}
-
-          <div>
-            <FieldLabel>
-              {language === 'en' ? 'Title *' : 'Tytuł *'}
-            </FieldLabel>
-            <Input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('notes.noteTitlePlaceholder')}
-              className="px-4 rounded-2xl text-base font-bold"
-              autoFocus={!editingNote}
+            <ModalActions
+              formId="note-edit-form"
+              submitLabel={editingNote ? t('common.save') : language === 'en' ? 'Create' : 'Utwórz'}
+              onCancel={() => setIsModalOpen(false)}
             />
-          </div>
-
-          {/* Checklist form or large text area */}
-          {isChecklist ? (
-            <div className="space-y-3">
-              <FieldLabel className="mb-0">
-                {language === 'en' ? 'Checklist items' : 'Elementy listy'}
-              </FieldLabel>
-              
-              <div className="flex gap-2">
+          </>
+        }
+      >
+        <form id="note-edit-form" onSubmit={handleSaveNote} className="flex-1 flex flex-col gap-4">
+          {/* Title and content sit directly on the sheet, like in a notebook */}
+          <div className="flex-1 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
                 <Input
-                  ref={checklistInputRef}
                   type="text"
-                  value={newChecklistText}
-                  onChange={(e) => setNewChecklistText(e.target.value)}
-                  enterKeyHint="enter"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddChecklistItem();
-                    }
-                  }}
-                  placeholder={t('notes.newChecklistItemPlaceholder')}
-                  className="flex-1 text-xs sm:text-sm"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={t('notes.noteTitlePlaceholder')}
+                  aria-label={language === 'en' ? 'Title' : 'Tytuł'}
+                  className="px-0 py-1 bg-transparent border-transparent rounded-none focus:border-transparent text-xl font-extrabold tracking-tight placeholder:font-bold"
+                  autoFocus={!editingNote}
                 />
-                <Button variant="primary" onClick={handleAddChecklistItem}>
-                  {t('common.add')}
-                </Button>
               </div>
 
-              {/* Checklist items with completion state and inline editing */}
-              <div className="space-y-2 max-h-[45dvh] overflow-y-auto pt-1 pr-1">
-                {checklistItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleToggleModalChecklistItem(item.id)}
-                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all ${
-                        item.completed
-                          ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                          : 'border border-slate-600 bg-slate-900/60 hover:border-emerald-500/60'
-                      }`}
-                      title={item.completed ? (language === 'en' ? 'Mark incomplete' : 'Oznacz jako niewykonane') : (language === 'en' ? 'Mark complete' : 'Oznacz jako wykonane')}
-                    >
-                      {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </button>
+              <button
+                type="button"
+                onClick={() => setIsPinned((pinned) => !pinned)}
+                aria-pressed={isPinned}
+                title={isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
+                aria-label={isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
+                className={cn(
+                  'w-9 h-9 shrink-0 rounded-xl border flex items-center justify-center transition-colors',
+                  isPinned
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                )}
+              >
+                <Pin className="w-3.5 h-3.5" />
+              </button>
 
-                    <input
-                      type="text"
-                      value={item.text}
-                      onChange={(e) => handleUpdateChecklistItemText(item.id, e.target.value)}
-                      placeholder={language === 'en' ? 'Item text...' : 'Treść punktu...'}
-                      className={`flex-1 bg-slate-900/70 border border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-colors ${
-                        item.completed ? 'line-through text-slate-400' : ''
-                      }`}
-                    />
+              {/* Card colour: one button showing the current colour, the palette opens on tap */}
+              <div className="relative shrink-0" ref={colorMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowColors((open) => !open)}
+                  aria-expanded={showColors}
+                  title={t('notes.noteColor')}
+                  aria-label={t('notes.noteColor')}
+                  className="w-9 h-9 rounded-xl border bg-slate-800 border-slate-700 hover:border-slate-500 flex items-center justify-center transition-colors"
+                >
+                  <span className={cn('w-4 h-4 rounded-full border border-white/30', NOTE_COLOR_DOT[color])} />
+                </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveChecklistItem(item.id)}
-                      className="text-slate-400 hover:text-rose-400 p-2 -m-1 rounded-lg transition-colors shrink-0"
-                      title={language === 'en' ? 'Delete item' : 'Usuń pozycję'}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                {showColors && (
+                  <div className="absolute right-0 top-full mt-2 z-20 flex items-center gap-2 p-2.5 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl animate-slide-up">
+                    {NOTE_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          setColor(c);
+                          setShowColors(false);
+                        }}
+                        aria-label={c}
+                        aria-pressed={color === c}
+                        className={cn(
+                          'w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all',
+                          color === c ? 'border-white' : 'border-transparent opacity-80 hover:opacity-100',
+                          NOTE_COLOR_DOT[c]
+                        )}
+                      >
+                        {color === c && <Check className="w-4 h-4 stroke-[3] text-white" />}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </div>
-          ) : (
-            <div>
-              <FieldLabel>
-                {language === 'en' ? 'Note content' : 'Treść notatki'}
-              </FieldLabel>
-              <Textarea
-                rows={10}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={t('notes.noteContentPlaceholder')}
-                className="min-h-[260px] sm:min-h-[320px] max-h-[55dvh] p-4 rounded-2xl font-sans leading-relaxed resize-y overflow-y-auto shadow-inner"
-              />
+
+            {isChecklist ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <FieldLabel className="mb-0">
+                    {language === 'en' ? 'Checklist items' : 'Elementy listy'}
+                  </FieldLabel>
+                  {checklistItems.length > 0 && (
+                    <span className="text-[11px] text-slate-300 font-semibold">
+                      {t('notes.itemsProgress')
+                        .replace('{done}', String(checklistItems.filter((i) => i.completed).length))
+                        .replace('{total}', String(checklistItems.length))}
+                    </span>
+                  )}
+                </div>
+
+                {checklistItems.length > 0 && (
+                  <div className="h-1 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 transition-all"
+                      style={{
+                        width: `${(checklistItems.filter((i) => i.completed).length / checklistItems.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Items: tick, edit inline, remove */}
+                {checklistItems.length > 0 && (
+                  <div className="space-y-1.5 max-h-[40dvh] overflow-y-auto pr-1">
+                    {checklistItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleModalChecklistItem(item.id)}
+                          className={cn(
+                            'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all',
+                            item.completed
+                              ? 'bg-emerald-500 text-slate-950'
+                              : 'border border-slate-600 bg-slate-900/60 hover:border-emerald-500/60'
+                          )}
+                          title={
+                            item.completed
+                              ? language === 'en' ? 'Mark incomplete' : 'Oznacz jako niewykonane'
+                              : language === 'en' ? 'Mark complete' : 'Oznacz jako wykonane'
+                          }
+                        >
+                          {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </button>
+
+                        <Input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) => handleUpdateChecklistItemText(item.id, e.target.value)}
+                          placeholder={language === 'en' ? 'Item text...' : 'Treść punktu...'}
+                          className={cn(
+                            'flex-1 px-1 py-2 text-sm bg-transparent border-transparent rounded-none border-b-slate-800 focus:border-b-emerald-500',
+                            item.completed && 'line-through text-slate-400'
+                          )}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveChecklistItem(item.id)}
+                          className="text-slate-400 hover:text-rose-400 w-9 h-9 flex items-center justify-center rounded-lg transition-colors shrink-0"
+                          title={language === 'en' ? 'Delete item' : 'Usuń pozycję'}
+                          aria-label={language === 'en' ? 'Delete item' : 'Usuń pozycję'}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* New item goes below the list, like in a notebook */}
+                <div className="flex gap-2">
+                  <Input
+                    ref={checklistInputRef}
+                    type="text"
+                    value={newChecklistText}
+                    onChange={(e) => setNewChecklistText(e.target.value)}
+                    enterKeyHint="enter"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddChecklistItem();
+                      }
+                    }}
+                    placeholder={t('notes.newChecklistItemPlaceholder')}
+                    className="flex-1 text-sm"
+                  />
+                  <Button variant="primary" icon={<Plus className="w-4 h-4 stroke-[2.5]" />} onClick={handleAddChecklistItem}>
+                    {t('common.add')}
+                  </Button>
+                </div>
+
+                {checklistItems.some((i) => i.completed) && (
+                  <Button variant="ghost" size="sm" icon={<Trash2 className="w-3.5 h-3.5" />} onClick={handleClearCompleted}>
+                    {t('notes.clearCompleted')}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              // The text fills the rest of the sheet and scrolls inside it
+              <div className="relative flex-1 min-h-[30dvh]">
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={t('notes.noteContentPlaceholder')}
+                  aria-label={language === 'en' ? 'Note content' : 'Treść notatki'}
+                  className="absolute inset-0 h-full px-0 py-1 bg-transparent border-transparent rounded-none focus:border-transparent font-sans leading-relaxed resize-none overflow-y-auto"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Existing note: dates and delete */}
+          {editingNote && (
+            <div className="mt-auto flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
+              <span className="text-[11px] text-slate-500 min-w-0">
+                {t('notes.createdLabel')} {new Date(editingNote.createdAt).toLocaleDateString(locale)}
+                {editingNote.updatedAt &&
+                  new Date(editingNote.updatedAt).toDateString() !== new Date(editingNote.createdAt).toDateString() && (
+                    <>
+                      {' · '}
+                      {t('notes.updatedLabel')} {new Date(editingNote.updatedAt).toLocaleDateString(locale)}
+                    </>
+                  )}
+              </span>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<Trash2 className="w-3.5 h-3.5" />}
+                onClick={async () => {
+                  if (await deleteNote(editingNote.id)) setIsModalOpen(false);
+                }}
+              >
+                {t('common.delete')}
+              </Button>
             </div>
           )}
-
-          <div>
-            <FieldLabel>
-              {language === 'en' ? 'Card color' : 'Kolor kafelka'}
-            </FieldLabel>
-            <div className="flex items-center gap-3 pt-1">
-              {(['default', 'emerald', 'blue', 'amber', 'rose', 'purple'] as NoteColor[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  aria-label={c}
-                  className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                    color === c ? 'scale-125 border-white ring-2 ring-emerald-500' : 'border-transparent opacity-80'
-                  } ${
-                    c === 'emerald'
-                      ? 'bg-emerald-500'
-                      : c === 'blue'
-                      ? 'bg-blue-500'
-                      : c === 'amber'
-                      ? 'bg-amber-500'
-                      : c === 'rose'
-                      ? 'bg-rose-500'
-                      : c === 'purple'
-                      ? 'bg-purple-500'
-                      : 'bg-slate-700'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isPinned}
-                onChange={(e) => setIsPinned(e.target.checked)}
-                className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700"
-              />
-              {t('notes.pinNote')}
-            </label>
-          </div>
         </form>
       </Modal>
     </div>

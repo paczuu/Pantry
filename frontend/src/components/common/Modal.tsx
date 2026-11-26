@@ -15,6 +15,8 @@ interface ModalProps {
   isDirty?: boolean;
   confirmCloseMessage?: string;
   headerActions?: React.ReactNode;
+  /** Full height on phones (ends below the status bar), ~80% of the screen on larger ones; for editors. */
+  tall?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -26,6 +28,7 @@ export const Modal: React.FC<ModalProps> = ({
   isDirty = false,
   confirmCloseMessage = 'Masz niezapisane zmiany. Czy na pewno chcesz wyjść bez zapisywania?',
   headerActions,
+  tall = false,
 }) => {
   const viewport = useVisualViewport();
   const { t } = useLanguage();
@@ -214,12 +217,17 @@ export const Modal: React.FC<ModalProps> = ({
           shadow-2xl
           overflow-hidden
           flex flex-col
-          min-h-0
+          ${tall ? 'min-h-[var(--tall-mobile)] sm:min-h-[var(--tall-desktop)]' : 'min-h-0'}
           animate-slide-up
         `}
-        style={{
-          maxHeight: panelMaxHeight,
-        }}
+        style={
+          {
+            maxHeight: panelMaxHeight,
+            // Tall sheets fill the screen below the status bar on phones and 80% of it on larger screens
+            '--tall-mobile': panelMaxHeight,
+            '--tall-desktop': `min(80dvh, ${panelMaxHeight})`,
+          } as React.CSSProperties
+        }
       >
         {/* Header */}
         <div
@@ -260,15 +268,16 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Scrollable content */}
         <div
           ref={bodyRef}
-          className="
+          className={`
             px-5 pt-4
             pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]
             overflow-y-auto
             overscroll-contain
             flex-1
             min-h-0
+            ${tall ? 'flex flex-col' : ''}
             [-webkit-overflow-scrolling:touch]
-          "
+          `}
         >
           {children}
         </div>
