@@ -58,6 +58,7 @@ export const App: React.FC = () => {
     <div className="min-h-[100dvh] bg-slate-950 flex flex-col selection:bg-emerald-500 selection:text-white">
       {/* Top bar */}
       <Header
+        showAppName={activeTab === 'settings'}
         onOpenSettings={() => setActiveTab('settings')}
         onGoDashboard={() => setActiveTab('dashboard')}
       />

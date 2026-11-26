@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 
 interface HeaderProps {
+  /** Show the app name instead of the household name (used on the settings screen). */
+  showAppName?: boolean;
   onOpenSettings?: () => void;
   onGoDashboard?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard }) => {
+export const Header: React.FC<HeaderProps> = ({ showAppName, onOpenSettings, onGoDashboard }) => {
   const { user, logout, isAdmin } = useAuth();
   const { t } = useLanguage();
   const { isInstalled } = usePwaInstall();
@@ -56,21 +58,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
               />
             </div>
 
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-extrabold text-white text-base sm:text-lg tracking-tight">
-                  Pantry
-                </h1>
-                {isAdmin && (
-                  <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold">
-                    {t('common.adminBadge')}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-400 truncate max-w-[160px] sm:max-w-xs">
-                {user?.household?.name || t('header.defaultHousehold')}
-              </p>
-            </div>
+            <h1 className="font-extrabold text-white text-base sm:text-lg tracking-tight truncate max-w-[180px] sm:max-w-xs">
+              {showAppName ? 'Pantry' : user?.household?.name || t('header.defaultHousehold')}
+            </h1>
           </button>
 
           {/* Right side: PWA install button + profile */}
@@ -105,7 +95,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
                 <>
                   <div className="absolute right-0 top-full mt-2 w-56 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl py-2 z-30 text-xs space-y-1 animate-slide-up">
                     <div className="px-4 py-2 border-b border-slate-800">
-                      <div className="font-extrabold text-white text-sm truncate">{user?.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-white text-sm truncate">{user?.name}</span>
+                        {isAdmin && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold">
+                            {t('common.adminBadge')}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-slate-400 text-[11px] truncate">{user?.email}</div>
                     </div>
 
