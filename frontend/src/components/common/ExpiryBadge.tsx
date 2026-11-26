@@ -95,7 +95,7 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 [&>span]:whitespace-nowrap">
       {statusEl}
       {openedDate && (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">

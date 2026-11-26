@@ -520,7 +520,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           {/* Górny Pasek Kontrolny */}
           <div className="absolute top-0 inset-x-0 z-40 p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-gradient-to-b from-black/90 via-black/60 to-transparent flex items-center justify-between gap-3">
             {/* Przełącznik Trybu: Dodawanie vs Zużyj vs Szukaj */}
-            <div className="flex items-center bg-slate-900/90 backdrop-blur-md rounded-2xl p-1 border border-slate-700/80 shadow-2xl">
+            <div className="flex items-center min-w-0 bg-slate-900/90 backdrop-blur-md rounded-2xl p-1 border border-slate-700/80 shadow-2xl">
               <button
                 type="button"
                 onClick={() => setMode('ADD')}
@@ -529,7 +529,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 }`}
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                {t('common.add')}
+                <span className={mode === 'ADD' ? '' : 'hidden sm:inline'}>{t('common.add')}</span>
               </button>
               <button
                 type="button"
@@ -539,7 +539,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 }`}
               >
                 <MinusCircle className="w-3.5 h-3.5" />
-                {language === 'en' ? 'Consume' : 'Zużyj'}
+                <span className={mode === 'REMOVE' ? '' : 'hidden sm:inline'}>
+                  {language === 'en' ? 'Consume' : 'Zużyj'}
+                </span>
               </button>
               {allowSearch && (
                 <button
@@ -550,7 +552,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   }`}
                 >
                   <Search className="w-3.5 h-3.5" />
-                  {t('common.search')}
+                  <span className={mode === 'SEARCH' ? '' : 'hidden sm:inline'}>{t('common.search')}</span>
                 </button>
               )}
             </div>

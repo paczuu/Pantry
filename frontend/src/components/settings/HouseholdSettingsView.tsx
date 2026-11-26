@@ -1310,7 +1310,7 @@ export const HouseholdSettingsView: React.FC = () => {
                     <div className="text-xs sm:text-sm font-bold text-white truncate">
                       {theme.label[language] || theme.label.pl}
                     </div>
-                    <div className="text-[10px] text-slate-500 truncate">
+                    <div className="text-[11px] text-slate-500 truncate">
                       {theme.description[language] || theme.description.pl}
                     </div>
                   </div>
@@ -1394,7 +1394,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 type="button"
                 onClick={() => moveNavItem(index, 'up')}
                 disabled={index === 0}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                className="p-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
               >
                 <ArrowUp className="w-4 h-4" />
               </button>
@@ -1403,7 +1403,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 type="button"
                 onClick={() => moveNavItem(index, 'down')}
                 disabled={index === sortedNavItems.length - 1}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                className="p-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
               >
                 <ArrowDown className="w-4 h-4" />
               </button>
@@ -1551,7 +1551,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 <ol className="space-y-2.5 pt-1">
                   {guide.steps.map((step, i) => (
                     <li key={i} className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
                         {i + 1}
                       </span>
                       <span className="text-xs text-slate-300 leading-relaxed">
@@ -1794,7 +1794,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   <span className="truncate">{member.name}</span>
 
                   {isMe && (
-                    <span className="text-[10px] text-slate-400 font-normal shrink-0">
+                    <span className="text-[11px] text-slate-400 font-normal shrink-0">
                       {t('settings.youBadge')}
                     </span>
                   )}
@@ -1823,7 +1823,7 @@ export const HouseholdSettingsView: React.FC = () => {
               {isAdmin && !isMe && (
                 <button
                   onClick={() => handleRemoveMember(member.id, member.name)}
-                  className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
+                  className="p-2.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition-colors"
                   title={t('settings.kickMember')}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1999,7 +1999,7 @@ export const HouseholdSettingsView: React.FC = () => {
                     <button
                       onClick={() => moveBarcodeSource(index, 'up')}
                       disabled={index === 0}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                      className="p-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
                     >
                       <ArrowUp className="w-4 h-4" />
                     </button>
@@ -2007,14 +2007,14 @@ export const HouseholdSettingsView: React.FC = () => {
                     <button
                       onClick={() => moveBarcodeSource(index, 'down')}
                       disabled={index === barcodeSources.length - 1}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                      className="p-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30"
                     >
                       <ArrowDown className="w-4 h-4" />
                     </button>
 
                     <button
                       onClick={() => removeBarcodeSource(index)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
+                      className="p-2.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -2156,7 +2156,7 @@ export const HouseholdSettingsView: React.FC = () => {
                     : t('settings.usersCountPlural')}
                 </div>
                 {codeActive && (
-                  <div className="text-[10px] text-emerald-400 font-mono mt-1">
+                  <div className="text-[11px] text-emerald-400 font-mono mt-1">
                     {t('settings.codeLabel')} {household.inviteCode}
                   </div>
                 )}
@@ -2202,20 +2202,20 @@ export const HouseholdSettingsView: React.FC = () => {
                       </span>
 
                       {isMe && (
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[11px] text-slate-400">
                           {t('settings.youBadge')}
                         </span>
                       )}
 
                       {systemUser.isPrimaryAdmin && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-extrabold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-extrabold">
                           <Crown className="w-3 h-3" />
                           {t('settings.primaryAccountBadge')}
                         </span>
                       )}
 
                       {systemUser.isSystemAdmin && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-extrabold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-extrabold">
                           <Crown className="w-3 h-3" />
                           {t('settings.systemAdminBadge')}
                         </span>
@@ -2241,7 +2241,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1">
+                    <label className="block text-[11px] text-slate-500 mb-1">
                       {t('settings.householdLabel')}
                     </label>
                     <select
@@ -2261,7 +2261,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1">
+                    <label className="block text-[11px] text-slate-500 mb-1">
                       {t('settings.householdRoleLabel')}
                     </label>
                     <select
@@ -2280,7 +2280,7 @@ export const HouseholdSettingsView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1">
+                    <label className="block text-[11px] text-slate-500 mb-1">
                       {t('settings.systemPermissionsLabel')}
                     </label>
                     <button
@@ -2418,7 +2418,7 @@ export const HouseholdSettingsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveSection(null)}
-                  className="mb-3 -ml-1 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1 transition-colors"
+                  className="mb-3 -ml-1 pl-2 pr-3 min-h-[44px] rounded-xl text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1 transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   {t('settings.title')}

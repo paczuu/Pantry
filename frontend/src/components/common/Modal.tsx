@@ -4,6 +4,7 @@ import {
   focusAndKeepVisible,
   useVisualViewport,
 } from '../../hooks/useVisualViewport';
+import { useLanguage } from '../../language/LanguageContext';
 
 interface ModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const Modal: React.FC<ModalProps> = ({
   headerActions,
 }) => {
   const viewport = useVisualViewport();
+  const { t } = useLanguage();
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -239,9 +241,10 @@ export const Modal: React.FC<ModalProps> = ({
             <button
               type="button"
               onClick={handleRequestClose}
-              aria-label="Zamknij"
+              aria-label={t('common.close')}
               className="
-                p-1.5
+                p-2.5
+                -mr-1.5
                 text-slate-400
                 hover:text-white
                 rounded-lg

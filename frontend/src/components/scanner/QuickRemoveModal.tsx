@@ -99,7 +99,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
                   <span className="text-xs text-slate-400 font-medium">{primaryItem.brand}</span>
                 )}
                 {primaryItem?.capacity && (
-                  <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.2 rounded-md font-mono border border-emerald-500/20">
+                  <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md font-mono border border-emerald-500/20">
                     {primaryItem.capacity}
                   </span>
                 )}

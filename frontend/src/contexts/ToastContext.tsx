@@ -114,7 +114,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast, playBeep, vibrate }}>
       {children}
       {/* Toast floating container */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)] pointer-events-none">
+      <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-50 flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)] pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
@@ -129,7 +129,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-slate-400 hover:text-white p-1 rounded-md transition-colors"
+              className="text-slate-400 hover:text-white p-2 -m-1.5 rounded-md transition-colors"
+              aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>

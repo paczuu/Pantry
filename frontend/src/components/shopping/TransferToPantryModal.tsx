@@ -75,7 +75,7 @@ export const TransferToPantryModal: React.FC<TransferToPantryModalProps> = ({
                   {item.name}
                 </span>
                 {item.capacity && (
-                  <span className="text-[10px] text-slate-400 font-mono">
+                  <span className="text-[11px] text-slate-400 font-mono">
                     ({item.capacity})
                   </span>
                 )}

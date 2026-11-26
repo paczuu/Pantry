@@ -341,7 +341,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <button
               key={tile.key}
               onClick={tile.onClick}
-              className="flex items-center gap-3 min-h-[56px] px-3 py-2 rounded-2xl bg-slate-950/60 hover:bg-slate-950 border border-slate-800 text-left active:scale-95 transition-all"
+              className="flex items-center gap-2.5 min-h-[56px] px-2.5 sm:px-3 py-2 rounded-2xl bg-slate-950/60 hover:bg-slate-950 border border-slate-800 text-left active:scale-95 transition-all"
             >
               <span className={`shrink-0 ${tile.iconCls}`}>{tile.icon}</span>
               <span className="min-w-0">

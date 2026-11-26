@@ -64,20 +64,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 pb-[env(safe-area-inset-bottom)] md:static md:bg-transparent md:border-none md:pb-0">
-      <div className="max-w-xl mx-auto px-2 flex items-center justify-around h-16">
+      <div className="max-w-xl mx-auto px-0 flex items-center justify-around h-16">
         {visibleItems.map((item) => {
           const Icon = ICONS_MAP[item.id] || LayoutDashboard;
           const displayLabel = t(`nav.${item.id}`) || item.label;
+
+          // Etykiety mniejsze na wąskich telefonach, żeby wszystkie pozycje mieściły się w jednym rzędzie
+          const labelCls = `block max-w-full truncate leading-tight tracking-tighter ${
+            visibleItems.length > 7 ? 'text-[9px]' : 'text-[10px] max-[389px]:text-[9px]'
+          }`;
 
           if (item.id === 'scan-action') {
             return (
               <button
                 key={item.id}
                 onClick={onOpenScanner}
-                className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-400 hover:text-emerald-400 transition-colors"
+                className="relative flex flex-col items-center justify-center flex-1 min-w-0 h-full px-0 text-slate-400 hover:text-emerald-400 transition-colors"
               >
                 <Icon className="w-5 h-5 mb-0.5" />
-                <span className="text-[10px] tracking-tight font-medium">{displayLabel}</span>
+                <span className={`${labelCls} font-medium`}>{displayLabel}</span>
               </button>
             );
           }
@@ -88,15 +93,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center justify-center flex-1 py-1 px-1 transition-colors ${
-                isActive ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+              className={`relative flex flex-col items-center justify-center flex-1 min-w-0 h-full px-0 transition-colors ${
+                isActive ? 'text-emerald-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'scale-110 text-emerald-400' : ''} transition-transform`} />
-              <span className="text-[10px] tracking-tight">{displayLabel}</span>
-              {isActive && (
-                <span className="w-1 h-1 bg-emerald-400 rounded-full mt-0.5 animate-fade-in" />
-              )}
+              <span className={labelCls}>{displayLabel}</span>
             </button>
           );
         })}

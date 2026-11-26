@@ -5,27 +5,58 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* Ciemne natywne kontrolki (checkboxy, wybór daty, listy select) zamiast białych */
+    color-scheme: dark;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: rgb(var(--accent-500));
   }
   
   body {
-    @apply bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500 selection:text-white;
+    @apply bg-slate-950 text-slate-100 min-h-[100dvh] selection:bg-emerald-500 selection:text-white;
   }
 
-  /* Custom scrollbars */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  /* Custom scrollbars — tylko dla urządzeń z myszą (na telefonie przewijanie nakładkowe) */
+  @media (hover: hover) and (pointer: fine) {
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(71, 85, 105, 1);
+    }
   }
-  ::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.6);
+}
+
+/*
+ * Pola formularzy na telefonie mają min. 16px — poniżej tej wartości iOS Safari
+ * automatycznie przybliża stronę po dotknięciu pola. Dzięki temu można było
+ * odblokować pinch-zoom (dostępność) bez skakania widoku przy wpisywaniu.
+ */
+@media (max-width: 639px) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
   }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(51, 65, 85, 0.8);
-    border-radius: 9999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(71, 85, 105, 1);
-  }
+}
+
+/* Ukrywa pasek przewijania (poziome listy zakładek) */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Glassmorphism utility classes */

@@ -39,21 +39,23 @@ const Stepper: React.FC<StepperProps> = ({ quantity, pcs, decTitle, disabled, on
   <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 shadow-inner">
     <button
       onClick={onDec}
-      className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors active:scale-95"
+      className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors active:scale-95"
       title={decTitle}
+      aria-label={decTitle}
     >
-      <Minus className="w-3.5 h-3.5" />
+      <Minus className="w-4 h-4" />
     </button>
-    <span className="px-2.5 text-xs sm:text-sm font-extrabold text-white min-w-[2.8rem] text-center">
-      {quantity} <span className="text-[10px] text-slate-400 font-normal">{pcs}</span>
+    <span className="px-1.5 sm:px-2.5 text-xs sm:text-sm font-extrabold text-white min-w-[2.8rem] text-center whitespace-nowrap">
+      {quantity} <span className="hidden sm:inline text-[11px] text-slate-400 font-normal">{pcs}</span>
     </span>
     <button
       onClick={onInc}
       disabled={disabled}
-      className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 active:scale-95"
+      className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 active:scale-95"
       title="+1"
+      aria-label="+1"
     >
-      <Plus className="w-3.5 h-3.5" />
+      <Plus className="w-4 h-4" />
     </button>
   </div>
 );
@@ -80,7 +82,7 @@ const CardMenu: React.FC<MenuProps> = ({
   onWasted,
   onDelete,
   labels,
-  triggerClassName = 'p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors',
+  triggerClassName = 'w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors',
   menuWidthClassName = 'w-52',
 }) => (
   <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -255,23 +257,68 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   /* WIDOK LISTY — kompaktowy: zdjęcie, nazwa, termin, ilość */
   if (viewMode === 'list') {
     return (
+      <>
+      {/* TELEFON: nazwa na całą szerokość, pod nią terminy po lewej i stepper ilości po prawej */}
       <div
         onClick={() => onEdit(item)}
-        className={`relative flex items-center justify-between p-3 sm:p-4 rounded-2xl transition-all gap-3 border cursor-pointer select-none ${statusClasses}`}
+        className={`sm:hidden relative flex items-start gap-3 p-3 rounded-2xl transition-all border cursor-pointer select-none ${statusClasses}`}
       >
-        <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        <PantryItemThumb item={item} />
+        <PantryItemThumb item={item} className="!w-12 !h-12" />
 
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-extrabold text-white text-sm sm:text-base truncate leading-snug">
-                {item.name}
-              </h4>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex items-start justify-between gap-1">
+            <h4
+              className="font-extrabold text-white text-sm line-clamp-2 break-words leading-snug min-w-0 pt-1"
+              title={item.name}
+            >
+              {item.name}
+            </h4>
+            <div className="-mt-1 -mr-1 shrink-0">
+              <CardMenu {...menuProps} />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               {item.capacity && (
-                <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-bold">
+                <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-bold whitespace-nowrap">
                   {item.capacity}
                 </span>
               )}
+              <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
+            </div>
+
+            <div className="shrink-0 ml-auto" onClick={(e) => e.stopPropagation()}>
+              <Stepper
+                quantity={item.quantity}
+                pcs={t('common.pcs')}
+                decTitle={t('pantry.consumeOne')}
+                disabled={isUpdating}
+                onDec={handleDecrement}
+                onInc={handleIncrement}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TABLET / DESKTOP: jeden rząd — zdjęcie, nazwa, termin, ilość */}
+      <div
+        onClick={() => onEdit(item)}
+        className={`relative hidden sm:flex items-center justify-between p-4 rounded-2xl transition-all gap-3 border cursor-pointer select-none ${statusClasses}`}
+      >
+        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+          <PantryItemThumb item={item} />
+
+          <div className="min-w-0 flex-1 space-y-1">
+            {/* Nazwa może zająć dwie linie — na telefonie to jedyne miejsce na pełny tytuł */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4
+                className="font-extrabold text-white text-sm sm:text-base line-clamp-2 sm:line-clamp-1 break-words leading-snug min-w-0"
+                title={item.name}
+              >
+                {item.name}
+              </h4>
               {item.brand && (
                 <span className="hidden sm:inline text-xs text-slate-300 font-semibold bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">
                   {item.brand}
@@ -279,7 +326,12 @@ export const PantryCard: React.FC<PantryCardProps> = ({
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {item.capacity && (
+                <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-bold whitespace-nowrap">
+                  {item.capacity}
+                </span>
+              )}
               <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
               {/* Kategoria tylko od szerszych ekranów — na telefonie zajmuje miejsce */}
               <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md">
@@ -304,6 +356,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
           <CardMenu {...menuProps} />
         </div>
       </div>
+      </>
     );
   }
 
@@ -342,7 +395,7 @@ export const PantryCard: React.FC<PantryCardProps> = ({
         {/* Status terminu — tylko gdy wymaga uwagi */}
         {statusPill && (
           <span
-            className={`absolute top-2 left-2 max-w-[70%] truncate px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-md ${statusPill.cls}`}
+            className={`absolute top-2 left-2 max-w-[70%] truncate px-2 py-0.5 rounded-full text-[11px] font-extrabold shadow-md ${statusPill.cls}`}
           >
             {statusPill.text}
           </span>

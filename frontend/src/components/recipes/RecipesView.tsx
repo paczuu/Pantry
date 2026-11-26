@@ -978,7 +978,7 @@ export const RecipesView: React.FC = () => {
                     <span className="text-[11px] text-slate-400 font-medium">
                       {items.length} {language === 'en' ? (items.length === 1 ? 'ingredient' : 'ingredients') : (items.length === 1 ? 'składnik' : 'składników')}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-amber-500/15 border border-amber-500/30 text-[10px] font-extrabold text-amber-300">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-[11px] font-extrabold text-amber-300">
                       <Star className="w-2.5 h-2.5 fill-current" />
                       {recipe.rating || 5}/10
                     </span>
@@ -993,7 +993,7 @@ export const RecipesView: React.FC = () => {
                       e.stopPropagation();
                       setSharingRecipe(recipe);
                     }}
-                    className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    className="p-2.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
                     title={t('recipes.shareTitle')}
                   >
                     <Share2 className="w-4 h-4" />
@@ -1046,7 +1046,7 @@ export const RecipesView: React.FC = () => {
                           e.stopPropagation();
                           setSharingRecipe(recipe);
                         }}
-                        className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-xl hover:bg-slate-800 transition-colors"
+                        className="p-2.5 text-slate-400 hover:text-emerald-400 rounded-xl hover:bg-slate-800 transition-colors"
                         title={t('recipes.shareTitle')}
                       >
                         <Share2 className="w-4 h-4" />
@@ -1300,7 +1300,7 @@ export const RecipesView: React.FC = () => {
               })}
             </div>
 
-            <div className="flex justify-between text-[10px] text-slate-500 px-0.5">
+            <div className="flex justify-between text-[11px] text-slate-500 px-0.5">
               <span>{t('recipes.ratingPoor')}</span>
               <span>{t('recipes.ratingGreat')}</span>
             </div>
@@ -1403,13 +1403,13 @@ export const RecipesView: React.FC = () => {
                         {t('recipes.chooseGallery')}
                       </button>
                     </div>
-                    <span className="text-[10px] text-slate-500">JPG, PNG, WEBP • max 15 MB</span>
+                    <span className="text-[11px] text-slate-500">JPG, PNG, WEBP • max 15 MB</span>
                   </>
                 )}
               </div>
             )}
 
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[11px] text-slate-500">
               {language === 'en'
                 ? 'Photo will be automatically resized and compressed before saving.'
                 : 'Zdjęcie zostanie automatycznie zmniejszone i skompresowane przed zapisaniem.'}
@@ -1452,7 +1452,7 @@ export const RecipesView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIngredients((prev) => prev.filter((_, i) => i !== index))}
-                    className="text-slate-500 hover:text-rose-400 p-1"
+                    className="text-slate-500 hover:text-rose-400 p-2"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

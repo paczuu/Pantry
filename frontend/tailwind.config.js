@@ -5,8 +5,15 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
+  future: {
+    // Style :hover tylko na urządzeniach z kursorem — na dotyku nie "przyklejają się" po tapnięciu
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
+      scale: {
+        98: '0.98',
+      },
       colors: {
         emerald: {
           50: 'rgb(var(--accent-50) / <alpha-value>)',

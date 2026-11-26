@@ -253,7 +253,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
+            className="hidden sm:block px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
           >
             {t('common.cancel')}
           </button>
@@ -284,12 +284,12 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   EAN: <strong className="font-mono text-slate-300">{barcode || initialProduct.barcode}</strong>
                 </span>
                 {initialProduct.brand && (
-                  <span className="text-xs text-slate-300 font-semibold bg-slate-800 px-2 py-0.2 rounded border border-slate-700">
+                  <span className="text-xs text-slate-300 font-semibold bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
                     {initialProduct.brand}
                   </span>
                 )}
                 {capacity && (
-                  <span className="text-xs text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.2 rounded border border-emerald-500/20 flex items-center gap-1">
+                  <span className="text-xs text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
                     <Scale className="w-3 h-3" /> {capacity}
                   </span>
                 )}
@@ -420,7 +420,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+              className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
 
             {/* Przycisk Głosowy */}
@@ -467,42 +467,42 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             <button
               type="button"
               onClick={() => addDaysToExpiry(3)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
             >
               {t('pantry.quickDate3d')}
             </button>
             <button
               type="button"
               onClick={() => addDaysToExpiry(7)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
             >
               {t('pantry.quickDate1w')}
             </button>
             <button
               type="button"
               onClick={() => addDaysToExpiry(14)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
             >
               {t('pantry.quickDate2w')}
             </button>
             <button
               type="button"
               onClick={() => addMonthsToExpiry(1)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
             >
               {t('pantry.quickDate1m')}
             </button>
             <button
               type="button"
               onClick={() => addMonthsToExpiry(6)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
             >
               {t('pantry.quickDate6m')}
             </button>
             <button
               type="button"
               onClick={() => addMonthsToExpiry(12)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
             >
               {t('pantry.quickDate1y')}
             </button>
@@ -510,13 +510,13 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         </div>
 
         {/* Data otwarcia */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50">
           <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 font-medium">
             <input
               type="checkbox"
               checked={isOpened}
               onChange={handleOpenedToggle}
-              className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500 cursor-pointer"
+              className="w-5 h-5 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500 cursor-pointer"
             />
             <PackageOpen className="w-4 h-4 text-cyan-400" />
             <span>{t('pantry.openedToggle')}</span>
@@ -526,7 +526,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               type="date"
               value={openedDate}
               onChange={(e) => setOpenedDate(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none"
             />
           )}
         </div>
@@ -571,7 +571,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   {t('scanner.chooseGallery')}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 {t('scanner.photoSavedWithEan')}
               </p>
             </div>

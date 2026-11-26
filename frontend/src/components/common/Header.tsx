@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
@@ -20,6 +20,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
   const { isInstalled } = usePwaInstall();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Zamykanie menu po dotknięciu poza nim. Nie używamy tu warstwy `fixed inset-0`,
+  // bo nagłówek ma backdrop-blur, który ogranicza `fixed` do wysokości nagłówka.
+  useEffect(() => {
+    if (!showDropdown) return;
+
+    const handleOutside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
+  }, [showDropdown]);
 
   return (
     <>
@@ -46,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
                   Pantry
                 </h1>
                 {isAdmin && (
-                  <span className="px-1.5 py-0.2 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-extrabold">
+                  <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold">
                     {t('common.adminBadge')}
                   </span>
                 )}
@@ -72,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
             )}
 
             {/* Menu Użytkownika */}
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -87,7 +103,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
 
               {showDropdown && (
                 <>
-                  <div className="fixed inset-0 z-20" onClick={() => setShowDropdown(false)} />
                   <div className="absolute right-0 top-full mt-2 w-56 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl py-2 z-30 text-xs space-y-1 animate-slide-up">
                     <div className="px-4 py-2 border-b border-slate-800">
                       <div className="font-extrabold text-white text-sm truncate">{user?.name}</div>

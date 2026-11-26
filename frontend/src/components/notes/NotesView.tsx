@@ -367,7 +367,7 @@ export const NotesView: React.FC = () => {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-0.5">
                         {note.isChecklist ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.2 rounded-md">
+                          <span className="inline-flex items-center gap-1 text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">
                             <CheckSquare className="w-3 h-3" /> {language === 'en' ? 'Checklist' : 'Lista zadań'} ({completedCount}/{items.length})
                           </span>
                         ) : (
@@ -385,21 +385,22 @@ export const NotesView: React.FC = () => {
                     <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => handleTogglePin(e, note)}
-                        className={`p-1.5 rounded-xl transition-colors ${
+                        className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
                           note.isPinned
                             ? 'text-amber-400 bg-amber-500/10'
                             : 'text-slate-500 hover:text-slate-300'
                         }`}
                         title={note.isPinned ? t('notes.unpinNote') : t('notes.pinNote')}
                       >
-                        <Pin className="w-3.5 h-3.5" />
+                        <Pin className="w-4 h-4" />
                       </button>
                       <button
                         onClick={(e) => handleDeleteNote(e, note.id)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-xl transition-colors"
+                        className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-rose-400 rounded-xl transition-colors"
                         title={t('common.delete')}
+                        aria-label={t('common.delete')}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -460,7 +461,7 @@ export const NotesView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors"
+              className="hidden sm:block px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors"
             >
               {t('common.cancel')}
             </button>
@@ -550,7 +551,7 @@ export const NotesView: React.FC = () => {
               </div>
 
               {/* Lista pozycji w modalu z podglądem wykonania i bezpośrednią edycją tekstu */}
-              <div className="space-y-2 max-h-[45vh] overflow-y-auto pt-1 pr-1">
+              <div className="space-y-2 max-h-[45dvh] overflow-y-auto pt-1 pr-1">
                 {checklistItems.map((item) => (
                   <div
                     key={item.id}
@@ -582,7 +583,7 @@ export const NotesView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleRemoveChecklistItem(item.id)}
-                      className="text-slate-400 hover:text-rose-400 p-1 rounded-lg transition-colors shrink-0"
+                      className="text-slate-400 hover:text-rose-400 p-2 -m-1 rounded-lg transition-colors shrink-0"
                       title={language === 'en' ? 'Delete item' : 'Usuń pozycję'}
                     >
                       <X className="w-4 h-4" />
@@ -601,7 +602,7 @@ export const NotesView: React.FC = () => {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={t('notes.noteContentPlaceholder')}
-                className="w-full min-h-[260px] sm:min-h-[320px] max-h-[55vh] p-4 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 font-sans leading-relaxed resize-y overflow-y-auto shadow-inner"
+                className="w-full min-h-[260px] sm:min-h-[320px] max-h-[55dvh] p-4 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 font-sans leading-relaxed resize-y overflow-y-auto shadow-inner"
               />
             </div>
           )}
@@ -610,13 +611,14 @@ export const NotesView: React.FC = () => {
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               {language === 'en' ? 'Card color' : 'Kolor kafelka'}
             </label>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-3 pt-1">
               {(['default', 'emerald', 'blue', 'amber', 'rose', 'purple'] as NoteColor[]).map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                  aria-label={c}
+                  className={`w-8 h-8 rounded-full border-2 transition-transform ${
                     color === c ? 'scale-125 border-white ring-2 ring-emerald-500' : 'border-transparent opacity-80'
                   } ${
                     c === 'emerald'

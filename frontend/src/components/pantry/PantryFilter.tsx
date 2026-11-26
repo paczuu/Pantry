@@ -40,7 +40,7 @@ const Chip: React.FC<ChipProps> = ({ active, onClick, icon, label, count, active
     type="button"
     onClick={onClick}
     title={title}
-    className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all active:scale-95 ${
+    className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold transition-all active:scale-95 ${
       active ? activeCls : idleCls
     }`}
   >
@@ -94,7 +94,9 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
             value={filters.search}
             onChange={(e) => setFilter('search', e.target.value)}
             placeholder={t('pantry.searchPlaceholder')}
-            className="w-full pl-10 pr-24 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            className={`w-full pl-9 sm:pl-10 ${
+              filters.search ? 'pr-24' : 'pr-12'
+            } sm:pr-32 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors`}
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
             {filters.search && (
@@ -121,7 +123,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
         </div>
 
         {/* Sortowanie */}
-        <div className="relative shrink-0 flex items-center justify-center bg-slate-900 border border-slate-800 rounded-2xl p-2.5 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
+        <div className="relative shrink-0 flex items-center justify-center bg-slate-900 border border-slate-800 rounded-2xl p-3 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
           <ArrowUpDown className="w-4 h-4" />
           <select
             value={filters.sortBy}
@@ -143,7 +145,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-xl transition-colors ${
+            className={`p-2.5 rounded-xl transition-colors ${
               viewMode === 'grid' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
             }`}
             title={en ? 'Grid view' : 'Widok siatki'}
@@ -153,7 +155,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-xl transition-colors ${
+            className={`p-2.5 rounded-xl transition-colors ${
               viewMode === 'list' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
             }`}
             title={en ? 'List view' : 'Widok listy'}
@@ -164,7 +166,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
       </div>
 
       {/* Rząd 2: chipy statusu (przewijane poziomo na telefonie) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 sm:-mx-1 sm:px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Chip
           active={filters.filterByExpiry === 'ALL'}
           onClick={() => setFilter('filterByExpiry', 'ALL')}
@@ -220,7 +222,7 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
         <select
           value={filters.category}
           onChange={(e) => setFilter('category', e.target.value)}
-          className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
+          className="flex-1 sm:flex-none min-w-[6.5rem] max-w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
         >
           <option value="ALL">{t('pantry.categoryAll')}</option>
           {categories.map((c) => (
@@ -231,15 +233,15 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
         </select>
 
         {groupBy && setGroupBy && (
-          <div className="flex items-center gap-2">
-            <Layers className="w-3.5 h-3.5 text-slate-500" />
+          <div className="flex items-center gap-2 shrink-0">
+            <Layers className="hidden sm:block w-3.5 h-3.5 text-slate-500" />
             <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5">
               {groupOptions.map((opt) => (
                 <button
                   key={opt.key}
                   type="button"
                   onClick={() => setGroupBy(opt.key)}
-                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  className={`px-2 sm:px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
                     groupBy === opt.key ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >

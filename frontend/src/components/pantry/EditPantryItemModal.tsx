@@ -152,7 +152,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
+            className="hidden sm:block px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
           >
             {t('common.cancel')}
           </button>

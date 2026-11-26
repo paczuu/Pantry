@@ -212,7 +212,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
               <section key={group.key} className="space-y-2.5">
                 <button
                   onClick={() => toggleGroup(group.key)}
-                  className="w-full flex items-center gap-2 text-left"
+                  className="w-full flex items-center gap-2 text-left py-1.5"
                   aria-expanded={!isCollapsed}
                 >
                   {isCollapsed ? (
