@@ -6,13 +6,14 @@ import { Button } from '../ui/Button';
 import { ModalActions } from '../ui/ModalActions';
 import { QuantityStepper } from '../ui/QuantityStepper';
 import { PantryItemThumb } from '../common/PantryItemThumb';
+import { PhotoField } from '../common/PhotoField';
 import { ProductCatalogItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
-import { Calendar, Check, ChevronDown, ChevronUp, Tag, Image as ImageIcon, Camera, Scale, PackageOpen, SearchX, Barcode } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronUp, Tag, Scale, PackageOpen, SearchX, Barcode } from 'lucide-react';
 
 /** Quick expiry shortcuts: translation key, unit (days / months) and amount. */
 const QUICK_DATES = [
@@ -55,8 +56,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMore, setShowMore] = useState(false);
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
-  const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
   // Snapshot used to track isDirty
   const [initialSnapshot, setInitialSnapshot] = useState({
@@ -139,42 +138,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     setOpenedDate('');
     setNotes('');
   }, [initialProduct, isOpen, categories]);
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxDim = 800;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            const ratio = Math.min(maxDim / w, maxDim / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, w, h);
-          const compressed = canvas.toDataURL('image/jpeg', 0.82);
-          setImageUrl(compressed);
-          showToast(t('scanner.imageReady'), 'success');
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      showToast(t('scanner.imageError'), 'error');
-    } finally {
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
-      if (galleryInputRef.current) galleryInputRef.current.value = '';
-    }
-  };
 
   /** Today plus N days / months as a local `YYYY-MM-DD` date. */
   const quickDate = (unit: 'd' | 'm', amount: number) => {
@@ -432,48 +395,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               )}
             </div>
 
-            {/* Product photo */}
-            <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-2">
-              <FieldLabel className="mb-0">{t('scanner.photoSection')}</FieldLabel>
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-              <div className="flex items-center gap-3">
-                <PantryItemThumb src={imageUrl} alt="Preview" />
-
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      icon={<Camera className="w-3.5 h-3.5 text-emerald-400" />}
-                      onClick={() => cameraInputRef.current?.click()}
-                    >
-                      {t('scanner.takePhoto')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      icon={<ImageIcon className="w-3.5 h-3.5 text-slate-300" />}
-                      onClick={() => galleryInputRef.current?.click()}
-                    >
-                      {t('scanner.chooseGallery')}
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-slate-500">{t('scanner.photoSavedWithEan')}</p>
-                </div>
-              </div>
-            </div>
+            <PhotoField value={imageUrl} onChange={setImageUrl} hint={t('scanner.photoSavedWithEan')} />
 
             {/* Notes */}
             <div>

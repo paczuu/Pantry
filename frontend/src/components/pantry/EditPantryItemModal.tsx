@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FieldLabel, Input, Select } from '../ui/FormControls';
 import { Modal } from '../common/Modal';
 import { VoiceDateInput } from '../common/VoiceDateInput';
+import { PhotoField } from '../common/PhotoField';
 import { ModalActions } from '../ui/ModalActions';
 import { QuantityStepper } from '../ui/QuantityStepper';
 import { PantryItem } from '../../types';
@@ -35,6 +36,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
   const [expiryDate, setExpiryDate] = useState('');
   const [openedDate, setOpenedDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [initialSnapshot, setInitialSnapshot] = useState({
@@ -45,6 +47,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
     expiryDate: '',
     openedDate: '',
     notes: '',
+    imageUrl: '',
   });
 
   const isDirty =
@@ -54,7 +57,8 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
     category !== initialSnapshot.category ||
     expiryDate !== initialSnapshot.expiryDate ||
     openedDate !== initialSnapshot.openedDate ||
-    notes !== initialSnapshot.notes;
+    notes !== initialSnapshot.notes ||
+    imageUrl !== initialSnapshot.imageUrl;
 
   const handleVoiceDateDetected = useCallback((detectedDate: string) => {
     setExpiryDate(detectedDate);
@@ -73,6 +77,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
       const initExp = item.expiryDate ? item.expiryDate.split('T')[0] : '';
       const initOp = item.openedDate ? item.openedDate.split('T')[0] : '';
       const initNotes = item.notes || '';
+      const initImg = item.imageUrl || '';
 
       setName(initName);
       setBrand(initBrand);
@@ -82,6 +87,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
       setExpiryDate(initExp);
       setOpenedDate(initOp);
       setNotes(initNotes);
+      setImageUrl(initImg);
 
       setInitialSnapshot({
         name: initName,
@@ -91,6 +97,7 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
         expiryDate: initExp,
         openedDate: initOp,
         notes: initNotes,
+        imageUrl: initImg,
       });
     }
   }, [item, isOpen]);
@@ -128,6 +135,8 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
         expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
         openedDate: openedDate ? new Date(openedDate).toISOString() : null,
         notes: notes.trim() || null,
+        // null removes the photo; unchanged photos are not re-sent
+        ...(imageUrl !== initialSnapshot.imageUrl && { imageUrl: imageUrl || null }),
       });
 
       showToast(t('pantry.updateSuccess'), 'success');
@@ -253,6 +262,8 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
             onChange={(e) => setOpenedDate(e.target.value)}
           />
         </div>
+
+        <PhotoField value={imageUrl} onChange={setImageUrl} />
 
         {/* Notes */}
         <div>
