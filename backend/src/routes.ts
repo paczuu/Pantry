@@ -20,6 +20,7 @@ router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
 router.delete('/auth/account', authenticateToken, authController.deleteOwnAccount);
+router.post('/auth/change-password', authenticateToken, authController.changePassword);
 router.post('/auth/join-household', authenticateToken, authController.joinHousehold);
 router.get('/auth/household/members', authenticateToken, authController.getHouseholdMembers);
 router.post(

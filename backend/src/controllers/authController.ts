@@ -330,6 +330,52 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { currentPassword, newPassword } = req.body ?? {};
+
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
+      res.status(400).json({ ...apiError('PASSWORD_FIELDS_REQUIRED') });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ ...apiError('VALIDATION_PASSWORD') });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { id: true, passwordHash: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ ...apiError('USER_NOT_FOUND') });
+      return;
+    }
+
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      res.status(400).json({ ...apiError('PASSWORD_CURRENT_WRONG') });
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      res.status(400).json({ ...apiError('PASSWORD_SAME_AS_CURRENT') });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await bcrypt.hash(newPassword, 10) },
+    });
+
+    res.json({ ...apiMessage('PASSWORD_CHANGED') });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ ...apiError('PASSWORD_CHANGE_FAILED') });
+  }
+};
+
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await prisma.user.findUnique({

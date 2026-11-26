@@ -113,6 +113,13 @@ class ApiService {
     return this.request('/auth/me');
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    return this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
+
   async deleteOwnAccount(): Promise<{ message: string }> {
     return this.request('/auth/account', {
       method: 'DELETE',

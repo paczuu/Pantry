@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { translateApiMessage } from '../../language/apiMessages';
 import { PageHeader } from '../ui/PageHeader';
-import { Input } from '../ui/FormControls';
+import { FieldLabel, Input } from '../ui/FormControls';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
@@ -123,6 +123,7 @@ type SectionId =
   | 'appearance'
   | 'navigation'
   | 'install'
+  | 'account'
   | 'general'
   | 'members'
   | 'categories'
@@ -256,6 +257,11 @@ export const HouseholdSettingsView: React.FC = () => {
   const isDesktop = useIsDesktop();
 
   const [activeSection, setActiveSection] = useState<SectionId | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   const [members, setMembers] = useState<User[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -1107,6 +1113,13 @@ export const HouseholdSettingsView: React.FC = () => {
       label: t('settings.installApp'),
       description: t('settings.installAppDesc'),
       icon: <Smartphone className="w-4 h-4" />,
+    },
+    {
+      id: 'account',
+      group: 'app',
+      label: t('settings.accountSection'),
+      description: t('settings.accountSectionDesc'),
+      icon: <KeyRound className="w-4 h-4" />,
     },
     {
       id: 'general',
@@ -2018,6 +2031,77 @@ export const HouseholdSettingsView: React.FC = () => {
     </div>
   );
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      showToast(t('settings.passwordsMismatch'), 'warning');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const res = await api.changePassword(currentPassword, newPassword);
+      showToast(res.message, 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      showToast(error.message || t('common.error'), 'error');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const renderAccount = () => (
+    <SettingsCard>
+      <form onSubmit={handleChangePassword}>
+        <SettingsField
+          icon={<KeyRound className="w-4 h-4 text-emerald-400" />}
+          title={t('settings.changePasswordTitle')}
+        >
+          <div className="space-y-3 max-w-sm">
+            <div>
+              <FieldLabel>{t('settings.currentPassword')}</FieldLabel>
+              <Input
+                type="password"
+                required
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel>{t('settings.newPassword')}</FieldLabel>
+              <Input
+                type="password"
+                required
+                minLength={6}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel>{t('settings.confirmNewPassword')}</FieldLabel>
+              <Input
+                type="password"
+                required
+                minLength={6}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <Button variant="primary" type="submit" disabled={passwordSaving}>
+              {t('settings.changePasswordBtn')}
+            </Button>
+          </div>
+        </SettingsField>
+      </form>
+    </SettingsCard>
+  );
+
   const renderBackup = () => (
     <div className="space-y-5">
       <SettingsCard>
@@ -2281,6 +2365,8 @@ export const HouseholdSettingsView: React.FC = () => {
         return renderNavigation();
       case 'install':
         return renderInstall();
+      case 'account':
+        return renderAccount();
       case 'general':
         return renderGeneral();
       case 'members':
