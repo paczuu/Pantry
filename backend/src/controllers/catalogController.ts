@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { lookupProductByBarcode } from '../services/barcode/lookupProductByBarcode.js';
+import { apiError, apiMessage } from '../utils/messages.js';
 
 export const getProductByBarcode = async (
   req: Request,
@@ -10,7 +11,7 @@ export const getProductByBarcode = async (
     const { barcode } = req.params;
 
     if (!barcode) {
-      res.status(400).json({ error: 'Provide a barcode.' });
+      res.status(400).json({ ...apiError('BARCODE_REQUIRED') });
       return;
     }
 
@@ -64,7 +65,7 @@ export const getProductByBarcode = async (
     res
       .status(500)
       .json({
-        error: 'Failed to look up barcode.',
+        ...apiError('BARCODE_LOOKUP_FAILED'),
       });
   }
 };
@@ -125,7 +126,7 @@ export const searchCatalog = async (
     res
       .status(500)
       .json({
-        error: 'Error searching the catalog.',
+        ...apiError('CATALOG_SEARCH_FAILED'),
       });
   }
 };
@@ -147,7 +148,7 @@ export const saveCustomProduct = async (
 
     if (!name || !name.trim()) {
       res.status(400).json({
-        error: 'Product name is required.',
+        ...apiError('PRODUCT_NAME_REQUIRED'),
       });
       return;
     }
@@ -191,8 +192,7 @@ export const saveCustomProduct = async (
     }
 
     res.json({
-      message:
-        'Product without a barcode does not require entry in the EAN catalog.',
+      ...apiMessage('CATALOG_NO_BARCODE_SKIPPED'),
     });
   } catch (error) {
     console.error(
@@ -203,7 +203,7 @@ export const saveCustomProduct = async (
     res
       .status(500)
       .json({
-        error: 'Error saving the custom product.',
+        ...apiError('CATALOG_SAVE_FAILED'),
       });
   }
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { describeAuditChanges, translateApiMessage } from '../../language/apiMessages';
 import { EmptyState, Panel } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
@@ -316,7 +317,19 @@ export const AuditLogsView: React.FC = () => {
     try {
       const parsed = JSON.parse(detailsStr);
       if (typeof parsed === 'object' && parsed !== null) {
+        if (parsed.messageCode) {
+          // Entries written with a message code are translated to the active language
+          const params = Array.isArray(parsed.changes)
+            ? { ...parsed.messageParams, changes: describeAuditChanges(parsed.changes, language) }
+            : parsed.messageParams;
+          return (
+            <p className="text-xs text-slate-200">
+              {translateApiMessage(parsed.messageCode, params, parsed.message, language)}
+            </p>
+          );
+        }
         if (parsed.message) {
+          // Legacy entries stored as Polish text
           return (
             <p className="text-xs text-slate-200">
               {formatAuditDetails(parsed.message, language)}

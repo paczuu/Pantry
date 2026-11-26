@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
 import { addDays, getExpiryWarningDays } from '../utils/expiryWarning.js';
+import { apiError, apiMessage, auditDetails } from '../utils/messages.js';
 
 export const getPantryItems = async (
   req: Request,
@@ -11,7 +12,7 @@ export const getPantryItems = async (
     const householdId = req.user!.householdId;
 
     if (!householdId) {
-      res.status(400).json({ error: 'No household assigned.' });
+      res.status(400).json({ ...apiError('HOUSEHOLD_NOT_ASSIGNED') });
       return;
     }
 
@@ -96,7 +97,7 @@ export const getPantryItems = async (
     console.error('Error fetching pantry items:', error);
 
     res.status(500).json({
-      error: 'Error fetching products.',
+      ...apiError('PANTRY_FETCH_FAILED'),
     });
   }
 };
@@ -118,7 +119,7 @@ export const getPantryItemById = async (
 
     if (!item) {
       res.status(404).json({
-        error: 'Product not found.',
+        ...apiError('PRODUCT_NOT_FOUND'),
       });
       return;
     }
@@ -128,7 +129,7 @@ export const getPantryItemById = async (
     console.error('Error fetching product:', error);
 
     res.status(500).json({
-      error: 'Error fetching product.',
+      ...apiError('PANTRY_ITEM_FETCH_FAILED'),
     });
   }
 };
@@ -142,7 +143,7 @@ export const addPantryItem = async (
 
     if (!householdId) {
       res.status(400).json({
-        error: 'No household assigned.',
+        ...apiError('HOUSEHOLD_NOT_ASSIGNED'),
       });
       return;
     }
@@ -162,7 +163,7 @@ export const addPantryItem = async (
 
     if (!name || !name.trim()) {
       res.status(400).json({
-        error: 'Product name is required.',
+        ...apiError('PRODUCT_NAME_REQUIRED'),
       });
       return;
     }
@@ -239,19 +240,22 @@ export const addPantryItem = async (
         action: 'INCREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: updatedItem.name,
-        details:
-          `Increased the quantity of an existing product ` +
-          `"${updatedItem.name}"${capText} by ${parsedQty} pcs. ` +
-          `(currently in the pantry: ${updatedItem.quantity} pcs.).`,
+        details: auditDetails('AUDIT_PANTRY_QTY_INCREASED', {
+          name: updatedItem.name,
+          capacity: capText,
+          qty: parsedQty,
+          total: updatedItem.quantity,
+        }),
       });
 
       res.status(200).json({
         item: updatedItem,
         isMerged: true,
-        message:
-          `Increased the quantity of "${updatedItem.name}" ` +
-          `by ${parsedQty} pcs. ` +
-          `(total: ${updatedItem.quantity} pcs.)`,
+        ...apiMessage('PANTRY_QTY_INCREASED', {
+          name: updatedItem.name,
+          qty: parsedQty,
+          total: updatedItem.quantity,
+        }),
       });
 
       return;
@@ -318,12 +322,6 @@ export const addPantryItem = async (
       }
     }
 
-    const expiryText = expiryDate
-      ? ` (Expiry: ${new Date(
-          expiryDate
-        ).toLocaleDateString('pl-PL')})`
-      : '';
-
     const capText = capacity
       ? ` [${capacity}]`
       : '';
@@ -336,32 +334,37 @@ export const addPantryItem = async (
       action: 'ADDED_PRODUCT',
       entityType: 'PANTRY_ITEM',
       entityName: newItem.name,
-      details: {
-        message:
-          `Added ${newItem.quantity} pcs. ` +
-          `${capText}${expiryText}.`,
-        item: {
-          id: newItem.id,
-          name: newItem.name,
-          brand: newItem.brand,
-          quantity: newItem.quantity,
-          capacity: newItem.capacity,
-          category: newItem.category,
-          barcode: newItem.barcode,
-          expiryDate: newItem.expiryDate,
+      details: auditDetails(
+        expiryDate ? 'AUDIT_PANTRY_ADDED_EXPIRY' : 'AUDIT_PANTRY_ADDED',
+        {
+          qty: newItem.quantity,
+          capacity: capText,
+          expiry: expiryDate ? new Date(expiryDate).toISOString().split('T')[0] : '',
         },
-      },
+        {
+          item: {
+            id: newItem.id,
+            name: newItem.name,
+            brand: newItem.brand,
+            quantity: newItem.quantity,
+            capacity: newItem.capacity,
+            category: newItem.category,
+            barcode: newItem.barcode,
+            expiryDate: newItem.expiryDate,
+          },
+        }
+      ),
     });
 
     res.status(201).json({
       item: newItem,
-      message: 'Product added to the pantry.',
+      ...apiMessage('PANTRY_ADDED'),
     });
   } catch (error) {
     console.error('Error adding the product:', error);
 
     res.status(500).json({
-      error: 'Error adding the product.',
+      ...apiError('PANTRY_ADD_FAILED'),
     });
   }
 };
@@ -383,7 +386,7 @@ export const updatePantryItem = async (
 
     if (!existing) {
       res.status(404).json({
-        error: 'Product not found.',
+        ...apiError('PRODUCT_NOT_FOUND'),
       });
       return;
     }
@@ -409,85 +412,38 @@ export const updatePantryItem = async (
           )
         : existing.quantity;
 
-    const changes: string[] = [];
+    const toDay = (date: Date | string | null | undefined): string | null =>
+      date ? new Date(date).toISOString().split('T')[0] : null;
+
+    // Changed fields, stored structurally so the audit log can be shown in any language
+    const changes: { field: string; from: string | number | null; to: string | number | null }[] = [];
 
     if (name && name !== existing.name) {
-      changes.push(
-        `name from "${existing.name}" to "${name}"`
-      );
+      changes.push({ field: 'name', from: existing.name, to: name });
     }
 
     if (parsedQty !== existing.quantity) {
-      changes.push(
-        `quantity from ${existing.quantity} to ${parsedQty} pcs.`
-      );
+      changes.push({ field: 'quantity', from: existing.quantity, to: parsedQty });
     }
 
-    if (
-      capacity !== undefined &&
-      capacity !== existing.capacity
-    ) {
-      changes.push(
-        `capacity/weight to "${capacity || 'none'}"`
-      );
+    if (capacity !== undefined && capacity !== existing.capacity) {
+      changes.push({ field: 'capacity', from: existing.capacity, to: capacity || null });
     }
 
-    if (
-      category &&
-      category !== existing.category
-    ) {
-      changes.push(
-        `category from "${existing.category}" to "${category}"`
-      );
+    if (category && category !== existing.category) {
+      changes.push({ field: 'category', from: existing.category, to: category });
     }
 
-    if (expiryDate !== undefined) {
-      const oldExp = existing.expiryDate
-        ? existing.expiryDate
-            .toISOString()
-            .split('T')[0]
-        : 'none';
-
-      const newExp = expiryDate
-        ? new Date(expiryDate)
-            .toISOString()
-            .split('T')[0]
-        : 'none';
-
-      if (oldExp !== newExp) {
-        changes.push(
-          `expiry date from ${oldExp} to ${newExp}`
-        );
-      }
+    if (expiryDate !== undefined && toDay(existing.expiryDate) !== toDay(expiryDate)) {
+      changes.push({ field: 'expiryDate', from: toDay(existing.expiryDate), to: toDay(expiryDate) });
     }
 
-    if (openedDate !== undefined) {
-      const oldOp = existing.openedDate
-        ? existing.openedDate
-            .toISOString()
-            .split('T')[0]
-        : 'none';
-
-      const newOp = openedDate
-        ? new Date(openedDate)
-            .toISOString()
-            .split('T')[0]
-        : 'none';
-
-      if (oldOp !== newOp) {
-        changes.push(
-          `opening date from ${oldOp} to ${newOp}`
-        );
-      }
+    if (openedDate !== undefined && toDay(existing.openedDate) !== toDay(openedDate)) {
+      changes.push({ field: 'openedDate', from: toDay(existing.openedDate), to: toDay(openedDate) });
     }
 
-    if (
-      status &&
-      status !== existing.status
-    ) {
-      changes.push(
-        `status from ${existing.status} to ${status}`
-      );
+    if (status && status !== existing.status) {
+      changes.push({ field: 'status', from: existing.status, to: status });
     }
 
     const updated = await prisma.pantryItem.update({
@@ -557,24 +513,26 @@ export const updatePantryItem = async (
         action: 'UPDATED_VALUES',
         entityType: 'PANTRY_ITEM',
         entityName: updated.name,
-        details: {
-          message:
-            `Updated ${changes.join(', ')}.`,
-          previous: existing,
-          current: updated,
-        },
+        details: auditDetails(
+          'AUDIT_PANTRY_UPDATED',
+          {
+            // English fallback for API consumers; the UI renders `changes` in the user's language
+            changes: changes.map((c) => `${c.field}: ${c.from ?? 'none'} -> ${c.to ?? 'none'}`).join(', '),
+          },
+          { changes, previous: existing, current: updated }
+        ),
       });
     }
 
     res.json({
       item: updated,
-      message: 'Product updated.',
+      ...apiMessage('PANTRY_UPDATED'),
     });
   } catch (error) {
     console.error('Error updating the product:', error);
 
     res.status(500).json({
-      error: 'Error updating the product.',
+      ...apiError('PANTRY_UPDATE_FAILED'),
     });
   }
 };
@@ -601,7 +559,7 @@ export const consumePantryItem = async (
 
     if (!existing) {
       res.status(404).json({
-        error: 'Product not found.',
+        ...apiError('PRODUCT_NOT_FOUND'),
       });
       return;
     }
@@ -642,9 +600,10 @@ export const consumePantryItem = async (
           : 'CONSUMED_PRODUCT',
         entityType: 'PANTRY_ITEM',
         entityName: existing.name,
-        details: isWasted
-          ? `Discarded the entire product "${existing.name}" (${consumeAmount} pcs.).`
-          : `Consumed the entire product "${existing.name}" (${consumeAmount} pcs.).`,
+        details: auditDetails(isWasted ? 'AUDIT_PANTRY_WASTED_ALL' : 'AUDIT_PANTRY_CONSUMED_ALL', {
+          name: existing.name,
+          qty: consumeAmount,
+        }),
       });
     } else {
       updated = await prisma.pantryItem.update({
@@ -664,9 +623,7 @@ export const consumePantryItem = async (
         action: 'DECREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: existing.name,
-        details:
-          `Consumed ${consumeAmount} pcs. ` +
-          `Remaining ${remaining} pcs.`,
+        details: auditDetails('AUDIT_PANTRY_CONSUMED_PART', { qty: consumeAmount, remaining }),
       });
     }
 
@@ -677,10 +634,9 @@ export const consumePantryItem = async (
         0,
         remaining
       ),
-      message:
-        remaining <= 0
-          ? 'Product completely consumed.'
-          : `Decreased the quantity by ${consumeAmount} pcs.`,
+      ...(remaining <= 0
+        ? apiMessage('PANTRY_CONSUMED_ALL')
+        : apiMessage('PANTRY_QTY_DECREASED', { qty: consumeAmount })),
     });
   } catch (error) {
     console.error(
@@ -689,8 +645,7 @@ export const consumePantryItem = async (
     );
 
     res.status(500).json({
-      error:
-        'Error consuming the product.',
+      ...apiError('PANTRY_CONSUME_FAILED'),
     });
   }
 };
@@ -712,8 +667,7 @@ export const barcodeQuickRemove = async (
 
     if (!barcode && !itemId) {
       res.status(400).json({
-        error:
-          'Required barcode or product identifier.',
+        ...apiError('PANTRY_BARCODE_OR_ID_REQUIRED'),
       });
       return;
     }
@@ -730,8 +684,7 @@ export const barcodeQuickRemove = async (
 
       if (!item) {
         res.status(404).json({
-          error:
-            'Product not found in the pantry.',
+          ...apiError('PANTRY_NOT_IN_PANTRY'),
         });
         return;
       }
@@ -779,10 +732,10 @@ export const barcodeQuickRemove = async (
             : 'DECREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: item.name,
-        details:
-          `Quick removal by barcode scanner: ` +
-          `Consumed ${consumeQty} pcs. ` +
-          `Remaining ${Math.max(0, remaining)} pcs.`,
+        details: auditDetails('AUDIT_PANTRY_QUICK_REMOVE', {
+          qty: consumeQty,
+          remaining: Math.max(0, remaining),
+        }),
       });
 
       res.json({
@@ -793,9 +746,7 @@ export const barcodeQuickRemove = async (
           0,
           remaining
         ),
-        message:
-          `Removed ${consumeQty} pcs. ` +
-          `(${item.name}).`,
+        ...apiMessage('PANTRY_REMOVED_QTY', { qty: consumeQty, name: item.name }),
       });
 
       return;
@@ -823,8 +774,7 @@ export const barcodeQuickRemove = async (
 
     if (matchingItems.length === 0) {
       res.status(404).json({
-        error:
-          'No active products found with this barcode in the pantry.',
+        ...apiError('PANTRY_NO_ACTIVE_BY_BARCODE'),
         barcode: cleanBarcode,
       });
       return;
@@ -901,10 +851,10 @@ export const barcodeQuickRemove = async (
             : 'DECREASED_QUANTITY',
         entityType: 'PANTRY_ITEM',
         entityName: item.name,
-        details:
-          `Quick scanning by barcode scanner: ` +
-          `Consumed ${take} pcs. ` +
-          `Remaining: ${Math.max(0, newQty)} pcs.`,
+        details: auditDetails('AUDIT_PANTRY_QUICK_SCAN', {
+          qty: take,
+          remaining: Math.max(0, newQty),
+        }),
       });
     }
 
@@ -918,9 +868,10 @@ export const barcodeQuickRemove = async (
       consumed: consumedTotal,
       remainingRequested:
         remainingToConsume,
-      message:
-        `Removed ${consumedTotal} pcs. ` +
-        `product "${matchingItems[0].name}".`,
+      ...apiMessage('PANTRY_REMOVED_BY_BARCODE', {
+        qty: consumedTotal,
+        name: matchingItems[0].name,
+      }),
     });
   } catch (error) {
     console.error(
@@ -929,8 +880,7 @@ export const barcodeQuickRemove = async (
     );
 
     res.status(500).json({
-      error:
-        'Error quick removing the product by barcode.',
+      ...apiError('PANTRY_QUICK_REMOVE_FAILED'),
     });
   }
 };
@@ -954,8 +904,7 @@ export const deletePantryItem = async (
 
     if (!existing) {
       res.status(404).json({
-        error:
-          'Product not found.',
+        ...apiError('PRODUCT_NOT_FOUND'),
       });
       return;
     }
@@ -974,15 +923,14 @@ export const deletePantryItem = async (
       action: 'DELETED_PRODUCT',
       entityType: 'PANTRY_ITEM',
       entityName: existing.name,
-      details:
-        `Completely removed the product ` +
-        `"${existing.name}" ` +
-        `(${existing.quantity} pcs.) from the pantry.`,
+      details: auditDetails('AUDIT_PANTRY_DELETED', {
+        name: existing.name,
+        qty: existing.quantity,
+      }),
     });
 
     res.json({
-      message:
-        'Product removed from the pantry.',
+      ...apiMessage('PANTRY_DELETED'),
     });
   } catch (error) {
     console.error(
@@ -991,8 +939,7 @@ export const deletePantryItem = async (
     );
 
     res.status(500).json({
-      error:
-        'Error deleting the product.',
+      ...apiError('PANTRY_DELETE_FAILED'),
     });
   }
 };
@@ -1079,8 +1026,7 @@ export const getPantryStats = async (
     );
 
     res.status(500).json({
-      error:
-        'Error calculating statistics.',
+      ...apiError('STATS_FAILED'),
     });
   }
 };

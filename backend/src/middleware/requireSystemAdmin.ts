@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
+import { apiError } from '../utils/messages.js';
 
 export const requireSystemAdmin = async (
   req: Request,
@@ -8,7 +9,7 @@ export const requireSystemAdmin = async (
 ): Promise<void> => {
   try {
     if (!req.user?.id) {
-      res.status(401).json({ error: 'Unauthorized.' });
+      res.status(401).json({ ...apiError('UNAUTHORIZED') });
       return;
     }
 
@@ -18,13 +19,13 @@ export const requireSystemAdmin = async (
     });
 
     if (!user?.isSystemAdmin) {
-      res.status(403).json({ error: 'This operation requires system administrator privileges.' });
+      res.status(403).json({ ...apiError('SYSADMIN_REQUIRED') });
       return;
     }
 
     next();
   } catch (error) {
     console.error('System administrator verification error:', error);
-    res.status(500).json({ error: 'Failed to verify privileges.' });
+    res.status(500).json({ ...apiError('PRIVILEGE_CHECK_FAILED') });
   }
 };

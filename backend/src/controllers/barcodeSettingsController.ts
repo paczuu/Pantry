@@ -6,6 +6,7 @@ import {
   DEFAULT_BARCODE_SOURCES,
   getSourceKey,
 } from '../services/barcode/types.js';
+import { apiError, apiMessage } from '../utils/messages.js';
 
 const ALLOWED_PROVIDERS: BarcodeProviderKey[] = [
   'OPEN_FOOD_FACTS',
@@ -47,7 +48,7 @@ export const getBarcodeSources = async (
     const householdId = req.user?.householdId;
 
     if (!householdId) {
-      res.status(400).json({ error: 'User does not belong to a household.' });
+      res.status(400).json({ ...apiError('USER_NO_HOUSEHOLD') });
       return;
     }
 
@@ -70,7 +71,7 @@ export const getBarcodeSources = async (
     });
   } catch (error) {
     console.error('Error fetching EAN sources:', error);
-    res.status(500).json({ error: 'Failed to fetch EAN sources.' });
+    res.status(500).json({ ...apiError('EAN_SOURCES_FETCH_FAILED') });
   }
 };
 
@@ -82,7 +83,7 @@ export const updateBarcodeSources = async (
     const householdId = req.user?.householdId;
 
     if (!householdId) {
-      res.status(400).json({ error: 'User does not belong to a household.' });
+      res.status(400).json({ ...apiError('USER_NO_HOUSEHOLD') });
       return;
     }
 
@@ -91,7 +92,7 @@ export const updateBarcodeSources = async (
       : null;
 
     if (!incomingSources) {
-      res.status(400).json({ error: 'The "sources" field must be an array.' });
+      res.status(400).json({ ...apiError('EAN_SOURCES_NOT_ARRAY') });
       return;
     }
 
@@ -104,7 +105,7 @@ export const updateBarcodeSources = async (
       );
 
     if (normalized.length !== incomingSources.length) {
-      res.status(400).json({ error: 'One or more EAN sources have an invalid configuration.' });
+      res.status(400).json({ ...apiError('EAN_SOURCES_INVALID') });
       return;
     }
 
@@ -112,7 +113,7 @@ export const updateBarcodeSources = async (
     for (const source of normalized) {
       const key = `${source.provider}:${source.countryCode}`;
       if (duplicateKeys.has(key)) {
-        res.status(400).json({ error: `Source ${key} appears more than once.` });
+        res.status(400).json({ ...apiError('EAN_SOURCE_DUPLICATE', { key }) });
         return;
       }
       duplicateKeys.add(key);
@@ -142,11 +143,11 @@ export const updateBarcodeSources = async (
 
     res.json({
       sources,
-      message: 'EAN source configuration saved.',
+      ...apiMessage('EAN_SOURCES_SAVED'),
     });
   } catch (error) {
     console.error('Error saving EAN sources:', error);
-    res.status(500).json({ error: 'Failed to save EAN sources.' });
+    res.status(500).json({ ...apiError('EAN_SOURCES_SAVE_FAILED') });
   }
 };
 
@@ -158,7 +159,7 @@ export const resetBarcodeSources = async (
     const householdId = req.user?.householdId;
 
     if (!householdId) {
-      res.status(400).json({ error: 'User does not belong to a household.' });
+      res.status(400).json({ ...apiError('USER_NO_HOUSEHOLD') });
       return;
     }
 
@@ -169,10 +170,10 @@ export const resetBarcodeSources = async (
     res.json({
       sources: DEFAULT_BARCODE_SOURCES,
       usingDefaults: true,
-      message: 'Default EAN sources restored.',
+      ...apiMessage('EAN_SOURCES_RESTORED'),
     });
   } catch (error) {
     console.error('Error resetting EAN sources:', error);
-    res.status(500).json({ error: 'Failed to restore default EAN sources.' });
+    res.status(500).json({ ...apiError('EAN_SOURCES_RESTORE_FAILED') });
   }
 };

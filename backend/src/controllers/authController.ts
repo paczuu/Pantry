@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { logActivity } from '../services/auditService.js';
+import { MessageCode, apiError, apiMessage, auditDetails } from '../utils/messages.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
@@ -83,9 +84,9 @@ export const initHouseholdDefaults = async (householdId: string) => {
 };
 
 const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('VALIDATION_EMAIL'),
+  password: z.string().min(6, 'VALIDATION_PASSWORD'),
+  name: z.string().min(2, 'VALIDATION_NAME'),
   inviteCode: z.string().trim().optional(),
 });
 
@@ -93,7 +94,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const parseResult = registerSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ error: parseResult.error.errors[0].message });
+      res.status(400).json({ ...apiError(parseResult.error.errors[0].message as MessageCode) });
       return;
     }
 
@@ -106,7 +107,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (existingUser) {
-      res.status(400).json({ error: 'A user with that email address already exists.' });
+      res.status(400).json({ ...apiError('AUTH_EMAIL_TAKEN') });
       return;
     }
 
@@ -179,7 +180,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         action: 'HOUSEHOLD_CREATED',
         entityType: 'HOUSEHOLD',
         entityName: newUser.household?.name || 'My Household',
-        details: 'Created the first installation account as household administrator and system administrator.',
+        details: auditDetails('AUDIT_FIRST_ADMIN'),
       });
 
       const token = jwt.sign(
@@ -189,7 +190,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       );
 
       res.status(201).json({
-        message: 'First system administrator account created.',
+        ...apiMessage('AUTH_FIRST_ADMIN_CREATED'),
         token,
         user: {
           id: newUser.id,
@@ -205,12 +206,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (!cleanInviteCode) {
-      res.status(400).json({ error: 'Invite code is required.' });
+      res.status(400).json({ ...apiError('INVITE_REQUIRED') });
       return;
     }
 
     if (cleanInviteCode.length !== 6) {
-      res.status(400).json({ error: 'Invite code must be 6 characters.' });
+      res.status(400).json({ ...apiError('INVITE_LENGTH') });
       return;
     }
 
@@ -219,12 +220,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!household) {
-      res.status(400).json({ error: 'Invalid household invite code.' });
+      res.status(400).json({ ...apiError('INVITE_INVALID') });
       return;
     }
 
     if (!isInviteCodeActive(household.inviteCodeExpiresAt)) {
-      res.status(400).json({ error: 'The invite code has expired. Please ask the administrator to generate a new code.' });
+      res.status(400).json({ ...apiError('INVITE_EXPIRED') });
       return;
     }
 
@@ -250,7 +251,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       action: 'JOINED_HOUSEHOLD',
       entityType: 'MEMBER',
       entityName: newUser.name,
-      details: 'User created an account using an invite code and joined the household.',
+      details: auditDetails('AUDIT_REGISTERED_INVITE'),
     });
 
     const token = jwt.sign(
@@ -260,7 +261,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     );
 
     res.status(201).json({
-      message: 'Account created successfully.',
+      ...apiMessage('AUTH_REGISTERED'),
       token,
       user: {
         id: newUser.id,
@@ -274,7 +275,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'An error occurred during registration.' });
+    res.status(500).json({ ...apiError('AUTH_REGISTER_FAILED') });
   }
 };
 
@@ -283,7 +284,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ error: 'Please provide email and password.' });
+      res.status(400).json({ ...apiError('AUTH_CREDENTIALS_REQUIRED') });
       return;
     }
 
@@ -293,13 +294,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
-      res.status(400).json({ error: 'Invalid email or password.' });
+      res.status(400).json({ ...apiError('AUTH_INVALID_CREDENTIALS') });
       return;
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      res.status(400).json({ error: 'Invalid email or password.' });
+      res.status(400).json({ ...apiError('AUTH_INVALID_CREDENTIALS') });
       return;
     }
 
@@ -310,7 +311,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     );
 
     res.json({
-      message: 'Logged in successfully.',
+      ...apiMessage('AUTH_LOGGED_IN'),
       token,
       user: {
         id: user.id,
@@ -324,7 +325,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'An error occurred during login.' });
+    res.status(500).json({ ...apiError('AUTH_LOGIN_FAILED') });
   }
 };
 
@@ -352,7 +353,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
-      res.status(404).json({ error: 'User not found.' });
+      res.status(404).json({ ...apiError('USER_NOT_FOUND') });
       return;
     }
 
@@ -363,7 +364,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching profile data.' });
+    res.status(500).json({ ...apiError('PROFILE_FETCH_FAILED') });
   }
 };
 
@@ -371,7 +372,7 @@ export const joinHousehold = async (req: Request, res: Response): Promise<void> 
   try {
     const { inviteCode } = req.body;
     if (!inviteCode) {
-      res.status(400).json({ error: 'Please provide an invite code.' });
+      res.status(400).json({ ...apiError('INVITE_PROVIDE') });
       return;
     }
 
@@ -380,12 +381,12 @@ export const joinHousehold = async (req: Request, res: Response): Promise<void> 
     });
 
     if (!household) {
-      res.status(404).json({ error: 'No household found with that code.' });
+      res.status(404).json({ ...apiError('INVITE_HOUSEHOLD_NOT_FOUND') });
       return;
     }
 
     if (!isInviteCodeActive(household.inviteCodeExpiresAt)) {
-      res.status(400).json({ error: 'The invite code has expired. Please ask the administrator to generate a new code.' });
+      res.status(400).json({ ...apiError('INVITE_EXPIRED') });
       return;
     }
 
@@ -406,18 +407,18 @@ export const joinHousehold = async (req: Request, res: Response): Promise<void> 
       action: 'JOINED_HOUSEHOLD',
       entityType: 'MEMBER',
       entityName: req.user!.name,
-      details: `${req.user!.name} joined the household.`,
+      details: auditDetails('AUDIT_MEMBER_JOINED', { name: req.user!.name }),
     });
 
     res.json({
-      message: 'Joined the household.',
+      ...apiMessage('HOUSEHOLD_JOINED'),
       user: {
         ...updatedUser,
         household: sanitizeHousehold(updatedUser.household as any, updatedUser.role),
       },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Error joining household.' });
+    res.status(500).json({ ...apiError('HOUSEHOLD_JOIN_FAILED') });
   }
 };
 
@@ -426,7 +427,7 @@ export const generateHouseholdInviteCode = async (req: Request, res: Response): 
     const householdId = req.user!.householdId;
 
     if (!householdId) {
-      res.status(400).json({ error: 'No household assigned.' });
+      res.status(400).json({ ...apiError('HOUSEHOLD_NOT_ASSIGNED') });
       return;
     }
 
@@ -454,17 +455,17 @@ export const generateHouseholdInviteCode = async (req: Request, res: Response): 
       action: 'INVITE_CODE_GENERATED',
       entityType: 'HOUSEHOLD',
       entityName: household.name,
-      details: 'Administrator generated a new invite code valid for 5 minutes.',
+      details: auditDetails('AUDIT_INVITE_GENERATED'),
     });
 
     res.json({
       inviteCode: uniqueCode,
       inviteCodeExpiresAt: inviteCodeExpiresAt.toISOString(),
-      message: 'New invite code generated. The code is valid for 5 minutes.',
+      ...apiMessage('INVITE_GENERATED'),
     });
   } catch (error) {
     console.error('Error generating invite code:', error);
-    res.status(500).json({ error: 'Failed to generate invite code.' });
+    res.status(500).json({ ...apiError('INVITE_GENERATE_FAILED') });
   }
 };
 
@@ -472,7 +473,7 @@ export const getHouseholdMembers = async (req: Request, res: Response): Promise<
   try {
     const householdId = req.user!.householdId;
     if (!householdId) {
-      res.status(400).json({ error: 'No household assigned.' });
+      res.status(400).json({ ...apiError('HOUSEHOLD_NOT_ASSIGNED') });
       return;
     }
 
@@ -491,7 +492,7 @@ export const getHouseholdMembers = async (req: Request, res: Response): Promise<
 
     res.json({ members });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching members.' });
+    res.status(500).json({ ...apiError('MEMBERS_FETCH_FAILED') });
   }
 };
 
@@ -501,7 +502,7 @@ export const updateMemberRole = async (req: Request, res: Response): Promise<voi
     const { role } = req.body;
 
     if (!['ADMIN', 'MEMBER'].includes(role)) {
-      res.status(400).json({ error: 'Invalid role. Available: ADMIN, MEMBER.' });
+      res.status(400).json({ ...apiError('ROLE_INVALID') });
       return;
     }
 
@@ -510,7 +511,7 @@ export const updateMemberRole = async (req: Request, res: Response): Promise<voi
     });
 
     if (!targetUser || targetUser.householdId !== req.user!.householdId) {
-      res.status(404).json({ error: 'Member not found in this household.' });
+      res.status(404).json({ ...apiError('MEMBER_NOT_FOUND') });
       return;
     }
 
@@ -519,7 +520,7 @@ export const updateMemberRole = async (req: Request, res: Response): Promise<voi
         where: { householdId: req.user!.householdId!, role: 'ADMIN' },
       });
       if (adminCount <= 1) {
-        res.status(400).json({ error: 'You cannot remove your own administrator role — you are the only administrator.' });
+        res.status(400).json({ ...apiError('ADMIN_SELF_DEMOTE') });
         return;
       }
     }
@@ -538,12 +539,12 @@ export const updateMemberRole = async (req: Request, res: Response): Promise<voi
       action: 'ROLE_CHANGE',
       entityType: 'MEMBER',
       entityName: targetUser.name,
-      details: `Administrator ${req.user!.name} changed the role of user ${targetUser.name} (${targetUser.email}) to: ${role}.`,
+      details: auditDetails('AUDIT_ROLE_CHANGED', { admin: req.user!.name, user: targetUser.name, email: targetUser.email, role }),
     });
 
-    res.json({ message: 'Role updated successfully.', member: updated });
+    res.json({ ...apiMessage('MEMBER_ROLE_UPDATED'), member: updated });
   } catch (error) {
-    res.status(500).json({ error: 'Error updating role.' });
+    res.status(500).json({ ...apiError('MEMBER_ROLE_UPDATE_FAILED') });
   }
 };
 
@@ -552,7 +553,7 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
     const { memberId } = req.params;
 
     if (memberId === req.user!.id) {
-      res.status(400).json({ error: 'You cannot remove yourself from the household.' });
+      res.status(400).json({ ...apiError('MEMBER_SELF_REMOVE') });
       return;
     }
 
@@ -561,14 +562,14 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
     });
 
     if (!targetUser || targetUser.householdId !== req.user!.householdId) {
-      res.status(404).json({ error: 'User does not belong to this household.' });
+      res.status(404).json({ ...apiError('USER_NOT_IN_HOUSEHOLD') });
       return;
     }
 
     const primaryUserId = await getPrimaryUserId();
 
     if (memberId === primaryUserId) {
-      res.status(400).json({ error: 'The primary account cannot be deleted.' });
+      res.status(400).json({ ...apiError('ACCOUNT_PRIMARY_PROTECTED') });
       return;
     }
 
@@ -584,12 +585,12 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
       action: 'USER_DELETED',
       entityType: 'MEMBER',
       entityName: targetUser.name,
-      details: `Administrator ${req.user!.name} deleted the account of user ${targetUser.name} (${targetUser.email}) from the system.`,
+      details: auditDetails('AUDIT_USER_DELETED', { admin: req.user!.name, user: targetUser.name, email: targetUser.email }),
     });
 
-    res.json({ message: 'User account has been deleted.' });
+    res.json({ ...apiMessage('MEMBER_DELETED') });
   } catch (error) {
-    res.status(500).json({ error: 'Error deleting user account.' });
+    res.status(500).json({ ...apiError('MEMBER_DELETE_FAILED') });
   }
 };
 
@@ -603,19 +604,19 @@ export const deleteOwnAccount = async (req: Request, res: Response): Promise<voi
     });
 
     if (!user) {
-      res.status(404).json({ error: 'User not found.' });
+      res.status(404).json({ ...apiError('USER_NOT_FOUND') });
       return;
     }
 
     const primaryUserId = await getPrimaryUserId();
 
     if (userId === primaryUserId) {
-      res.status(400).json({ error: 'The primary account cannot be deleted.' });
+      res.status(400).json({ ...apiError('ACCOUNT_PRIMARY_PROTECTED') });
       return;
     }
 
     if (user.householdId) {
-      res.status(400).json({ error: 'The account can only be deleted from this screen if you do not belong to any household.' });
+      res.status(400).json({ ...apiError('ACCOUNT_DELETE_HAS_HOUSEHOLD') });
       return;
     }
 
@@ -625,7 +626,7 @@ export const deleteOwnAccount = async (req: Request, res: Response): Promise<voi
       });
 
       if (systemAdminCount <= 1) {
-        res.status(400).json({ error: 'You cannot delete the only system administrator account.' });
+        res.status(400).json({ ...apiError('SYSADMIN_LAST_PROTECTED') });
         return;
       }
     }
@@ -634,9 +635,9 @@ export const deleteOwnAccount = async (req: Request, res: Response): Promise<voi
       where: { id: userId },
     });
 
-    res.json({ message: 'Your account has been deleted.' });
+    res.json({ ...apiMessage('ACCOUNT_DELETED') });
   } catch (error) {
     console.error('Error deleting own account:', error);
-    res.status(500).json({ error: 'Failed to delete account.' });
+    res.status(500).json({ ...apiError('ACCOUNT_DELETE_FAILED') });
   }
 };

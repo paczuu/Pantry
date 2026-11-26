@@ -10,7 +10,7 @@ interface LanguageContextType {
 
 const LANGUAGE_STORAGE_KEY = 'pantry_language';
 
-const getInitialLanguage = (): Language => {
+export const getInitialLanguage = (): Language => {
   try {
     const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved === 'pl' || saved === 'en') {

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
+import { apiError } from '../utils/messages.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pantry-super-secret-key-change-in-production-2026';
 
@@ -29,7 +30,7 @@ export const authenticateToken = async (
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    res.status(401).json({ error: 'Authorization token missing. Please log in.' });
+    res.status(401).json({ ...apiError('AUTH_TOKEN_MISSING') });
     return;
   }
 
@@ -42,14 +43,14 @@ export const authenticateToken = async (
     });
 
     if (!dbUser) {
-      res.status(401).json({ error: 'User does not exist.' });
+      res.status(401).json({ ...apiError('USER_NOT_EXIST') });
       return;
     }
 
     req.user = dbUser;
     next();
   } catch (err) {
-    res.status(403).json({ error: 'Invalid or expired session token.' });
+    res.status(403).json({ ...apiError('AUTH_TOKEN_INVALID') });
     return;
   }
 };

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
+import { apiError } from '../utils/messages.js';
 
 export const getAuditLogs = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -72,7 +73,7 @@ export const getAuditLogs = async (req: Request, res: Response): Promise<void> =
     });
   } catch (error) {
     console.error('Error fetching audit log:', error);
-    res.status(500).json({ error: 'Failed to fetch audit log.' });
+    res.status(500).json({ ...apiError('AUDIT_FETCH_FAILED') });
   }
 };
 
@@ -114,6 +115,6 @@ export const getAuditStats = async (req: Request, res: Response): Promise<void> 
       userActivity,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch audit statistics.' });
+    res.status(500).json({ ...apiError('AUDIT_STATS_FAILED') });
   }
 };

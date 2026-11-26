@@ -15,6 +15,7 @@ import {
   SystemUser,
   SystemHousehold,
 } from '../types';
+import { ApiParams, translateApiMessage } from '../language/apiMessages';
 
 const API_BASE = '/api';
 
@@ -30,6 +31,20 @@ export interface BarcodeSourceConfig {
   countryCode: string;
   enabled: boolean;
   priority: number;
+}
+
+/** Error returned by the API. `message` is already translated to the active language. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    /** Backend message code (see `language/apiMessages.ts`), when the server sent one. */
+    public readonly code?: string,
+    public readonly params?: ApiParams
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
 }
 
 class ApiService {
@@ -62,7 +77,13 @@ class ApiService {
           window.location.href = '/login';
         }
       }
-      throw new Error(data.error || data.message || `Server error (${response.status})`);
+      const fallback = data.error || data.message || `Server error (${response.status})`;
+      throw new ApiError(translateApiMessage(data.code, data.params, fallback), response.status, data.code, data.params);
+    }
+
+    // Success notifications are translated the same way, so callers can show `message` as is
+    if (data && typeof data === 'object' && data.messageCode) {
+      data.message = translateApiMessage(data.messageCode, data.messageParams, data.message);
     }
 
     return data as T;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { translateApiMessage } from '../../language/apiMessages';
 import { PageHeader } from '../ui/PageHeader';
 import { Input } from '../ui/FormControls';
 import { Button } from '../ui/Button';
@@ -826,11 +827,16 @@ export const HouseholdSettingsView: React.FC = () => {
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(
-          data.error ||
-            data.message ||
-            (language === 'pl'
-              ? `Błąd pobierania kopii (${response.status})`
-              : `Backup download failed (${response.status})`)
+          translateApiMessage(
+            data.code,
+            data.params,
+            data.error ||
+              data.message ||
+              (language === 'pl'
+                ? `Błąd pobierania kopii (${response.status})`
+                : `Backup download failed (${response.status})`),
+            language
+          )
         );
       }
 

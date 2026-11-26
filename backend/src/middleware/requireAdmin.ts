@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
+import { apiError } from '../utils/messages.js';
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    res.status(401).json({ error: 'Unauthorized.' });
+    res.status(401).json({ ...apiError('UNAUTHORIZED') });
     return;
   }
 
   if (req.user.role !== 'ADMIN') {
-    res.status(403).json({ error: 'Administrator privileges required. Access restricted to ADMIN role.' });
+    res.status(403).json({ ...apiError('ADMIN_REQUIRED') });
     return;
   }
 

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { initHouseholdDefaults } from './authController.js';
+import { apiError, apiMessage } from '../utils/messages.js';
 
 const INVITE_CODE_TTL_MS = 5 * 60 * 1000;
 
@@ -70,7 +71,7 @@ export const getSystemUsers = async (req: Request, res: Response): Promise<void>
     });
   } catch (error) {
     console.error('Error fetching system users:', error);
-    res.status(500).json({ error: 'Failed to fetch users.' });
+    res.status(500).json({ ...apiError('USERS_FETCH_FAILED') });
   }
 };
 
@@ -104,7 +105,7 @@ export const getSystemHouseholds = async (req: Request, res: Response): Promise<
     });
   } catch (error) {
     console.error('Error fetching system households:', error);
-    res.status(500).json({ error: 'Failed to fetch households.' });
+    res.status(500).json({ ...apiError('HOUSEHOLDS_FETCH_FAILED') });
   }
 };
 
@@ -113,12 +114,12 @@ export const createSystemHousehold = async (req: Request, res: Response): Promis
     const name = String(req.body?.name || '').trim();
 
     if (name.length < 2) {
-      res.status(400).json({ error: 'Household name must be at least 2 characters.' });
+      res.status(400).json({ ...apiError('HOUSEHOLD_NAME_TOO_SHORT') });
       return;
     }
 
     if (name.length > 60) {
-      res.status(400).json({ error: 'Household name cannot exceed 60 characters.' });
+      res.status(400).json({ ...apiError('HOUSEHOLD_NAME_TOO_LONG') });
       return;
     }
 
@@ -147,11 +148,11 @@ export const createSystemHousehold = async (req: Request, res: Response): Promis
         ...household,
         memberCount: 0,
       },
-      message: 'Household created and invite code generated (valid for 5 minutes).',
+      ...apiMessage('HOUSEHOLD_CREATED'),
     });
   } catch (error) {
     console.error('Error creating household:', error);
-    res.status(500).json({ error: 'Failed to create household.' });
+    res.status(500).json({ ...apiError('HOUSEHOLD_CREATE_FAILED') });
   }
 };
 
@@ -165,7 +166,7 @@ export const generateSystemHouseholdInviteCode = async (req: Request, res: Respo
     });
 
     if (!existingHousehold) {
-      res.status(404).json({ error: 'Household not found.' });
+      res.status(404).json({ ...apiError('HOUSEHOLD_NOT_FOUND') });
       return;
     }
 
@@ -183,11 +184,11 @@ export const generateSystemHouseholdInviteCode = async (req: Request, res: Respo
     res.json({
       inviteCode,
       inviteCodeExpiresAt: inviteCodeExpiresAt.toISOString(),
-      message: `Invite code generated for household "${existingHousehold.name}".`,
+      ...apiMessage('INVITE_GENERATED_FOR', { name: existingHousehold.name }),
     });
   } catch (error) {
     console.error('Error generating household invite code:', error);
-    res.status(500).json({ error: 'Failed to generate invite code.' });
+    res.status(500).json({ ...apiError('INVITE_GENERATE_FAILED') });
   }
 };
 
@@ -201,7 +202,7 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
     });
 
     if (!targetUser) {
-      res.status(404).json({ error: 'User not found.' });
+      res.status(404).json({ ...apiError('USER_NOT_FOUND') });
       return;
     }
 
@@ -213,12 +214,12 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       isSystemAdmin !== undefined &&
       isSystemAdmin === false
     ) {
-      res.status(400).json({ error: 'Cannot revoke system admin privileges from the primary account.' });
+      res.status(400).json({ ...apiError('SYSADMIN_CANNOT_REVOKE_PRIMARY') });
       return;
     }
 
     if (role !== undefined && !['ADMIN', 'MEMBER'].includes(role)) {
-      res.status(400).json({ error: 'Invalid user role.' });
+      res.status(400).json({ ...apiError('USER_ROLE_INVALID') });
       return;
     }
 
@@ -229,7 +230,7 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       });
 
       if (!household) {
-        res.status(400).json({ error: 'The selected household does not exist.' });
+        res.status(400).json({ ...apiError('HOUSEHOLD_SELECTED_MISSING') });
         return;
       }
     }
@@ -239,7 +240,7 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       isSystemAdmin !== undefined &&
       isSystemAdmin === false
     ) {
-      res.status(400).json({ error: 'You cannot revoke your own system admin privileges.' });
+      res.status(400).json({ ...apiError('SYSADMIN_SELF_REVOKE') });
       return;
     }
 
@@ -273,10 +274,10 @@ export const updateSystemUser = async (req: Request, res: Response): Promise<voi
       },
     });
 
-    res.json({ user, message: 'User updated.' });
+    res.json({ user, ...apiMessage('USER_UPDATED') });
   } catch (error) {
     console.error('Error updating system user:', error);
-    res.status(500).json({ error: 'Failed to update user.' });
+    res.status(500).json({ ...apiError('USER_UPDATE_FAILED') });
   }
 };
 
@@ -285,7 +286,7 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
     const { userId } = req.params;
 
     if (userId === req.user!.id) {
-      res.status(400).json({ error: 'You cannot delete your own system admin account.' });
+      res.status(400).json({ ...apiError('SYSADMIN_SELF_DELETE') });
       return;
     }
 
@@ -299,14 +300,14 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
     });
 
     if (!targetUser) {
-      res.status(404).json({ error: 'User not found.' });
+      res.status(404).json({ ...apiError('USER_NOT_FOUND') });
       return;
     }
 
     const primaryUserId = await getPrimaryUserId();
 
     if (userId === primaryUserId) {
-      res.status(400).json({ error: 'The primary account cannot be deleted.' });
+      res.status(400).json({ ...apiError('ACCOUNT_PRIMARY_PROTECTED') });
       return;
     }
 
@@ -315,10 +316,10 @@ export const deleteSystemUser = async (req: Request, res: Response): Promise<voi
     });
 
     res.json({
-      message: `Account for ${targetUser.name} (${targetUser.email}) has been deleted.`,
+      ...apiMessage('USER_DELETED_NAMED', { name: targetUser.name, email: targetUser.email }),
     });
   } catch (error) {
     console.error('Error deleting system user:', error);
-    res.status(500).json({ error: 'Failed to delete user.' });
+    res.status(500).json({ ...apiError('USER_DELETE_FAILED') });
   }
 };

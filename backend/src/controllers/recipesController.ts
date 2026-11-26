@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
+import { apiError, apiMessage } from '../utils/messages.js';
 
 const MAX_IMAGE_LENGTH = 80000;
 
@@ -61,7 +62,7 @@ export const getRecipes = async (req: Request, res: Response): Promise<void> => 
 
     res.json({ recipes });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching recipes.' });
+    res.status(500).json({ ...apiError('RECIPES_FETCH_FAILED') });
   }
 };
 
@@ -71,7 +72,7 @@ export const createRecipe = async (req: Request, res: Response): Promise<void> =
     const { name, instructions = '', ingredients = [], notes = null, imageUrl = null, rating = 5 } = req.body;
 
     if (!name || !String(name).trim()) {
-      res.status(400).json({ error: 'Recipe name is required.' });
+      res.status(400).json({ ...apiError('RECIPE_NAME_REQUIRED') });
       return;
     }
 
@@ -83,14 +84,14 @@ export const createRecipe = async (req: Request, res: Response): Promise<void> =
       parsedRating = parseRating(rating);
     } catch (error: any) {
       if (error.message === 'IMAGE_TOO_LARGE') {
-        res.status(400).json({ error: 'Recipe image is too large.' });
+        res.status(400).json({ ...apiError('RECIPE_IMAGE_TOO_LARGE') });
         return;
       }
       if (error.message === 'INVALID_RATING') {
-        res.status(400).json({ error: 'Recipe rating must be a number from 1 to 10.' });
+        res.status(400).json({ ...apiError('RECIPE_RATING_INVALID') });
         return;
       }
-      res.status(400).json({ error: 'Invalid recipe image format.' });
+      res.status(400).json({ ...apiError('RECIPE_IMAGE_INVALID') });
       return;
     }
 
@@ -107,10 +108,10 @@ export const createRecipe = async (req: Request, res: Response): Promise<void> =
       },
     });
 
-    res.status(201).json({ recipe, message: 'Recipe saved.' });
+    res.status(201).json({ recipe, ...apiMessage('RECIPE_SAVED') });
   } catch (error) {
     console.error('Error creating recipe:', error);
-    res.status(500).json({ error: 'Error creating recipe.' });
+    res.status(500).json({ ...apiError('RECIPE_CREATE_FAILED') });
   }
 };
 
@@ -124,7 +125,7 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
 
     if (name !== undefined) {
       if (!String(name).trim()) {
-        res.status(400).json({ error: 'Recipe name is required.' });
+        res.status(400).json({ ...apiError('RECIPE_NAME_REQUIRED') });
         return;
       }
       data.name = String(name).trim();
@@ -139,10 +140,10 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
         data.imageUrl = parseImage(imageUrl);
       } catch (error: any) {
         if (error.message === 'IMAGE_TOO_LARGE') {
-          res.status(400).json({ error: 'Recipe image is too large.' });
+          res.status(400).json({ ...apiError('RECIPE_IMAGE_TOO_LARGE') });
           return;
         }
-        res.status(400).json({ error: 'Invalid recipe image format.' });
+        res.status(400).json({ ...apiError('RECIPE_IMAGE_INVALID') });
         return;
       }
     }
@@ -151,7 +152,7 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
       try {
         data.rating = parseRating(rating);
       } catch {
-        res.status(400).json({ error: 'Recipe rating must be a number from 1 to 10.' });
+        res.status(400).json({ ...apiError('RECIPE_RATING_INVALID') });
         return;
       }
     }
@@ -162,14 +163,14 @@ export const updateRecipe = async (req: Request, res: Response): Promise<void> =
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Recipe not found.' });
+      res.status(404).json({ ...apiError('RECIPE_NOT_FOUND') });
       return;
     }
 
-    res.json({ message: 'Recipe updated.' });
+    res.json({ ...apiMessage('RECIPE_UPDATED') });
   } catch (error) {
     console.error('Error updating recipe:', error);
-    res.status(500).json({ error: 'Error updating recipe.' });
+    res.status(500).json({ ...apiError('RECIPE_UPDATE_FAILED') });
   }
 };
 
@@ -183,12 +184,12 @@ export const deleteRecipe = async (req: Request, res: Response): Promise<void> =
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Recipe not found.' });
+      res.status(404).json({ ...apiError('RECIPE_NOT_FOUND') });
       return;
     }
 
-    res.json({ message: 'Recipe deleted.' });
+    res.json({ ...apiMessage('RECIPE_DELETED') });
   } catch (error) {
-    res.status(500).json({ error: 'Error deleting recipe.' });
+    res.status(500).json({ ...apiError('RECIPE_DELETE_FAILED') });
   }
 };

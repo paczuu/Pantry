@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
+import { apiError, apiMessage } from '../utils/messages.js';
 
 export const getNotes = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,7 +13,7 @@ export const getNotes = async (req: Request, res: Response): Promise<void> => {
 
     res.json({ notes });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching notes.' });
+    res.status(500).json({ ...apiError('NOTES_FETCH_FAILED') });
   }
 };
 
@@ -30,7 +31,7 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
     } = req.body;
 
     if (!title || !title.trim()) {
-      res.status(400).json({ error: 'Note title is required.' });
+      res.status(400).json({ ...apiError('NOTE_TITLE_REQUIRED') });
       return;
     }
 
@@ -47,9 +48,9 @@ export const createNote = async (req: Request, res: Response): Promise<void> => 
       },
     });
 
-    res.status(201).json({ note, message: 'Note created.' });
+    res.status(201).json({ note, ...apiMessage('NOTE_CREATED') });
   } catch (error) {
-    res.status(500).json({ error: 'Error creating note.' });
+    res.status(500).json({ ...apiError('NOTE_CREATE_FAILED') });
   }
 };
 
@@ -71,9 +72,9 @@ export const updateNote = async (req: Request, res: Response): Promise<void> => 
       },
     });
 
-    res.json({ message: 'Note updated.' });
+    res.json({ ...apiMessage('NOTE_UPDATED') });
   } catch (error) {
-    res.status(500).json({ error: 'Error updating note.' });
+    res.status(500).json({ ...apiError('NOTE_UPDATE_FAILED') });
   }
 };
 
@@ -86,8 +87,8 @@ export const deleteNote = async (req: Request, res: Response): Promise<void> => 
       where: { id, householdId },
     });
 
-    res.json({ message: 'Note deleted.' });
+    res.json({ ...apiMessage('NOTE_DELETED') });
   } catch (error) {
-    res.status(500).json({ error: 'Error deleting note.' });
+    res.status(500).json({ ...apiError('NOTE_DELETE_FAILED') });
   }
 };

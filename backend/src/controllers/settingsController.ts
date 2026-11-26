@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/prisma.js';
 import { clampExpiryWarningDays } from '../utils/expiryWarning.js';
+import { apiError, apiMessage, CodedError } from '../utils/messages.js';
 
-class BackupValidationError extends Error {}
+/** Backup validation failure; carries a message code so the client can translate it. */
+class BackupValidationError extends CodedError {}
 
 const isRecord = (value: unknown): value is Record<string, any> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -42,14 +44,14 @@ const getNullableDate = (value: unknown): Date | null => {
 const getBackupArray = (backup: Record<string, any>, key: string): Record<string, any>[] => {
   const value = backup[key];
   if (value === undefined || value === null) return [];
-  if (!Array.isArray(value)) throw new BackupValidationError(`Invalid field "${key}" in backup.`);
-  if (!value.every(isRecord)) throw new BackupValidationError(`Invalid data in field "${key}" of backup.`);
+  if (!Array.isArray(value)) throw new BackupValidationError('BACKUP_INVALID_FIELD', { key });
+  if (!value.every(isRecord)) throw new BackupValidationError('BACKUP_INVALID_FIELD_DATA', { key });
   return value;
 };
 
 const requireName = (item: Record<string, any>, section: string): string => {
   const name = getString(item.name).trim();
-  if (!name) throw new BackupValidationError(`Missing name in section "${section}" of backup.`);
+  if (!name) throw new BackupValidationError('BACKUP_MISSING_NAME', { section });
   return name;
 };
 
@@ -63,7 +65,7 @@ export const getHouseholdSettings = async (req: Request, res: Response): Promise
 
     res.json({ settings: household });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch household settings.' });
+    res.status(500).json({ ...apiError('SETTINGS_FETCH_FAILED') });
   }
 };
 
@@ -79,12 +81,12 @@ export const updateHouseholdSettings = async (req: Request, res: Response): Prom
 
     if (name !== undefined) {
       if (req.user!.role !== 'ADMIN') {
-        res.status(403).json({ error: 'Only an administrator can change the household name.' });
+        res.status(403).json({ ...apiError('HOUSEHOLD_NAME_ADMIN_ONLY') });
         return;
       }
       const trimmed = String(name).trim();
       if (!trimmed) {
-        res.status(400).json({ error: 'Household name cannot be empty.' });
+        res.status(400).json({ ...apiError('HOUSEHOLD_NAME_EMPTY') });
         return;
       }
       data.name = trimmed;
@@ -96,9 +98,9 @@ export const updateHouseholdSettings = async (req: Request, res: Response): Prom
       select: { id: true, name: true, expiryWarningDays: true },
     });
 
-    res.json({ settings: household, message: 'Household settings saved.' });
+    res.json({ settings: household, ...apiMessage('SETTINGS_SAVED') });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to save household settings.' });
+    res.status(500).json({ ...apiError('SETTINGS_SAVE_FAILED') });
   }
 };
 
@@ -111,7 +113,7 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
     });
     res.json({ categories });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch categories.' });
+    res.status(500).json({ ...apiError('CATEGORIES_FETCH_FAILED') });
   }
 };
 
@@ -121,7 +123,7 @@ export const addCategory = async (req: Request, res: Response): Promise<void> =>
     const { name, icon = 'tag', color = 'emerald' } = req.body;
 
     if (!name || !name.trim()) {
-      res.status(400).json({ error: 'Category name is required.' });
+      res.status(400).json({ ...apiError('CATEGORY_NAME_REQUIRED') });
       return;
     }
 
@@ -139,7 +141,7 @@ export const addCategory = async (req: Request, res: Response): Promise<void> =>
 
     res.status(201).json({ category });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create category or a category with that name already exists.' });
+    res.status(500).json({ ...apiError('CATEGORY_CREATE_FAILED') });
   }
 };
 
@@ -152,9 +154,9 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
       where: { id, householdId },
     });
 
-    res.json({ message: 'Category deleted.' });
+    res.json({ ...apiMessage('CATEGORY_DELETED') });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete category.' });
+    res.status(500).json({ ...apiError('CATEGORY_DELETE_FAILED') });
   }
 };
 
@@ -177,7 +179,7 @@ export const exportHouseholdBackup = async (req: Request, res: Response): Promis
     res.setHeader('Content-Disposition', `attachment; filename=pantry-backup-${new Date().toISOString().split('T')[0]}.json`);
     res.json(household);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate backup.' });
+    res.status(500).json({ ...apiError('BACKUP_GENERATE_FAILED') });
   }
 };
 
@@ -190,13 +192,13 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       try {
         backup = JSON.parse(backup);
       } catch {
-        res.status(400).json({ error: 'The selected file does not contain valid JSON.' });
+        res.status(400).json({ ...apiError('BACKUP_INVALID_JSON') });
         return;
       }
     }
 
     if (!isRecord(backup)) {
-      res.status(400).json({ error: 'Invalid backup format.' });
+      res.status(400).json({ ...apiError('BACKUP_INVALID_FORMAT') });
       return;
     }
 
@@ -213,7 +215,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       recipes.length > 5000 ||
       customCategories.length > 1000
     ) {
-      res.status(400).json({ error: 'Backup contains too many records.' });
+      res.status(400).json({ ...apiError('BACKUP_TOO_MANY_RECORDS') });
       return;
     }
 
@@ -222,7 +224,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
       const name = requireName(category, 'customCategories');
       const key = name.toLocaleLowerCase('pl');
       if (categoryNames.has(key)) {
-        throw new BackupValidationError(`Backup contains a duplicate category "${name}".`);
+        throw new BackupValidationError('BACKUP_DUPLICATE_CATEGORY', { name });
       }
       categoryNames.add(key);
     }
@@ -231,22 +233,22 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
     for (const list of shoppingLists) {
       requireName(list, 'shoppingLists');
       if (list.items !== undefined && !Array.isArray(list.items)) {
-        throw new BackupValidationError('Invalid item list in backup.');
+        throw new BackupValidationError('BACKUP_INVALID_ITEMS');
       }
       const items = Array.isArray(list.items) ? list.items : [];
       shoppingItemCount += items.length;
       if (shoppingItemCount > 50000) {
-        throw new BackupValidationError('Backup contains too many shopping list items.');
+        throw new BackupValidationError('BACKUP_TOO_MANY_ITEMS');
       }
       for (const item of items) {
-        if (!isRecord(item)) throw new BackupValidationError('Invalid shopping list item.');
+        if (!isRecord(item)) throw new BackupValidationError('BACKUP_INVALID_ITEM');
         requireName(item, 'shoppingLists.items');
       }
     }
 
     for (const item of pantryItems) requireName(item, 'pantryItems');
     for (const note of notes) {
-      if (!getString(note.title).trim()) throw new BackupValidationError('Missing note title in backup.');
+      if (!getString(note.title).trim()) throw new BackupValidationError('BACKUP_MISSING_NOTE_TITLE');
     }
     for (const recipe of recipes) requireName(recipe, 'recipes');
 
@@ -359,7 +361,7 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
     }, { maxWait: 5000, timeout: 30000 });
 
     res.json({
-      message: 'Backup restored successfully.',
+      ...apiMessage('BACKUP_RESTORED'),
       restored: {
         pantryItems: pantryItems.length,
         shoppingLists: shoppingLists.length,
@@ -371,11 +373,11 @@ export const restoreHouseholdBackup = async (req: Request, res: Response): Promi
     });
   } catch (error) {
     if (error instanceof BackupValidationError) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ ...apiError(error.code, error.params) });
       return;
     }
 
     console.error('Error restoring backup:', error);
-    res.status(500).json({ error: 'Failed to restore backup. No data was changed.' });
+    res.status(500).json({ ...apiError('BACKUP_RESTORE_FAILED') });
   }
 };
