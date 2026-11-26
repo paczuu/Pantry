@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FieldLabel, Input, Select } from '../ui/FormControls';
 import { Modal } from '../common/Modal';
-import { VoiceDateInput } from '../common/VoiceDateInput';
+import { ExpiryDateField } from '../common/ExpiryDateField';
+import { OpenedDateField } from '../common/OpenedDateField';
 import { Button } from '../ui/Button';
 import { ModalActions } from '../ui/ModalActions';
 import { QuantityStepper } from '../ui/QuantityStepper';
@@ -13,18 +14,9 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
-import { Calendar, Check, ChevronDown, ChevronUp, Tag, Scale, PackageOpen, SearchX, Barcode } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Tag, Scale, SearchX, Barcode } from 'lucide-react';
 
 /** Quick expiry shortcuts: translation key, unit (days / months) and amount. */
-const QUICK_DATES = [
-  { labelKey: 'pantry.quickDate3d', unit: 'd', amount: 3 },
-  { labelKey: 'pantry.quickDate1w', unit: 'd', amount: 7 },
-  { labelKey: 'pantry.quickDate2w', unit: 'd', amount: 14 },
-  { labelKey: 'pantry.quickDate1m', unit: 'm', amount: 1 },
-  { labelKey: 'pantry.quickDate6m', unit: 'm', amount: 6 },
-  { labelKey: 'pantry.quickDate1y', unit: 'm', amount: 12 },
-] as const;
-
 interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,7 +42,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [capacity, setCapacity] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
-  const [isOpened, setIsOpened] = useState(false);
   const [openedDate, setOpenedDate] = useState('');
   const [notes, setNotes] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -140,28 +131,9 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
     setExpiryDate('');
     setShowMore(false);
-    setIsOpened(false);
     setOpenedDate('');
     setNotes('');
   }, [initialProduct, isOpen, categories]);
-
-  /** Today plus N days / months as a local `YYYY-MM-DD` date. */
-  const quickDate = (unit: 'd' | 'm', amount: number) => {
-    const d = new Date();
-    if (unit === 'd') d.setDate(d.getDate() + amount);
-    else d.setMonth(d.getMonth() + amount);
-    return d.toLocaleDateString('sv-SE');
-  };
-
-  const handleOpenedToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    setIsOpened(checked);
-    if (checked && !openedDate) {
-      setOpenedDate(new Date().toISOString().split('T')[0]);
-    } else if (!checked) {
-      setOpenedDate('');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,7 +152,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         quantity: Math.max(1, quantity),
         capacity: capacity.trim() || null,
         expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-        openedDate: isOpened && openedDate ? new Date(openedDate).toISOString() : null,
+        openedDate: openedDate ? new Date(openedDate).toISOString() : null,
         notes: notes.trim() || null,
         imageUrl: imageUrl || null,
       });
@@ -310,41 +282,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           />
         </div>
 
-        {/* Expiry date: one tap on a shortcut is the fast path, the date field and voice are the fallback */}
-        <div className="p-3.5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <FieldLabel className="flex items-center gap-1.5 mb-0">
-              <Calendar className="w-4 h-4 text-amber-400" /> {t('pantry.expiryDate')}
-            </FieldLabel>
-            {expiryDate && (
-              <button
-                type="button"
-                onClick={() => setExpiryDate('')}
-                className="text-[11px] text-slate-400 hover:text-rose-400 font-semibold"
-              >
-                {t('pantry.clearDate')}
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {QUICK_DATES.map(({ labelKey, unit, amount }) => {
-              const value = quickDate(unit, amount);
-              return (
-                <Button
-                  key={labelKey}
-                  variant={expiryDate === value ? 'primary' : 'secondary'}
-                  className="py-2.5 text-xs font-semibold"
-                  onClick={() => setExpiryDate(value)}
-                >
-                  {t(labelKey)}
-                </Button>
-              );
-            })}
-          </div>
-
-          <VoiceDateInput value={expiryDate} onChange={setExpiryDate} voice={voice} />
-        </div>
+        <ExpiryDateField value={expiryDate} onChange={setExpiryDate} voice={voice} />
 
         <Button variant="primary" size="lg" type="submit" fullWidth disabled={isSubmitting} icon={<Check className="w-4 h-4 stroke-[2.5]" />}>
           {t('common.add')}
@@ -379,27 +317,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </Select>
             </div>
 
-            {/* Opened date */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50">
-              <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 font-medium">
-                <input
-                  type="checkbox"
-                  checked={isOpened}
-                  onChange={handleOpenedToggle}
-                  className="w-5 h-5 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500 cursor-pointer"
-                />
-                <PackageOpen className="w-4 h-4 text-cyan-400" />
-                <span>{t('pantry.openedToggle')}</span>
-              </label>
-              {isOpened && (
-                <Input
-                  type="date"
-                  value={openedDate}
-                  onChange={(e) => setOpenedDate(e.target.value)}
-                  className="w-auto py-2 text-xs"
-                />
-              )}
-            </div>
+            <OpenedDateField value={openedDate} onChange={setOpenedDate} />
 
             <PhotoField value={imageUrl} onChange={setImageUrl} hint={t('scanner.photoSavedWithEan')} />
 

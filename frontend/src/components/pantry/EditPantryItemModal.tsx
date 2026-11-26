@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FieldLabel, Input, Select } from '../ui/FormControls';
 import { Modal } from '../common/Modal';
-import { VoiceDateInput } from '../common/VoiceDateInput';
+import { ExpiryDateField } from '../common/ExpiryDateField';
+import { OpenedDateField } from '../common/OpenedDateField';
+import { ExpiryBadge } from '../common/ExpiryBadge';
+import { PantryItemThumb } from '../common/PantryItemThumb';
 import { PhotoField } from '../common/PhotoField';
 import { ModalActions } from '../ui/ModalActions';
 import { QuantityStepper } from '../ui/QuantityStepper';
@@ -11,7 +14,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
-import { Tag, Calendar, PackageOpen, Scale } from 'lucide-react';
+import { Tag, Scale, Barcode } from 'lucide-react';
 
 interface EditPantryItemModalProps {
   isOpen: boolean;
@@ -164,6 +167,22 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
     >
       <form id="edit-pantry-form" onSubmit={handleSubmit} className="space-y-4">
 
+        {/* Summary: photo, live expiry status and barcode */}
+        <div className="flex items-center gap-3.5">
+          <PantryItemThumb src={imageUrl} alt={name} className="!w-16 !h-16 !rounded-2xl" />
+          <div className="min-w-0 flex flex-col items-start gap-1.5">
+            <ExpiryBadge expiryDate={expiryDate || null} openedDate={openedDate || null} />
+            <div className="flex flex-wrap items-center gap-1.5">
+              {item.barcode && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md">
+                  <Barcode className="w-3 h-3" />
+                  {item.barcode}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Name and brand */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -220,6 +239,10 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
           />
         </div>
 
+        <ExpiryDateField value={expiryDate} onChange={setExpiryDate} voice={voice} />
+
+        <OpenedDateField value={openedDate} onChange={setOpenedDate} />
+
         {/* Category */}
         <div>
           <FieldLabel className="flex items-center gap-1">
@@ -237,30 +260,6 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
               </option>
             ))}
           </Select>
-        </div>
-
-        {/* Expiry date + voice input */}
-        <div className="space-y-1.5">
-          <FieldLabel className="flex items-center gap-1 mb-0">
-            <Calendar className="w-3.5 h-3.5 text-amber-400" />
-            {t('pantry.expiryDate')}
-          </FieldLabel>
-
-          <VoiceDateInput value={expiryDate} onChange={setExpiryDate} voice={voice} />
-        </div>
-
-        {/* Opened date */}
-        <div>
-          <FieldLabel className="flex items-center gap-1">
-            <PackageOpen className="w-3.5 h-3.5 text-cyan-400" />
-            {t('pantry.openDateLabel')}
-          </FieldLabel>
-
-          <Input
-            type="date"
-            value={openedDate}
-            onChange={(e) => setOpenedDate(e.target.value)}
-          />
         </div>
 
         <PhotoField value={imageUrl} onChange={setImageUrl} />
