@@ -23,6 +23,18 @@ export const Header: React.FC<HeaderProps> = ({ showAppName, onOpenSettings, onG
   const [showDropdown, setShowDropdown] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Publish the top bar height so sticky elements below it can stick right under it
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () => document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Close the menu on a tap outside it. A `fixed inset-0` overlay is not used here,
   // because the header has backdrop-blur, which confines `fixed` to the header height.
@@ -41,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({ showAppName, onOpenSettings, onG
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/80 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+      <header ref={headerRef} className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/80 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo and household name */}
           <button

@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { QrCode, Plus, Boxes, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { QrCode, Plus, Boxes, PackageOpen, ChevronDown, ChevronRight, FilterX } from 'lucide-react';
 import { usePantry } from '../contexts/PantryContext';
 import { useLanguage } from '../language/LanguageContext';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { PantryCard } from '../components/pantry/PantryCard';
 import { PantryFilter, GroupBy } from '../components/pantry/PantryFilter';
 import { Button } from '../components/ui/Button';
@@ -32,19 +33,37 @@ const TONE_TEXT: Record<Tone, string> = {
   neutral: 'text-slate-300',
 };
 
+const GROUP_OPTIONS: GroupBy[] = ['category', 'status', 'none'];
+
+/** Most overdue / soonest to expire first. */
+const byExpiry = (a: PantryItem, b: PantryItem) =>
+  new Date(a.expiryDate || 0).getTime() - new Date(b.expiryDate || 0).getTime();
+
 export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAddManual, onEditItem }) => {
-  const { items, isLoading, stats, expiryWarningDays, resetFilters } = usePantry();
+  const { items, isLoading, stats, expiryWarningDays, filters, resetFilters } = usePantry();
   const { t, tCategory } = useLanguage();
 
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [groupBy, setGroupBy] = useState<GroupBy>('category');
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // View preferences are remembered on this device
+  const [storedView, setViewMode] = usePersistentState<string>('pantry_view_mode', 'list');
+  const [storedGroup, setGroupBy] = usePersistentState<string | null>('pantry_group_by', null);
+  const [collapsedKeys, setCollapsedKeys] = usePersistentState<string[]>('pantry_collapsed_groups', []);
+  const collapsed = useMemo(() => new Set(collapsedKeys), [collapsedKeys]);
 
   // Global totals come from `stats` so they do not depend on the active filters
   const totalActive = stats?.totalActive ?? items.length;
   const expiredCount = stats?.expiredCount || 0;
   const expiringCount = stats?.expiring3DaysCount || 0;
   const attentionCount = expiredCount + expiringCount;
+
+  const viewMode: 'grid' | 'list' = storedView === 'grid' ? 'grid' : 'list';
+  // Until the user picks a grouping, show what needs attention first when something does
+  const groupBy: GroupBy = GROUP_OPTIONS.includes(storedGroup as GroupBy)
+    ? (storedGroup as GroupBy)
+    : attentionCount > 0
+    ? 'status'
+    : 'category';
+
+  const hasActiveFilters = filters.search !== '' || filters.category !== 'ALL' || filters.filterByExpiry !== 'ALL';
 
   const groups: Group[] = useMemo(() => {
     if (groupBy === 'none') {
@@ -62,8 +81,8 @@ export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAdd
         else rest.push(item);
       }
       return [
-        { key: 'expired', label: t('pantry.statusExpired'), tone: 'expired' as Tone, items: expired },
-        { key: 'warning', label: t('pantry.statusWarning'), tone: 'warning' as Tone, items: warning },
+        { key: 'expired', label: t('pantry.statusExpired'), tone: 'expired' as Tone, items: expired.sort(byExpiry) },
+        { key: 'warning', label: t('pantry.statusWarning'), tone: 'warning' as Tone, items: warning.sort(byExpiry) },
         { key: 'rest', label: t('pantry.statusOk'), tone: 'neutral' as Tone, items: rest },
       ].filter((g) => g.items.length > 0);
     }
@@ -86,14 +105,8 @@ export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAdd
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, groupBy, expiryWarningDays, t, tCategory]);
 
-  const toggleGroup = (key: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const toggleGroup = (key: string) =>
+    setCollapsedKeys(collapsed.has(key) ? collapsedKeys.filter((k) => k !== key) : [...collapsedKeys, key]);
 
   const renderItems = (list: PantryItem[]) =>
     viewMode === 'grid' ? (
@@ -113,6 +126,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAdd
 
   // The pantry is really empty (as opposed to a filter that matches nothing)
   const isPantryEmpty = totalActive === 0 && items.length === 0;
+  const showResultsBar = !isLoading && !isPantryEmpty && hasActiveFilters;
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
@@ -152,6 +166,24 @@ export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAdd
         setGroupBy={setGroupBy}
       />
 
+      {/* Result count and clear filters */}
+      {showResultsBar && (
+        <div className="flex items-center justify-between gap-3 -mt-2 text-xs">
+          <span className="text-slate-400 min-w-0 truncate">
+            {hasActiveFilters &&
+              t('pantry.resultsCount').replace('{shown}', String(items.length)).replace('{total}', String(totalActive))}
+          </span>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" icon={<FilterX className="w-3.5 h-3.5" />} onClick={resetFilters}>
+                {t('pantry.resetFilters')}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="py-20 text-center text-slate-400 text-sm">{t('common.loading')}</div>
       ) : isPantryEmpty ? (
@@ -186,10 +218,11 @@ export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAdd
           {groups.map((group) => {
             const isCollapsed = collapsed.has(group.key);
             return (
-              <section key={group.key} className="space-y-2.5">
+              <section key={group.key} className="space-y-1.5">
+                {/* Sticks under the top bar while its group scrolls past */}
                 <button
                   onClick={() => toggleGroup(group.key)}
-                  className="w-full flex items-center gap-2 text-left py-1.5"
+                  className="sticky top-[var(--header-h,4.25rem)] z-10 w-full flex items-center gap-2 text-left py-2 bg-slate-950"
                   aria-expanded={!isCollapsed}
                 >
                   {isCollapsed ? (

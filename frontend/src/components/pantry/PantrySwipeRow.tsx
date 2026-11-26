@@ -3,6 +3,8 @@ import { Utensils, ShoppingCart, Trash2, PackageX } from 'lucide-react';
 import { PantryItem } from '../../types';
 import { PantryItemThumb } from '../common/PantryItemThumb';
 import { ExpiryText } from '../common/ExpiryBadge';
+import { usePantry } from '../../contexts/PantryContext';
+import { getExpiryStatus } from '../../utils/expiry';
 
 export interface SwipeRowActions {
   onConsume: () => void;
@@ -29,6 +31,8 @@ const DRAG_START_THRESHOLD = 8;
  * The actions (consume, add to shopping list, wasted, delete) are revealed by swiping left.
  */
 export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, actions, labels }) => {
+  const { expiryWarningDays } = usePantry();
+  const status = getExpiryStatus(item.expiryDate, expiryWarningDays);
   const rowRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -180,11 +184,20 @@ export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, ac
         onPointerUp={finishGesture}
         onPointerCancel={finishGesture}
         onClick={handleClick}
-        className={`relative flex items-center gap-3 py-2 px-0.5 bg-slate-950 cursor-pointer touch-pan-y ${
+        className={`relative flex items-center gap-3 py-2 pl-3 pr-0.5 bg-slate-950 cursor-pointer touch-pan-y ${
           isDragging ? '' : 'transition-transform duration-200 ease-out'
         }`}
         style={{ transform: `translateX(${offset}px)` }}
       >
+        {/* Accent bar: red when expired, amber when expiring soon */}
+        {(status === 'expired' || status === 'warning') && (
+          <span
+            className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
+              status === 'expired' ? 'bg-rose-500' : 'bg-amber-400'
+            }`}
+          />
+        )}
+
         <PantryItemThumb item={item} className="!w-10 !h-10" />
 
         <div className="min-w-0 flex-1">

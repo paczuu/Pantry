@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePantry } from '../../contexts/PantryContext';
 import { useLanguage } from '../../language/LanguageContext';
-import { SearchInput, Select } from '../ui/FormControls';
+import { FieldLabel, SearchInput, Select } from '../ui/FormControls';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { cn } from '../../utils/cn';
 import {
@@ -10,10 +10,9 @@ import {
   Clock,
   AlertCircle,
   PackageOpen,
-  ArrowUpDown,
   ScanBarcode,
   Boxes,
-  Layers,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export type GroupBy = 'category' | 'status' | 'none';
@@ -57,6 +56,8 @@ const Chip: React.FC<ChipProps> = ({ active, onClick, icon, label, count, active
   </button>
 );
 
+const DEFAULT_SORT = 'name_asc';
+
 export const PantryFilter: React.FC<PantryFilterProps> = ({
   viewMode,
   setViewMode,
@@ -68,6 +69,8 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
   const { t, tCategory, language } = useLanguage();
   const en = language === 'en';
 
+  const [showPanel, setShowPanel] = useState(false);
+
   const toggleExpiry = (value: string) =>
     setFilter('filterByExpiry', filters.filterByExpiry === value ? 'ALL' : value);
 
@@ -77,6 +80,9 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
 
   const warningUnit = en ? 'd' : expiryWarningDays === 1 ? 'dzień' : 'dni';
 
+  // Category and sorting live in the panel; the badge tells how many of them differ from the defaults
+  const panelActiveCount = (filters.category !== 'ALL' ? 1 : 0) + (filters.sortBy !== DEFAULT_SORT ? 1 : 0);
+
   const groupOptions: { key: GroupBy; label: string }[] = [
     { key: 'category', label: t('pantry.groupCategory') },
     { key: 'status', label: t('pantry.groupStatus') },
@@ -85,11 +91,10 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Row 1: search -> sort (icon) -> view (grid/list) */}
+      {/* Row 1: search, filters panel toggle, view (grid/list) */}
       <div className="flex items-center gap-2">
-        {/* Search */}
         <SearchInput
-          wrapperClassName="flex-1"
+          wrapperClassName="flex-1 min-w-0"
           value={filters.search}
           onChange={(e) => setFilter('search', e.target.value)}
           placeholder={t('pantry.searchPlaceholder')}
@@ -121,25 +126,28 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           }
         />
 
-        {/* Sorting: a native select overlaid on an icon button */}
-        <div className="relative shrink-0 flex items-center justify-center bg-slate-900 border border-slate-800 rounded-2xl p-3 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
-          <ArrowUpDown className="w-4 h-4" />
-          <select
-            value={filters.sortBy}
-            onChange={(e) => setFilter('sortBy', e.target.value)}
-            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-            title={en ? 'Sort items' : 'Sortuj produkty'}
-          >
-            <option value="name_asc">{t('pantry.sortNameAsc')}</option>
-            <option value="name_desc">{t('pantry.sortNameDesc')}</option>
-            <option value="expiry_asc">{t('pantry.sortExpiryAsc')}</option>
-            <option value="expiry_desc">{t('pantry.sortExpiryDesc')}</option>
-            <option value="quantity_desc">{t('pantry.sortQuantityDesc')}</option>
-            <option value="created_desc">{t('pantry.sortNewest')}</option>
-          </select>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowPanel((open) => !open)}
+          aria-expanded={showPanel}
+          title={t('pantry.filters')}
+          aria-label={t('pantry.filters')}
+          className={cn(
+            'relative shrink-0 flex items-center justify-center gap-1.5 rounded-2xl border p-3 text-xs font-bold transition-colors',
+            showPanel || panelActiveCount > 0
+              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
+              : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white'
+          )}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          <span className="hidden sm:inline">{t('pantry.filters')}</span>
+          {panelActiveCount > 0 && (
+            <span className="min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-extrabold flex items-center justify-center max-sm:absolute max-sm:-top-1.5 max-sm:-right-1.5">
+              {panelActiveCount}
+            </span>
+          )}
+        </button>
 
-        {/* View switch */}
         <SegmentedControl
           size="icon"
           className="shrink-0 rounded-2xl bg-slate-900"
@@ -151,6 +159,48 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           ]}
         />
       </div>
+
+      {/* Panel: category, sorting, grouping */}
+      {showPanel && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <div>
+            <FieldLabel>{t('pantry.groupCategory')}</FieldLabel>
+            <Select value={filters.category} onChange={(e) => setFilter('category', e.target.value)}>
+              <option value="ALL">{t('pantry.categoryAll')}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {tCategory(c.name)}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <FieldLabel>{t('pantry.sortBy')}</FieldLabel>
+            <Select value={filters.sortBy} onChange={(e) => setFilter('sortBy', e.target.value)}>
+              <option value="name_asc">{t('pantry.sortNameAsc')}</option>
+              <option value="name_desc">{t('pantry.sortNameDesc')}</option>
+              <option value="expiry_asc">{t('pantry.sortExpiryAsc')}</option>
+              <option value="expiry_desc">{t('pantry.sortExpiryDesc')}</option>
+              <option value="quantity_desc">{t('pantry.sortQuantityDesc')}</option>
+              <option value="created_desc">{t('pantry.sortNewest')}</option>
+            </Select>
+          </div>
+
+          {groupBy && setGroupBy && (
+            <div>
+              <FieldLabel>{t('pantry.groupBy')}</FieldLabel>
+              <SegmentedControl
+                fill
+                className="rounded-xl bg-slate-800 border-slate-700"
+                value={groupBy}
+                onChange={setGroupBy}
+                options={groupOptions.map((opt) => ({ value: opt.key, label: opt.label }))}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Row 2: status chips (horizontally scrollable on phones) */}
       <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 sm:-mx-1 sm:px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -202,35 +252,6 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           activeCls="bg-cyan-500 text-slate-950 border-cyan-400"
           idleCls="bg-slate-900/80 text-slate-400 border-slate-800 hover:text-cyan-300"
         />
-      </div>
-
-      {/* Row 3: category, grouping, reset */}
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Select
-          value={filters.category}
-          onChange={(e) => setFilter('category', e.target.value)}
-          className="flex-1 sm:flex-none w-auto min-w-[6.5rem] max-w-full px-3 py-2 bg-slate-900 border-slate-800 text-slate-300 text-xs font-medium"
-        >
-          <option value="ALL">{t('pantry.categoryAll')}</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.name}>
-              {tCategory(c.name)}
-            </option>
-          ))}
-        </Select>
-
-        {groupBy && setGroupBy && (
-          <div className="flex items-center gap-2 shrink-0">
-            <Layers className="hidden sm:block w-3.5 h-3.5 text-slate-500" />
-            <SegmentedControl
-              size="sm"
-              className="p-0.5 font-semibold"
-              value={groupBy}
-              onChange={setGroupBy}
-              options={groupOptions.map((opt) => ({ value: opt.key, label: opt.label }))}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

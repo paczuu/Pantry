@@ -222,6 +222,15 @@ export const PantryCard: React.FC<PantryCardProps> = ({ item, onEdit, viewMode =
             statusClasses
           )}
         >
+          {(status === 'expired' || status === 'warning') && (
+            <span
+              className={cn(
+                'absolute left-0 top-3 bottom-3 w-1 rounded-r-full',
+                status === 'expired' ? 'bg-rose-500' : 'bg-amber-400'
+              )}
+            />
+          )}
+
           <div className="flex items-center gap-3.5 min-w-0 flex-1">
             <PantryItemThumb item={item} />
 

@@ -171,6 +171,9 @@ export const translations = {
       groupStatus: 'Termin',
       groupCategory: 'Kategoria',
       groupNone: 'Brak',
+      filters: 'Filtry',
+      sortBy: 'Sortowanie',
+      resultsCount: '{shown} z {total} produktów',
     },
     scanner: {
       title: 'Skaner kodów EAN',
@@ -665,6 +668,9 @@ export const translations = {
       groupStatus: 'Expiry',
       groupCategory: 'Category',
       groupNone: 'None',
+      filters: 'Filters',
+      sortBy: 'Sort by',
+      resultsCount: '{shown} of {total} items',
     },
     scanner: {
       title: 'Barcode Scanner (EAN)',
