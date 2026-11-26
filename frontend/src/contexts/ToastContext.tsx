@@ -22,8 +22,8 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Jeden współdzielony AudioContext — iOS ogranicza liczbę jednocześnie istniejących kontekstów,
-  // a tworzenie nowego przy każdym piknięciu powodowało przycinanie i zanik dźwięku.
+  // One shared AudioContext — iOS limits the number of simultaneous contexts,
+  // and creating a new one per beep caused clipped or missing sound.
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Web Audio API beep sound (zero external audio files needed!)
@@ -52,7 +52,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       osc.start();
       osc.stop(ctx.currentTime + duration);
     } catch (e) {
-      // Ignoruj błędy audio jeśli przeglądarka blokuje autoplay
+      // Ignore audio errors when the browser blocks autoplay
     }
   }, []);
 
@@ -63,7 +63,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         navigator.vibrate(pattern);
       }
     } catch (e) {
-      // Ignoruj
+      // Ignore
     }
   }, []);
 

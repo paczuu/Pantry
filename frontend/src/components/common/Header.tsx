@@ -22,8 +22,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Zamykanie menu po dotknięciu poza nim. Nie używamy tu warstwy `fixed inset-0`,
-  // bo nagłówek ma backdrop-blur, który ogranicza `fixed` do wysokości nagłówka.
+  // Close the menu on a tap outside it. A `fixed inset-0` overlay is not used here,
+  // because the header has backdrop-blur, which confines `fixed` to the header height.
   useEffect(() => {
     if (!showDropdown) return;
 
@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
     <>
       <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/80 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo & Nazwa Domu */}
+          {/* Logo and household name */}
           <button
             type="button"
             onClick={onGoDashboard}
@@ -73,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
             </div>
           </button>
 
-          {/* Prawa strona: Przycisk instalacji PWA + Profil */}
+          {/* Right side: PWA install button + profile */}
           <div className="flex items-center gap-2">
             {!isInstalled && (
               <button
@@ -87,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onGoDashboard })
               </button>
             )}
 
-            {/* Menu Użytkownika */}
+            {/* User menu */}
             <div className="relative" ref={menuRef}>
               <button
                 type="button"

@@ -1,4 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { ModalActions } from '../ui/ModalActions';
+import { EmptyState } from '../ui/Panel';
+import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { FieldLabel, Input, SearchInput, Textarea } from '../ui/FormControls';
 import { Recipe } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -11,7 +17,6 @@ import {
   ChefHat,
   Plus,
   Trash2,
-  Search,
   Eye,
   EyeOff,
   X,
@@ -28,7 +33,6 @@ import {
   List,
   Copy,
   Download,
-  Check,
 } from 'lucide-react';
 
 type RecipeWithExtras = Recipe & {
@@ -139,7 +143,7 @@ const compressRecipeImage = async (file: File): Promise<string> => {
   return result;
 };
 
-// Funkcja generowania wysokiej jakości karty przepisu jako obrazu PNG (High-DPI)
+// Renders a high-quality recipe card as a PNG image (high-DPI)
 const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' | 'en' = 'pl'): Promise<Blob> => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
@@ -150,7 +154,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
 
   const items = parseIngredients(recipe.ingredients);
 
-  // Funkcja pomocnicza do łamania wierszy tekstu
+  // Helper that wraps text into lines
   const wrapText = (text: string, font: string, maxWidth: number): string[] => {
     ctx.font = font;
     const lines: string[] = [];
@@ -185,50 +189,50 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
     ? wrapText(recipe.notes, '22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', contentWidth - 60)
     : [];
 
-  // Obliczanie dynamicznej wysokości całego obrazu
+  // Compute the total image height dynamically
   let totalHeight = padding * 2;
   const heroImageHeight = recipe.imageUrl ? 520 : 0;
   if (heroImageHeight) totalHeight += heroImageHeight + 40;
 
-  totalHeight += 70; // Tytuł
-  totalHeight += 50; // Ocena i liczba składników
+  totalHeight += 70; // Title
+  totalHeight += 50; // Rating and ingredient count
   totalHeight += 40; // Separator
 
   if (items.length > 0) {
-    totalHeight += 60; // Nagłówek składników
+    totalHeight += 60; // Ingredients heading
     totalHeight += items.length * 38 + 30;
   }
 
   if (instructionLines.length > 0) {
-    totalHeight += 60; // Nagłówek instrukcji
+    totalHeight += 60; // Instructions heading
     totalHeight += instructionLines.length * 36 + 30;
   }
 
   if (notesLines.length > 0) {
-    totalHeight += 60; // Nagłówek uwag
-    totalHeight += notesLines.length * 34 + 60; // Ramka uwag
+    totalHeight += 60; // Notes heading
+    totalHeight += notesLines.length * 34 + 60; // Notes box
   }
 
-  totalHeight += 70; // Stopka
+  totalHeight += 70; // Footer
 
   canvas.width = width;
   canvas.height = totalHeight;
 
-  // Tło gradientowe
+  // Gradient background
   const bgGrad = ctx.createLinearGradient(0, 0, 0, totalHeight);
   bgGrad.addColorStop(0, '#090d16');
   bgGrad.addColorStop(1, '#0f172a');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, totalHeight);
 
-  // Zewnętrzna subtelna ramka
+  // Subtle outer border
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 3;
   ctx.strokeRect(10, 10, width - 20, totalHeight - 20);
 
   let curY = padding;
 
-  // Rysowanie zdjęcia z zachowaniem proporcji i centrowaniem (object-fit: cover)
+  // Draw the photo keeping its aspect ratio, centred (object-fit: cover)
   if (recipe.imageUrl) {
     try {
       const img = new Image();
@@ -256,7 +260,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
         ctx.drawImage(img, sx, sy, sWidth, sHeight, padding, curY, contentWidth, targetH);
         ctx.restore();
 
-        // Obramowanie zdjęcia
+        // Photo border
         ctx.strokeStyle = '#334155';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -268,13 +272,13 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
     } catch (e) {}
   }
 
-  // Tytuł przepisu
+  // Recipe title
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillText(recipe.name, padding, curY + 36);
   curY += 60;
 
-  // Ocena i Liczba składników
+  // Rating and ingredient count
   ctx.fillStyle = '#10b981';
   ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   const ratingLabel = language === 'en' ? 'Rating' : 'Ocena';
@@ -293,7 +297,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
   ctx.stroke();
   curY += 35;
 
-  // Składniki
+  // Ingredients
   if (items.length > 0) {
     ctx.fillStyle = '#34d399';
     ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -312,7 +316,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
     curY += 20;
   }
 
-  // Sposób przygotowania
+  // Instructions
   if (instructionLines.length > 0) {
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -328,7 +332,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
     curY += 20;
   }
 
-  // Uwagi
+  // Notes
   if (notesLines.length > 0) {
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -354,7 +358,7 @@ const generateRecipeImageBlob = async (recipe: RecipeWithExtras, language: 'pl' 
     curY += boxH + 25;
   }
 
-  // Stopka
+  // Footer
   ctx.fillStyle = '#64748b';
   ctx.font = '20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillText(
@@ -379,7 +383,7 @@ export const RecipesView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
 
-  // Widok: pełny (karty) lub kompaktowy
+  // View: full (cards) or compact
   const [viewMode, setViewMode] = useState<'full' | 'compact'>(() => {
     try {
       return (localStorage.getItem('pantry_recipes_view_mode') as 'full' | 'compact') || 'full';
@@ -407,7 +411,7 @@ export const RecipesView: React.FC = () => {
   const [rating, setRating] = useState(5);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
 
-  // Snapshot do śledzenia isDirty
+  // Snapshot used to track isDirty
   const [initialSnapshot, setInitialSnapshot] = useState<{
     name: string;
     instructions: string;
@@ -432,11 +436,11 @@ export const RecipesView: React.FC = () => {
     imageUrl !== initialSnapshot.imageUrl ||
     rating !== initialSnapshot.rating;
 
-  // Udostępnianie
+  // Sharing
   const [sharingRecipe, setSharingRecipe] = useState<RecipeWithExtras | null>(null);
   const [isSharingImage, setIsSharingImage] = useState(false);
 
-  // Lista zakupów z przepisu
+  // Shopping list built from the recipe
   const [shoppingRecipeId, setShoppingRecipeId] = useState<string | null>(null);
   const [shoppingRecipe, setShoppingRecipe] = useState<RecipeWithExtras | null>(null);
   const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
@@ -640,7 +644,7 @@ export const RecipesView: React.FC = () => {
     }
   };
 
-  // Udostępnianie jako tekst
+  // Share as text
   const formatRecipeText = (recipe: RecipeWithExtras): string => {
     const items = parseIngredients(recipe.ingredients);
     let text = `🍽️ ${recipe.name} (${language === 'en' ? 'Rating' : 'Ocena'}: ${recipe.rating || 5}/10 ⭐)\n\n`;
@@ -721,7 +725,7 @@ export const RecipesView: React.FC = () => {
         }
       }
 
-      // Pobieranie pliku graficznego
+      // Download the image file
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -877,81 +881,50 @@ export const RecipesView: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <ChefHat className="w-6 h-6 text-emerald-400" />
-            {t('recipes.title')}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {language === 'en'
-              ? 'Save recipes, ingredients list, photos, rating, and notes'
-              : 'Zapisuj przepisy, listę składników, zdjęcia, ocenę i opcjonalne uwagi'}
-          </p>
-        </div>
+      <PageHeader
+        icon={<ChefHat />}
+        title={t('recipes.title')}
+        subtitle={
+          language === 'en'
+            ? 'Save recipes, ingredients list, photos, rating, and notes'
+            : 'Zapisuj przepisy, listę składników, zdjęcia, ocenę i opcjonalne uwagi'
+        }
+        actions={
+          <>
+            {/* View switch: full vs compact */}
+            <SegmentedControl
+              size="icon"
+              className="rounded-2xl bg-slate-900"
+              value={viewMode}
+              onChange={handleToggleViewMode}
+              options={[
+                { value: 'full', label: <LayoutGrid className="w-4 h-4" />, title: t('recipes.viewFull') },
+                { value: 'compact', label: <List className="w-4 h-4" />, title: t('recipes.viewCompact') },
+              ]}
+            />
+            <Button variant="primary" icon={<Plus className="w-4 h-4 stroke-[2.5]" />} collapseLabel onClick={handleOpenAdd}>
+              {t('recipes.addRecipe')}
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Przełącznik widoku: Pełny vs Kompaktowy */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-0.5 shadow-md">
-            <button
-              type="button"
-              onClick={() => handleToggleViewMode('full')}
-              className={`p-2 rounded-xl transition-all ${
-                viewMode === 'full'
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title={t('recipes.viewFull')}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleViewMode('compact')}
-              className={`p-2 rounded-xl transition-all ${
-                viewMode === 'compact'
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title={t('recipes.viewCompact')}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">{t('recipes.addRecipe')}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('recipes.searchPlaceholder')}
-          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-        />
-      </div>
+      <SearchInput
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t('recipes.searchPlaceholder')}
+      />
 
       {isLoading ? (
         <div className="py-16 text-center text-slate-500 text-sm">{t('common.loading')}</div>
       ) : filteredRecipes.length === 0 ? (
-        <div className="py-16 text-center text-slate-500 text-sm bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6 space-y-2">
-          <ChefHat className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-bold text-white">{t('recipes.emptyTitle')}</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            {t('recipes.emptyDesc')}
-          </p>
-        </div>
+        <EmptyState
+          icon={<ChefHat className="w-10 h-10 text-slate-600 mx-auto" />}
+          title={t('recipes.emptyTitle')}
+          description={t('recipes.emptyDesc')}
+        />
       ) : viewMode === 'compact' ? (
-        /* Widok Kompaktowy */
+        /* Compact view */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredRecipes.map((recipe) => {
             const items = parseIngredients(recipe.ingredients);
@@ -962,7 +935,7 @@ export const RecipesView: React.FC = () => {
                 onClick={() => handleOpenEdit(recipe)}
                 className="rounded-2xl border border-slate-800 bg-slate-900/80 hover:bg-slate-900 hover:border-slate-700/80 shadow-md p-3 flex items-center gap-3 cursor-pointer select-none transition-all hover:scale-[1.01]"
               >
-                {/* Zdjęcie miniatura */}
+                {/* Thumbnail */}
                 <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
                   {recipe.imageUrl ? (
                     <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-full object-cover" loading="lazy" />
@@ -971,7 +944,7 @@ export const RecipesView: React.FC = () => {
                   )}
                 </div>
 
-                {/* Informacje: Nazwa, Składniki, Ocena */}
+                {/* Info: name, ingredients, rating */}
                 <div className="min-w-0 flex-1">
                   <h4 className="font-extrabold text-white text-sm truncate leading-snug">{recipe.name}</h4>
                   <div className="flex items-center gap-2 mt-1">
@@ -985,7 +958,7 @@ export const RecipesView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Akcje: Udostępnij */}
+                {/* Actions: share */}
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
@@ -1004,7 +977,7 @@ export const RecipesView: React.FC = () => {
           })}
         </div>
       ) : (
-        /* Widok Pełny (Karty) */
+        /* Full view (cards) */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredRecipes.map((recipe) => {
             const items = parseIngredients(recipe.ingredients);
@@ -1117,7 +1090,7 @@ export const RecipesView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Udostępniania Przepisu */}
+      {/* Share recipe modal */}
       <Modal
         isOpen={!!sharingRecipe}
         onClose={() => {
@@ -1221,7 +1194,7 @@ export const RecipesView: React.FC = () => {
         )}
       </Modal>
 
-      {/* Modal Tworzenia / Edycji Przepisu */}
+      {/* Create / edit recipe modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -1232,44 +1205,30 @@ export const RecipesView: React.FC = () => {
         maxWidth="lg"
         isDirty={isDirty}
         headerActions={
-          <div className="flex items-center gap-2 mr-1">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              disabled={isImageProcessing}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-40"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              form="recipe-edit-form"
-              disabled={isImageProcessing}
-              className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-              {editingRecipe ? t('common.save') : (language === 'en' ? 'Create' : 'Utwórz')}
-            </button>
-          </div>
+          <ModalActions
+            formId="recipe-edit-form"
+            submitLabel={editingRecipe ? t('common.save') : language === 'en' ? 'Create' : 'Utwórz'}
+            isSubmitting={isImageProcessing}
+            onCancel={() => setIsModalOpen(false)}
+          />
         }
       >
         <form id="recipe-edit-form" onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">{t('recipes.recipeNameLabel')}</label>
-            <input
+            <FieldLabel>{t('recipes.recipeNameLabel')}</FieldLabel>
+            <Input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={language === 'en' ? 'e.g. Spaghetti Bolognese' : 'np. Zupa pomidorowa'}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               autoFocus={!editingRecipe}
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold text-slate-300">{t('recipes.ratingLabel')}</label>
+              <FieldLabel className="mb-0">{t('recipes.ratingLabel')}</FieldLabel>
               <span className="text-xs font-extrabold text-emerald-400">
                 {rating}/10
               </span>
@@ -1307,7 +1266,7 @@ export const RecipesView: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">{t('recipes.recipePhoto')}</label>
+            <FieldLabel className="mb-0">{t('recipes.recipePhoto')}</FieldLabel>
             <input
               ref={cameraInputRef}
               type="file"
@@ -1417,9 +1376,9 @@ export const RecipesView: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">{t('recipes.ingredientsLabel')}</label>
+            <FieldLabel className="mb-0">{t('recipes.ingredientsLabel')}</FieldLabel>
             <div className="flex gap-2">
-              <input
+              <Input
                 ref={ingredientInputRef}
                 type="text"
                 value={newIngredient}
@@ -1432,15 +1391,11 @@ export const RecipesView: React.FC = () => {
                   }
                 }}
                 placeholder={t('recipes.ingredientPlaceholder')}
-                className="flex-1 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                className="flex-1 py-2 text-xs sm:text-sm"
               />
-              <button
-                type="button"
-                onClick={handleAddIngredient}
-                className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400"
-              >
+              <Button variant="primary" onClick={handleAddIngredient}>
                 {t('recipes.addIngredientBtn')}
-              </button>
+              </Button>
             </div>
             <div className="space-y-1.5 overflow-y-auto">
               {ingredients.map((item, index) => (
@@ -1462,13 +1417,12 @@ export const RecipesView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">{t('recipes.instructionsLabel')}</label>
-            <textarea
+            <FieldLabel>{t('recipes.instructionsLabel')}</FieldLabel>
+            <Textarea
               rows={6}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder={t('recipes.instructionsPlaceholder')}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
 
@@ -1492,7 +1446,7 @@ export const RecipesView: React.FC = () => {
             )}
           </div>
 
-          {/* Opcja usuwania przepisu wewnątrz modala */}
+          {/* Delete recipe option inside the modal */}
           {editingRecipe && (
             <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
               <button
@@ -1550,24 +1504,21 @@ export const RecipesView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => shoppingRecipe && createShoppingListFromRecipe(shoppingRecipe, missingIngredients)}
               disabled={!shoppingRecipe || shoppingRecipeId !== null || missingIngredients.length === 0}
-              className="px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40"
             >
               {language === 'en' ? `Missing only (${missingIngredients.length})` : `Tylko brakujące (${missingIngredients.length})`}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={() => shoppingRecipe && createShoppingListFromRecipe(shoppingRecipe, parseIngredients(shoppingRecipe.ingredients))}
               disabled={!shoppingRecipe || shoppingRecipeId !== null}
-              className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold disabled:opacity-40"
             >
               {language === 'en'
                 ? `Add all (${shoppingRecipe ? parseIngredients(shoppingRecipe.ingredients).length : 0})`
                 : `Dodaj wszystkie (${shoppingRecipe ? parseIngredients(shoppingRecipe.ingredients).length : 0})`}
-            </button>
+            </Button>
           </div>
 
           <button

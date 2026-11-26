@@ -1,8 +1,8 @@
 export type ExpiryStatus = 'expired' | 'warning' | 'ok' | 'none';
 
 /**
- * Wspólna logika oceny terminu ważności.
- * Używana zarówno przez PantryCard, jak i PantryPage (liczniki, grupowanie).
+ * Shared expiry-date evaluation logic.
+ * Used by PantryCard and PantryPage (counters, grouping).
  */
 export const getExpiryStatus = (
   expiryDate: string | Date | null | undefined,

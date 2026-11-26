@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { FieldLabel, Input, Select } from '../ui/FormControls';
 import { Modal } from '../common/Modal';
+import { VoiceDateInput } from '../common/VoiceDateInput';
+import { Button } from '../ui/Button';
+import { ModalActions } from '../ui/ModalActions';
+import { QuantityStepper } from '../ui/QuantityStepper';
 import { PantryItemThumb } from '../common/PantryItemThumb';
 import { ProductCatalogItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
@@ -7,21 +12,17 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
-import {
-  Plus,
-  Minus,
-  Calendar,
-  Tag,
-  Image as ImageIcon,
-  Camera,
-  Check,
-  Scale,
-  PackageOpen,
-  Mic,
-  Loader2,
-  SearchX,
-  Barcode,
-} from 'lucide-react';
+import { Calendar, Tag, Image as ImageIcon, Camera, Scale, PackageOpen, SearchX, Barcode } from 'lucide-react';
+
+/** Quick expiry shortcuts: translation key, unit (days / months) and amount. */
+const QUICK_DATES = [
+  { labelKey: 'pantry.quickDate3d', unit: 'd', amount: 3 },
+  { labelKey: 'pantry.quickDate1w', unit: 'd', amount: 7 },
+  { labelKey: 'pantry.quickDate2w', unit: 'd', amount: 14 },
+  { labelKey: 'pantry.quickDate1m', unit: 'm', amount: 1 },
+  { labelKey: 'pantry.quickDate6m', unit: 'm', amount: 6 },
+  { labelKey: 'pantry.quickDate1y', unit: 'm', amount: 12 },
+] as const;
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -56,7 +57,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Snapshot do śledzenia isDirty
+  // Snapshot used to track isDirty
   const [initialSnapshot, setInitialSnapshot] = useState({
     name: '',
     brand: '',
@@ -80,12 +81,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     notes !== initialSnapshot.notes ||
     imageUrl !== initialSnapshot.imageUrl;
 
-  // Hook głosowego wprowadzania daty
-  const { isListening, isSupported, spokenTranscript, toggleListening } = useVoiceExpiry(
-    (detectedDate) => {
-      setExpiryDate(detectedDate);
-    }
-  );
+  // Voice date input hook
+  const voice = useVoiceExpiry(setExpiryDate);
 
   useEffect(() => {
     if (initialProduct) {
@@ -248,29 +245,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       maxWidth="lg"
       isDirty={isDirty}
       headerActions={
-        <div className="flex items-center gap-2 mr-1">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="hidden sm:block px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="quick-add-form"
-            disabled={isSubmitting}
-            className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-            {t('common.add')}
-          </button>
-        </div>
+        <ModalActions formId="quick-add-form" submitLabel={t('common.add')} isSubmitting={isSubmitting} onCancel={onClose} />
       }
     >
       <form id="quick-add-form" onSubmit={handleSubmit} className="space-y-4">
-        {/* Podgląd po znalezieniu produktu w bazie */}
+        {/* Preview when the product was found in the catalog */}
         {initialProduct ? (
           <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
             <PantryItemThumb src={imageUrl} alt={name} />
@@ -297,7 +276,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </div>
           </div>
         ) : barcode ? (
-          /* Informacja i zeskanowany EAN w przypadku braku produktu w bazie */
+          /* Info and the scanned EAN when the product is not in the catalog */
           <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/90 border border-amber-500/30 text-amber-200">
             <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
               <SearchX className="w-5 h-5" />
@@ -316,35 +295,33 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           </div>
         ) : null}
 
-        {/* Nazwa i Producent */}
+        {/* Name and brand */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">{t('pantry.nameLabel')}</label>
-            <input
+            <FieldLabel>{t('pantry.nameLabel')}</FieldLabel>
+            <Input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={language === 'en' ? 'e.g. Milk 3.2%, Pasta...' : 'np. Mleko 3.2%, Makaron...'}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">{t('pantry.brandLabel')}</label>
-            <input
+            <FieldLabel>{t('pantry.brandLabel')}</FieldLabel>
+            <Input
               type="text"
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder={language === 'en' ? 'e.g. Barilla, Heinz' : 'np. Łaciate, Barilla, Piątnica'}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
         </div>
 
-        {/* Ilość (Wyłącznie sztuki) + Tylko do odczytu Pojemność jako informacja */}
+        {/* Quantity (pieces only) + read-only capacity as information */}
         <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-200">{t('pantry.quantity')} ({t('common.pieces')})</label>
+            <FieldLabel className="mb-0">{t('pantry.quantity')} ({t('common.pieces')})</FieldLabel>
             <p className="text-[11px] text-slate-400">
               {capacity ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
@@ -356,53 +333,38 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </p>
           </div>
 
-          {/* Stepper ilości */}
-          <div className="flex items-center bg-slate-950 border border-slate-700 rounded-xl p-1 shadow-inner">
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-95 transition-all font-bold"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-            <div className="px-4 text-center min-w-[3.5rem]">
-              <span className="text-base font-extrabold text-white">{quantity}</span>
-              <span className="text-xs text-slate-400 ml-1 font-semibold">{t('common.pcs')}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => q + 1)}
-              className="w-9 h-9 flex items-center justify-center rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-95 transition-all font-bold"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
+          <QuantityStepper
+            alwaysShowUnit
+            quantity={quantity}
+            unit={t('common.pcs')}
+            onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
+            onIncrement={() => setQuantity((q) => q + 1)}
+          />
         </div>
 
-        {/* Kategoria */}
+        {/* Category */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+          <FieldLabel className="flex items-center gap-1">
             <Tag className="w-3.5 h-3.5 text-cyan-400" /> {t('pantry.categoryLabel')}
-          </label>
-          <select
+          </FieldLabel>
+          <Select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 cursor-pointer"
           >
             {categories.map((cat) => (
               <option key={cat.id} value={cat.name}>
                 {tCategory(cat.name)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
-        {/* Data ważności + Głosowe wprowadzanie (Mikrofon) */}
+        {/* Expiry date + voice input (microphone) */}
         <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-2.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+            <FieldLabel className="flex items-center gap-1.5 mb-0">
               <Calendar className="w-4 h-4 text-amber-400" /> {t('pantry.expiryDate')}
-            </label>
+            </FieldLabel>
             {expiryDate && (
               <button
                 type="button"
@@ -414,102 +376,24 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             )}
           </div>
 
-          {/* Pole wyboru daty + Przycisk mikrofonu */}
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-            />
+          <VoiceDateInput value={expiryDate} onChange={setExpiryDate} voice={voice} />
 
-            {/* Przycisk Głosowy */}
-            {isSupported && (
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`p-2.5 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs ${
-                  isListening
-                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-950/60 animate-pulse ring-2 ring-rose-400'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                }`}
-                title={t('pantry.voiceHint')}
-              >
-                {isListening ? (
-                  <>
-                    <Mic className="w-4 h-4 animate-bounce" />
-                    <span className="hidden sm:inline">{t('pantry.listening')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-4 h-4 text-emerald-400" />
-                    <span className="hidden sm:inline">{t('pantry.speakDate')}</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-
-          {/* Wyświetlacz nasłuchiwania mowy */}
-          {isListening && (
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-rose-500/40 text-xs text-rose-300 flex items-center gap-2 animate-fade-in">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>
-                {spokenTranscript
-                  ? `${t('pantry.listening')} "${spokenTranscript}"`
-                  : t('pantry.voiceHint')}
-              </span>
-            </div>
-          )}
-
-          {/* Szybkie przyciski wyboru daty */}
+          {/* Quick date buttons */}
           <div className="flex flex-wrap gap-1.5 pt-1">
-            <button
-              type="button"
-              onClick={() => addDaysToExpiry(3)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
-            >
-              {t('pantry.quickDate3d')}
-            </button>
-            <button
-              type="button"
-              onClick={() => addDaysToExpiry(7)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
-            >
-              {t('pantry.quickDate1w')}
-            </button>
-            <button
-              type="button"
-              onClick={() => addDaysToExpiry(14)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
-            >
-              {t('pantry.quickDate2w')}
-            </button>
-            <button
-              type="button"
-              onClick={() => addMonthsToExpiry(1)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
-            >
-              {t('pantry.quickDate1m')}
-            </button>
-            <button
-              type="button"
-              onClick={() => addMonthsToExpiry(6)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
-            >
-              {t('pantry.quickDate6m')}
-            </button>
-            <button
-              type="button"
-              onClick={() => addMonthsToExpiry(12)}
-              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-300 font-semibold transition-colors"
-            >
-              {t('pantry.quickDate1y')}
-            </button>
+            {QUICK_DATES.map(({ labelKey, unit, amount }) => (
+              <Button
+                key={labelKey}
+                size="sm"
+                className="text-[11px] font-semibold text-slate-300"
+                onClick={() => (unit === 'd' ? addDaysToExpiry(amount) : addMonthsToExpiry(amount))}
+              >
+                {t(labelKey)}
+              </Button>
+            ))}
           </div>
         </div>
 
-        {/* Data otwarcia */}
+        {/* Opened date */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50">
           <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 font-medium">
             <input
@@ -522,18 +406,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             <span>{t('pantry.openedToggle')}</span>
           </label>
           {isOpened && (
-            <input
+            <Input
               type="date"
               value={openedDate}
               onChange={(e) => setOpenedDate(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none"
+              className="w-auto py-2 text-xs"
             />
           )}
         </div>
 
-        {/* Zdjęcie produktu */}
+        {/* Product photo */}
         <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-2">
-          <label className="block text-xs font-semibold text-slate-300">{t('scanner.photoSection')}</label>
+          <FieldLabel className="mb-0">{t('scanner.photoSection')}</FieldLabel>
           <input
             ref={cameraInputRef}
             type="file"
@@ -554,22 +438,20 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
+                <Button
+                  size="sm"
+                  icon={<Camera className="w-3.5 h-3.5 text-emerald-400" />}
                   onClick={() => cameraInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
                 >
-                  <Camera className="w-3.5 h-3.5 text-emerald-400" />
                   {t('scanner.takePhoto')}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  size="sm"
+                  icon={<ImageIcon className="w-3.5 h-3.5 text-slate-300" />}
                   onClick={() => galleryInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
                 >
-                  <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
                   {t('scanner.chooseGallery')}
-                </button>
+                </Button>
               </div>
               <p className="text-[11px] text-slate-500">
                 {t('scanner.photoSavedWithEan')}
@@ -578,15 +460,14 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           </div>
         </div>
 
-        {/* Notatki */}
+        {/* Notes */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">{t('pantry.notes')}</label>
-          <input
+          <FieldLabel>{t('pantry.notes')}</FieldLabel>
+          <Input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={language === 'en' ? 'e.g. Opened sauce, consume within 3 days' : 'np. Otwarto sos, zjeść w 3 dni'}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
           />
         </div>
       </form>

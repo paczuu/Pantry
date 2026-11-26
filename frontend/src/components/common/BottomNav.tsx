@@ -69,7 +69,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           const Icon = ICONS_MAP[item.id] || LayoutDashboard;
           const displayLabel = t(`nav.${item.id}`) || item.label;
 
-          // Etykiety mniejsze na wąskich telefonach, żeby wszystkie pozycje mieściły się w jednym rzędzie
+          // Smaller labels on narrow phones so every item fits in a single row
           const labelCls = `block max-w-full truncate leading-tight tracking-tighter ${
             visibleItems.length > 7 ? 'text-[9px]' : 'text-[10px] max-[389px]:text-[9px]'
           }`;

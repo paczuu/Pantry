@@ -4,16 +4,13 @@ import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { Modal } from '../common/Modal';
-import { LiveEditorsBadge } from '../common/LiveEditorsBadge';
+import { Button } from '../ui/Button';
+import { FieldLabel, Input } from '../ui/FormControls';
+import { PageHeader } from '../ui/PageHeader';
+import { Panel } from '../ui/Panel';
 import { useLiveRefresh } from '../../contexts/RealtimeContext';
-import {
-  Plus,
-  Trash2,
-  ShoppingBag,
-  Check,
-  ListPlus,
-  Scale,
-} from 'lucide-react';
+import { cn } from '../../utils/cn';
+import { Plus, Trash2, ShoppingBag, Check, ListPlus, Scale } from 'lucide-react';
 
 export const ShoppingListsView: React.FC = () => {
   const { showToast, playBeep } = useToast();
@@ -131,7 +128,7 @@ export const ShoppingListsView: React.FC = () => {
       setNewItemCapacity('');
       setShowCapInput(false);
       playBeep(750, 'sine', 0.08);
-      // Zostajemy w polu nazwy, żeby od razu wpisywać kolejną pozycję
+      // Keep focus on the name field so the next item can be typed right away
       newItemNameRef.current?.focus();
     } catch (err: any) {
       showToast(
@@ -207,30 +204,22 @@ export const ShoppingListsView: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Nagłówek i Zakładki List */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <ShoppingBag className="w-6 h-6 text-emerald-400" />
-            {t('shopping.title')}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {language === 'en'
-              ? 'Plan groceries and check off bought items'
-              : 'Planuj zakupy i oznaczaj kupione produkty'}
-          </p>
-        </div>
+      <PageHeader
+        icon={<ShoppingBag />}
+        title={t('shopping.title')}
+        subtitle={
+          language === 'en'
+            ? 'Plan groceries and check off bought items'
+            : 'Planuj zakupy i oznaczaj kupione produkty'
+        }
+        actions={
+          <Button variant="primary" icon={<ListPlus className="w-4 h-4" />} collapseLabel onClick={() => setIsNewListModalOpen(true)}>
+            {t('shopping.createList')}
+          </Button>
+        }
+      />
 
-        <button
-          onClick={() => setIsNewListModalOpen(true)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all shrink-0"
-        >
-          <ListPlus className="w-4 h-4" />
-          <span className="hidden sm:inline">{t('shopping.createList')}</span>
-        </button>
-      </div>
-
-      {/* Zakładki List Zakupów */}
+      {/* List tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         {lists.map((l) => {
           const isSelected = l.id === activeListId;
@@ -239,17 +228,19 @@ export const ShoppingListsView: React.FC = () => {
             <button
               key={l.id}
               onClick={() => setActiveListId(l.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 border transition-all ${
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 border transition-all',
                 isSelected
                   ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-950/40'
                   : 'bg-slate-900/80 hover:bg-slate-800 border-slate-800 text-slate-300'
-              }`}
+              )}
             >
               <span>{l.name}</span>
               <span
-                className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
+                className={cn(
+                  'text-[11px] px-2 py-0.5 rounded-full font-bold',
                   isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'
-                }`}
+                )}
               >
                 {checked}/{l.items.length}
               </span>
@@ -258,10 +249,10 @@ export const ShoppingListsView: React.FC = () => {
         })}
       </div>
 
-      {/* Główny Panel Aktywnej Listy */}
+      {/* Active list */}
       {activeList ? (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-5 shadow-xl">
-          {/* Pasek Tytułowy Listy i Akcje Zbiorcze */}
+        <Panel className="p-4 sm:p-6 space-y-5 shadow-xl">
+          {/* List title and bulk actions */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -278,31 +269,29 @@ export const ShoppingListsView: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-2">
               {checkedCount > 0 && (
-                <button
-                  onClick={handleClearChecked}
-                  className="px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs transition-colors"
-                >
+                <Button variant="ghost" size="sm" className="font-normal" onClick={handleClearChecked}>
                   {t('shopping.clearChecked')}
-                </button>
+                </Button>
               )}
 
               {lists.length > 1 && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-500 hover:text-rose-400"
                   onClick={() => handleDeleteList(activeList.id, activeList.name)}
-                  className="p-2.5 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-slate-800 transition-colors"
                   title={language === 'en' ? 'Delete list' : 'Usuń listę'}
                   aria-label={language === 'en' ? 'Delete list' : 'Usuń listę'}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  icon={<Trash2 className="w-4 h-4" />}
+                />
               )}
             </div>
           </div>
 
-          {/* Formularz Szybkiego Dodawania Artykułu */}
+          {/* Quick add form */}
           <form onSubmit={handleAddItem} className="space-y-2">
             <div className="flex gap-2">
-              <input
+              <Input
                 ref={newItemNameRef}
                 type="text"
                 required
@@ -310,10 +299,10 @@ export const ShoppingListsView: React.FC = () => {
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={t('shopping.addItemPlaceholder')}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 min-w-0"
+                className="flex-1 min-w-0 px-4 rounded-2xl"
               />
 
-              {/* Ilość w sztukach */}
+              {/* Quantity */}
               <div className="flex items-center bg-slate-800 border border-slate-700 rounded-2xl p-0.5 shrink-0">
                 <input
                   type="number"
@@ -325,15 +314,17 @@ export const ShoppingListsView: React.FC = () => {
                 <span className="text-xs text-slate-400 pr-2 font-medium">{t('common.pcs')}</span>
               </div>
 
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
-                className="px-3.5 sm:px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold rounded-2xl text-sm transition-all shadow-lg shrink-0"
-              >
-                <Plus className="w-5 h-5 stroke-[2.5]" />
-              </button>
+                className="px-3.5 sm:px-4 rounded-2xl shrink-0"
+                aria-label={t('common.add')}
+                icon={<Plus className="w-5 h-5 stroke-[2.5]" />}
+              />
             </div>
 
-            {/* Opcjonalna pojemność */}
+            {/* Optional net weight / volume */}
             <div>
               {!showCapInput && !newItemCapacity ? (
                 <button
@@ -348,12 +339,12 @@ export const ShoppingListsView: React.FC = () => {
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={newItemCapacity}
                     onChange={(e) => setNewItemCapacity(e.target.value)}
                     placeholder={language === 'en' ? 'Net weight / volume (e.g. 500g, 1L)' : 'Pojemność / waga (np. 500g, 1L)'}
-                    className="w-full max-w-[14rem] min-w-0 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    className="max-w-[14rem] min-w-0 px-3 py-2 text-xs"
                   />
                   <button
                     type="button"
@@ -367,7 +358,7 @@ export const ShoppingListsView: React.FC = () => {
             </div>
           </form>
 
-          {/* Lista Artykułów */}
+          {/* Items */}
           <div className="space-y-2">
             {activeList.items.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-sm">
@@ -379,33 +370,36 @@ export const ShoppingListsView: React.FC = () => {
               activeList.items.map((item) => (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between px-3 py-1.5 rounded-2xl border transition-all ${
+                  className={cn(
+                    'flex items-center justify-between px-3 py-1.5 rounded-2xl border transition-all',
                     item.isChecked
                       ? 'bg-slate-950/40 border-slate-800/40 opacity-60'
                       : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/60'
-                  }`}
+                  )}
                 >
-                  {/* Checkbox i Nazwa */}
+                  {/* Checkbox and name */}
                   <div
                     onClick={() => handleToggleItem(item)}
                     className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer select-none"
                   >
                     <button
                       type="button"
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                      className={cn(
+                        'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all',
                         item.isChecked
                           ? 'bg-emerald-500 text-slate-950'
                           : 'border-2 border-slate-600 text-transparent hover:border-emerald-400'
-                      }`}
+                      )}
                     >
                       <Check className="w-4 h-4 stroke-[3]" />
                     </button>
 
                     <div className="min-w-0 flex-1 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                       <span
-                        className={`text-sm font-semibold line-clamp-2 sm:line-clamp-1 break-words min-w-0 ${
+                        className={cn(
+                          'text-sm font-semibold line-clamp-2 sm:line-clamp-1 break-words min-w-0',
                           item.isChecked ? 'line-through text-slate-400' : 'text-white'
-                        }`}
+                        )}
                       >
                         {item.name}
                       </span>
@@ -417,62 +411,52 @@ export const ShoppingListsView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Ilość i Usuń */}
+                  {/* Quantity chip and delete (quantity is set when the item is added) */}
                   <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                    {/* Sama ilość, bez steppera — zmiana ilości odbywa się przy dodawaniu pozycji */}
                     <span className="bg-slate-800 rounded-lg px-2 py-1 text-xs font-medium text-slate-200 whitespace-nowrap">
                       ×{item.quantity}
                     </span>
 
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-500 hover:text-rose-400"
                       onClick={() => handleDeleteItem(item.id)}
-                      className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
                       aria-label={t('common.delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      icon={<Trash2 className="w-4 h-4" />}
+                    />
                   </div>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </Panel>
       ) : (
         <div className="py-12 text-center text-slate-400">{t('common.loading')}</div>
       )}
 
-      {/* Modal Nowej Listy */}
+      {/* New list modal */}
       <Modal isOpen={isNewListModalOpen} onClose={() => setIsNewListModalOpen(false)} title={t('shopping.createList')} maxWidth="sm">
         <form onSubmit={handleCreateList} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              {language === 'en' ? 'List name *' : 'Nazwa listy *'}
-            </label>
-            <input
+            <FieldLabel>{language === 'en' ? 'List name *' : 'Nazwa listy *'}</FieldLabel>
+            <Input
               type="text"
               required
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
               placeholder={t('shopping.listNamePlaceholder')}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               autoFocus
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsNewListModalOpen(false)}
-              className="px-3 py-2 text-slate-400 hover:text-white text-xs font-semibold"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setIsNewListModalOpen(false)}>
               {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400 transition-colors"
-            >
+            </Button>
+            <Button variant="primary" size="sm" type="submit">
               {t('shopping.addListBtn')}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

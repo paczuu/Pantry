@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { FieldLabel, Input, Select } from '../ui/FormControls';
 import { Modal } from '../common/Modal';
+import { VoiceDateInput } from '../common/VoiceDateInput';
+import { ModalActions } from '../ui/ModalActions';
+import { QuantityStepper } from '../ui/QuantityStepper';
 import { PantryItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { useVoiceExpiry } from '../../hooks/useVoiceExpiry';
 import { api } from '../../services/api';
-import { Tag, Calendar, PackageOpen, Check, Scale, Minus, Plus, Mic, Loader2 } from 'lucide-react';
+import { Tag, Calendar, PackageOpen, Scale } from 'lucide-react';
 
 interface EditPantryItemModalProps {
   isOpen: boolean;
@@ -56,7 +60,8 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
     setExpiryDate(detectedDate);
   }, []);
 
-  const { isListening, isSupported, spokenTranscript, toggleListening, stopListening } = useVoiceExpiry(handleVoiceDateDetected);
+  const voice = useVoiceExpiry(handleVoiceDateDetected);
+  const { isListening, stopListening } = voice;
 
   useEffect(() => {
     if (item) {
@@ -146,66 +151,44 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
       title={t('pantry.editModalTitle')}
       maxWidth="lg"
       isDirty={isDirty}
-      headerActions={
-        <div className="flex items-center gap-2 mr-1">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="hidden sm:block px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors disabled:opacity-50"
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="edit-pantry-form"
-            disabled={isSubmitting}
-            className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-            {t('common.save')}
-          </button>
-        </div>
-      }
+      headerActions={<ModalActions formId="edit-pantry-form" isSubmitting={isSubmitting} onCancel={handleClose} />}
     >
       <form id="edit-pantry-form" onSubmit={handleSubmit} className="space-y-4">
 
-        {/* Nazwa i Producent */}
+        {/* Name and brand */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <FieldLabel>
               {t('pantry.nameLabel')}
-            </label>
+            </FieldLabel>
 
-            <input
+            <Input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <FieldLabel>
               {t('pantry.brandLabel')}
-            </label>
+            </FieldLabel>
 
-            <input
+            <Input
               type="text"
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
         </div>
 
-        {/* Ilość + Pojemność */}
+        {/* Quantity + capacity */}
         <div className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-200">
+            <FieldLabel className="mb-0">
               {t('pantry.quantity')} ({t('common.pieces')})
-            </label>
+            </FieldLabel>
 
             <p className="text-[11px] text-slate-400">
               {capacity ? (
@@ -219,127 +202,70 @@ export const EditPantryItemModal: React.FC<EditPantryItemModalProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-xl p-0.5">
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-
-            <span className="px-3 text-white font-extrabold text-sm min-w-[3rem] text-center">
-              {quantity} {t('common.pcs')}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => q + 1)}
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
+          <QuantityStepper
+            alwaysShowUnit
+            quantity={quantity}
+            unit={t('common.pcs')}
+            onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
+            onIncrement={() => setQuantity((q) => q + 1)}
+          />
         </div>
 
-        {/* Kategoria */}
+        {/* Category */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+          <FieldLabel className="flex items-center gap-1">
             <Tag className="w-3.5 h-3.5 text-cyan-400" />
             {t('pantry.categoryLabel')}
-          </label>
+          </FieldLabel>
 
-          <select
+          <Select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
           >
             {categories.map((cat) => (
               <option key={cat.id} value={cat.name}>
                 {tCategory(cat.name)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
-        {/* Data ważności + głos */}
+        {/* Expiry date + voice input */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-300 flex items-center gap-1">
+          <FieldLabel className="flex items-center gap-1 mb-0">
             <Calendar className="w-3.5 h-3.5 text-amber-400" />
             {t('pantry.expiryDate')}
-          </label>
+          </FieldLabel>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
-            />
-
-            {isSupported && (
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`p-2.5 rounded-xl transition-all flex items-center gap-1.5 text-xs shrink-0 ${
-                  isListening
-                    ? 'bg-rose-500 text-white border border-rose-400 animate-pulse'
-                    : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'
-                }`}
-                title={t('pantry.voiceHint')}
-              >
-                <Mic className={`w-4 h-4 ${isListening ? 'text-white' : 'text-emerald-400'}`} />
-                <span className="hidden sm:inline">
-                  {isListening ? t('pantry.listening') : t('pantry.speakDate')}
-                </span>
-              </button>
-            )}
-          </div>
-
-          {isListening && (
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-rose-500/20 text-xs text-rose-300 flex items-start gap-2 animate-fade-in">
-              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <div className="font-semibold break-words">
-                  {spokenTranscript || t('pantry.listening')}
-                </div>
-                {!spokenTranscript && (
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {t('pantry.voiceHint')}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <VoiceDateInput value={expiryDate} onChange={setExpiryDate} voice={voice} />
         </div>
 
-        {/* Data otwarcia */}
+        {/* Opened date */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+          <FieldLabel className="flex items-center gap-1">
             <PackageOpen className="w-3.5 h-3.5 text-cyan-400" />
             {t('pantry.openDateLabel')}
-          </label>
+          </FieldLabel>
 
-          <input
+          <Input
             type="date"
             value={openedDate}
             onChange={(e) => setOpenedDate(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
           />
         </div>
 
-        {/* Notatki */}
+        {/* Notes */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">
+          <FieldLabel>
             {t('pantry.notes')}
-          </label>
+          </FieldLabel>
 
-          <input
+          <Input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={language === 'en' ? 'Additional notes...' : 'Dodatkowe uwagi...'}
-            className="w-full px-3.5 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+            className="py-2"
           />
         </div>
       </form>

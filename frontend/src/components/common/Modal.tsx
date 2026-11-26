@@ -51,11 +51,11 @@ export const Modal: React.FC<ModalProps> = ({
   }, []);
 
   /**
-   * Obsługa cofania (przycisk Wstecz przeglądarki / gest na telefonie).
+   * Back navigation handling (browser Back button / phone gesture).
    */
   useEffect(() => {
     if (isOpen && !isOpenRef.current) {
-      // Otwarcie modala
+      // Modal opened
       isOpenRef.current = true;
       const modalId = 'modal_' + Date.now();
       window.history.pushState({ modalId }, '');
@@ -91,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
         }
       };
     } else if (!isOpen && isOpenRef.current) {
-      // Zamknięcie modala
+      // Modal closed
       isOpenRef.current = false;
       if (historyPushedRef.current) {
         historyPushedRef.current = false;
@@ -101,7 +101,7 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isOpen]);
 
   /**
-   * Blokada scrolla strony pod modalem i obsługa Escape.
+   * Locks page scrolling behind the modal and handles Escape.
    */
   useEffect(() => {
     if (!isOpen) return;
@@ -124,7 +124,7 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isOpen, handleRequestClose]);
 
   /**
-   * Pilnujemy widoczności inputów wewnątrz modala.
+   * Keeps inputs inside the modal visible.
    */
   useEffect(() => {
     if (!isOpen) return;
@@ -152,8 +152,8 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isOpen]);
 
   /**
-   * Po zmianie wysokości visual viewportu
-   * (np. pojawienie się klawiatury) sprawdzamy aktywne pole.
+   * When the visual viewport height changes
+   * (e.g. the keyboard appears) the focused field is checked.
    */
   useEffect(() => {
     if (!isOpen) return;
@@ -257,7 +257,7 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         </div>
 
-        {/* Scrollowalna zawartość */}
+        {/* Scrollable content */}
         <div
           ref={bodyRef}
           className="

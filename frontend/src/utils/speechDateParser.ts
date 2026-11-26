@@ -384,7 +384,7 @@ export const parseVoiceDate = (transcript: string, lang: 'pl' | 'en' = 'pl'): st
     return formatLocalDate(d);
   }
 
-  // 3. Koniec miesiąca / roku
+  // 3. End of month / year
   if (
     text.includes('koniec miesiąca') ||
     text.includes('koniec miesiaca') ||
@@ -404,7 +404,7 @@ export const parseVoiceDate = (transcript: string, lang: 'pl' | 'en' = 'pl'): st
     return formatLocalDate(d);
   }
 
-  // 4. Dokładna data z nazwą miesiąca
+  // 4. Exact date with a month name
   for (const [monthName, monthIndex] of Object.entries(POLISH_MONTHS)) {
     if (text.includes(monthName)) {
       const parts = text.split(monthName);
@@ -443,7 +443,7 @@ export const parseVoiceDate = (transcript: string, lang: 'pl' | 'en' = 'pl'): st
     }
   }
 
-  // 5. Format numeryczny: "15 05 2026", "15.05", "15 05"
+  // 5. Numeric format: "15 05 2026", "15.05", "15 05"
   const dateNumMatch = text.match(/(\d{1,2})\s+(\d{1,2})(?:\s+(\d{2,4}))?/);
 
   if (dateNumMatch) {

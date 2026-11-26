@@ -109,8 +109,8 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({
 };
 
 /**
- * Status terminu jako zwykły, kolorowy tekst (bez plakietki) — do zwartych wierszy listy.
- * Zwraca fragmenty `span`, więc można je łączyć w jednej linii z innymi informacjami.
+ * Expiry status as plain coloured text (no pill) — for compact list rows.
+ * Returns `span` fragments, so it can share a line with other information.
  */
 export const ExpiryText: React.FC<{
   expiryDate?: string | null;

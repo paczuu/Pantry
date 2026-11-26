@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/Button';
+import { FieldLabel, Input } from '../ui/FormControls';
 import { Home, KeyRound, LogOut, Trash2, UserRoundX } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -112,12 +114,12 @@ export const NoHouseholdView: React.FC = () => {
 
             <form onSubmit={handleJoinHousehold} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <FieldLabel className="mb-1.5">
                   {language === 'en' ? 'Invite code' : 'Kod zaproszenia'}
-                </label>
+                </FieldLabel>
                 <div className="relative">
                   <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
+                  <Input
                     type="text"
                     value={inviteCode}
                     onChange={(e) =>
@@ -132,15 +134,17 @@ export const NoHouseholdView: React.FC = () => {
                     maxLength={6}
                     placeholder="AB12CD"
                     disabled={joining || deleting}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-[0.2em] text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                    className="pl-10 pr-4 py-3 font-mono tracking-[0.2em] disabled:opacity-50"
                   />
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
+                fullWidth
                 disabled={joining || deleting || inviteCode.length !== 6}
-                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {joining
                   ? language === 'en'
@@ -149,7 +153,7 @@ export const NoHouseholdView: React.FC = () => {
                   : language === 'en'
                   ? 'Join household'
                   : 'Dołącz do gospodarstwa'}
-              </button>
+              </Button>
             </form>
           </div>
 

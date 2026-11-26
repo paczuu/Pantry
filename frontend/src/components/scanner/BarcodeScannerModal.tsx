@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/FormControls';
+import { SegmentedControl } from '../ui/SegmentedControl';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { QuickAddModal } from './QuickAddModal';
 import { QuickRemoveModal } from './QuickRemoveModal';
@@ -7,7 +10,19 @@ import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { usePantry } from '../../contexts/PantryContext';
 import { useLanguage } from '../../language/LanguageContext';
-import { X, Flashlight, Keyboard, PlusCircle, MinusCircle, Search, Loader2, Camera, ShieldAlert, Sparkles, SwitchCamera, ScanBarcode } from 'lucide-react';
+import {
+  X,
+  Flashlight,
+  Keyboard,
+  PlusCircle,
+  MinusCircle,
+  Search,
+  Loader2,
+  Camera,
+  ShieldAlert,
+  Sparkles,
+  SwitchCamera,
+} from 'lucide-react';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -73,8 +88,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
   const loadCameras = useCallback(async () => {
     try {
-      // enumerateDevices nie uruchamia dodatkowego strumienia z kamery, w przeciwieństwie do
-      // Html5Qrcode.getCameras() — na iPhonie każde otwarcie kamery to ok. sekundy opóźnienia.
+      // enumerateDevices does not open an extra camera stream, unlike
+      // Html5Qrcode.getCameras() — on iPhone every camera open costs about a second.
       let devices: Array<{ id: string; label: string }> = [];
       try {
         const all = await navigator.mediaDevices.enumerateDevices();
@@ -87,7 +102,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       if (devices && devices.length > 0) {
         setCameras(devices);
         
-        // Szukaj kamery tylnej po etykiecie
+        // Look for the rear camera by its label
         const backCamIdx = devices.findIndex((d) => {
           const lbl = d.label.toLowerCase();
           return lbl.includes('back') || lbl.includes('tył') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('0, facing back');
@@ -96,7 +111,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         if (backCamIdx !== -1) {
           setSelectedCameraIndex(backCamIdx);
         } else {
-          // Jeśli na iOS etykiety są puste, ustawiamy null, by użyć constraints z facingMode: 'environment'
+          // If labels are empty (iOS), use null so the facingMode: 'environment' constraint applies
           setSelectedCameraIndex(null);
         }
       } else {
@@ -112,7 +127,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
   }, []);
 
-  // Sprawdź status uprawnień przy otwarciu
+  // Check the permission status when opening
   const checkInitialPermission = useCallback(async () => {
     if (!isOpen) return;
     setCameraError(null);
@@ -148,7 +163,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             return;
           }
         } catch (e) {
-          // Safari/iOS nie obsługuje nazwy 'camera' w permissions.query
+          // Safari/iOS does not support the 'camera' name in permissions.query
         }
       }
       setPermissionState('prompt');
@@ -171,7 +186,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
   }, [isOpen, checkInitialPermission, stopScanner]);
 
-  // Bezpośrednie getUserMedia po kliknięciu użytkownika (iOS User Gesture)
+  // Direct getUserMedia call after a user click (iOS user-gesture requirement)
   const handleRequestPermissionClick = async () => {
     try {
       setCameraError(null);
@@ -187,7 +202,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         return;
       }
 
-      // Wymuszamy kamerę tylną przy pierwszym wywołaniu strumienia
+      // Force the rear camera on the first stream request
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -238,7 +253,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Obsługa cofania (przycisk Wstecz przeglądarki / gest na telefonie)
+  // Back navigation handling (browser Back button / phone gesture)
   useEffect(() => {
     if (isOpen && !isOpenRef.current) {
       isOpenRef.current = true;
@@ -332,12 +347,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
   }, [isProcessing, mode, onScanSearch, setFilter, onClose, playBeep, showToast, soundEnabled, vibrate, stopScanner, language]);
 
-  // Skaner wywołuje zawsze najnowszą wersję handlera przez ref. Dzięki temu zmiana trybu,
-  // języka czy stanu przetwarzania NIE restartuje kamery (na iPhonie restart trwa sekundy).
+  // The scanner always calls the latest handler through a ref, so changing the mode,
+  // language or processing state does NOT restart the camera (a restart takes seconds on iPhone).
   const handleBarcodeScannedRef = useRef(handleBarcodeScanned);
   handleBarcodeScannedRef.current = handleBarcodeScanned;
 
-  // Uruchom skaner
+  // Start the scanner
   useEffect(() => {
     let cancelled = false;
 
@@ -353,8 +368,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         await stopScanner();
         if (cancelled) return;
 
-        // Tylko formaty kodów produktów — każdy dodatkowy format to kolejny dekoder
-        // uruchamiany na każdej klatce (bez natywnego BarcodeDetector, czyli na iOS, w JS).
+        // Product barcode formats only — every extra format is another decoder
+        // run on every frame (without the native BarcodeDetector, i.e. on iOS, in JS).
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.EAN_13,
           Html5QrcodeSupportedFormats.EAN_8,
@@ -363,7 +378,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           Html5QrcodeSupportedFormats.CODE_128,
         ];
 
-        // Safari nie ma BarcodeDetector — dekodowanie w JS jest kosztowne, więc mniej klatek na sekundę
+        // Safari has no BarcodeDetector — JS decoding is expensive, so fewer frames per second
         const hasNativeDetector = typeof (window as any).BarcodeDetector !== 'undefined';
 
         const qrScanner = new Html5Qrcode(scannerContainerId, {
@@ -376,8 +391,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
         html5QrCodeRef.current = qrScanner;
 
-        // Jeśli wybrano konkretną kamerę z listy (i wiemy, że to ta właściwa) - używamy deviceId.
-        // W przeciwnym wypadku (np. na iOS gdy nazwy były puste) wymuszamy 'environment'.
+        // If a specific camera was picked from the list (and we know it is the right one), use its deviceId.
+        // Otherwise (e.g. iOS with empty labels) force 'environment'.
         const cameraId = selectedCameraIndex !== null && cameras[selectedCameraIndex]?.id ? cameras[selectedCameraIndex].id : null;
         
         const cameraConfig = cameraId
@@ -388,7 +403,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           cameraConfig,
           {
             fps: hasNativeDetector ? 20 : 10,
-            // Kody kreskowe są szerokie i niskie — dekodujemy tylko pas środkowy kadru
+            // Barcodes are wide and short — only the middle strip of the frame is decoded
             qrbox: (viewfinderWidth, viewfinderHeight) => ({
               width: Math.floor(viewfinderWidth * 0.85),
               height: Math.floor(viewfinderHeight * 0.45),
@@ -534,50 +549,47 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
   return (
     <>
-      {/* Pełnoekranowy widok skanera */}
+      {/* Fullscreen scanner view */}
       {!isQuickAddOpen && !isQuickRemoveOpen && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between overflow-hidden">
-          {/* Górny Pasek Kontrolny */}
+          {/* Top control bar */}
           <div className="absolute top-0 inset-x-0 z-40 p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-gradient-to-b from-black/90 via-black/60 to-transparent flex items-center justify-between gap-3">
-            {/* Przełącznik Trybu: Dodawanie vs Zużyj vs Szukaj */}
-            <div className="flex items-center min-w-0 bg-slate-900/90 rounded-2xl p-1 border border-slate-700/80 shadow-2xl">
-              <button
-                type="button"
-                onClick={() => setMode('ADD')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                  mode === 'ADD' ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/60' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span className={mode === 'ADD' ? '' : 'hidden sm:inline'}>{t('common.add')}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('REMOVE')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                  mode === 'REMOVE' ? 'bg-rose-500 text-white shadow-md shadow-rose-950/60' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <MinusCircle className="w-3.5 h-3.5" />
-                <span className={mode === 'REMOVE' ? '' : 'hidden sm:inline'}>
-                  {language === 'en' ? 'Consume' : 'Zużyj'}
-                </span>
-              </button>
-              {allowSearch && (
-                <button
-                  type="button"
-                  onClick={() => setMode('SEARCH')}
-                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                    mode === 'SEARCH' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/60' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  <span className={mode === 'SEARCH' ? '' : 'hidden sm:inline'}>{t('common.search')}</span>
-                </button>
-              )}
-            </div>
+            {/* Mode switch: add / consume / search */}
+            <SegmentedControl
+              size="sm"
+              className="min-w-0 bg-slate-900/90 rounded-2xl border-slate-700/80 shadow-2xl p-1"
+              value={mode}
+              onChange={setMode}
+              options={[
+                {
+                  value: 'ADD',
+                  icon: <PlusCircle className="w-3.5 h-3.5" />,
+                  label: <span className={mode === 'ADD' ? '' : 'hidden sm:inline'}>{t('common.add')}</span>,
+                },
+                {
+                  value: 'REMOVE',
+                  icon: <MinusCircle className="w-3.5 h-3.5" />,
+                  label: (
+                    <span className={mode === 'REMOVE' ? '' : 'hidden sm:inline'}>
+                      {language === 'en' ? 'Consume' : 'Zużyj'}
+                    </span>
+                  ),
+                  activeClassName: 'bg-rose-500 text-white shadow-md',
+                },
+                ...(allowSearch
+                  ? [
+                      {
+                        value: 'SEARCH' as const,
+                        icon: <Search className="w-3.5 h-3.5" />,
+                        label: <span className={mode === 'SEARCH' ? '' : 'hidden sm:inline'}>{t('common.search')}</span>,
+                        activeClassName: 'bg-cyan-500 text-slate-950 shadow-md',
+                      },
+                    ]
+                  : []),
+              ]}
+            />
 
-            {/* Przyciski Akcji: Przełącznik kamery, Latarka, Zamknij */}
+            {/* Actions: camera switch, torch, close */}
             <div className="flex items-center gap-2">
               {cameras.length > 1 && (
                 <button
@@ -615,13 +627,13 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </div>
           </div>
 
-          {/* Główny Obszar Kamery / Uprawnień */}
+          {/* Camera / permissions area */}
           <div className="relative z-0 w-full h-full flex items-center justify-center bg-black overflow-hidden">
             {activeTab === 'camera' ? (
               <>
-                {/* Kontener wideo z rozmytym tłem i dopasowanym obrazem w centrum */}
+                {/* Video container: blurred backdrop with the fitted image centred */}
                 <div className="absolute inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
-                  {/* Wyrenderowany strumień wideo ze sztuczką CSS do rozmytego tła */}
+                  {/* Video stream with a CSS trick for the blurred backdrop */}
                   <div
                     id={scannerContainerId}
                     className="relative w-full h-full flex items-center justify-center
@@ -630,11 +642,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                     "
                   />
 
-                  {/* Przyciemnienie tła (bez backdrop-blur — na iOS rozmycie nad żywym wideo mocno obciąża GPU) */}
+                  {/* Dimmed backdrop (no backdrop-blur — on iOS blurring over live video is very GPU-heavy) */}
                   <div className="absolute inset-0 z-0 bg-black/60 pointer-events-none" />
                 </div>
 
-                {/* Ekran sprawdzania uprawnień */}
+                {/* Checking permissions screen */}
                 {permissionState === 'checking' && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
                     <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
@@ -649,7 +661,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   </div>
                 )}
 
-                {/* Ekran Prośby o Uprawnienia do Kamery */}
+                {/* Camera permission request screen */}
                 {permissionState === 'prompt' && !cameraError && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-5">
                     <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 flex items-center justify-center">
@@ -666,26 +678,23 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       </p>
                     </div>
                     <div className="flex flex-col w-full max-w-xs gap-2.5 pt-2">
-                      <button
-                        type="button"
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        icon={<Sparkles className="w-4 h-4" />}
                         onClick={handleRequestPermissionClick}
-                        className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-extrabold text-sm rounded-2xl shadow-xl shadow-emerald-950/70 transition-all flex items-center justify-center gap-2"
                       >
-                        <Sparkles className="w-4 h-4" />
                         {language === 'en' ? 'Grant access & start scanner' : 'Zezwól i uruchom skaner'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('manual')}
-                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs rounded-2xl transition-colors"
-                      >
+                      </Button>
+                      <Button fullWidth onClick={() => setActiveTab('manual')}>
                         {t('scanner.manualInput')}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Ekran błędu / zablokowanych uprawnień */}
+                {/* Error / blocked permission screen */}
                 {(permissionState === 'denied' || cameraError) && permissionState !== 'checking' && (
                   <div className="absolute inset-0 z-30 bg-slate-950 p-6 flex flex-col items-center justify-center text-center gap-4">
                     <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
@@ -702,26 +711,15 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={handleRequestPermissionClick}
-                        className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Camera className="w-4 h-4" />
+                      <Button variant="primary" icon={<Camera className="w-4 h-4" />} onClick={handleRequestPermissionClick}>
                         {language === 'en' ? 'Try again' : 'Spróbuj ponownie'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('manual')}
-                        className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-colors"
-                      >
-                        {t('scanner.manualInput')}
-                      </button>
+                      </Button>
+                      <Button onClick={() => setActiveTab('manual')}>{t('scanner.manualInput')}</Button>
                     </div>
                   </div>
                 )}
 
-                {/* Pełnoekranowa ramka i laserowy skaner */}
+                {/* Fullscreen frame and scanning laser */}
                 {isScanning && !cameraError && permissionState === 'granted' && (
                   <div className="absolute z-20 inset-x-6 sm:inset-x-24 top-1/2 -translate-y-1/2 h-64 sm:h-72 border-2 border-emerald-500/70 rounded-3xl pointer-events-none flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.25)]">
                     <div className="w-full h-0.5 bg-emerald-400 shadow-[0_0_16px_#10b981] scanner-laser absolute [--laser-range:13rem] sm:[--laser-range:15rem]" />
@@ -733,7 +731,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 )}
               </>
             ) : (
-              /* Widok ręcznego wpisywania */
+              /* Manual entry view */
               <div className="w-full max-w-md p-6 space-y-4">
                 <div className="text-center space-y-1">
                   <h3 className="font-extrabold text-white text-lg">
@@ -745,28 +743,29 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 </div>
                 <form onSubmit={handleManualSubmit} className="space-y-3">
                   <div className="relative">
-                    <input
+                    <Input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value)}
                       placeholder="np. 5900820000010"
-                      className="w-full pl-4 pr-12 py-3.5 rounded-2xl bg-slate-900 border border-slate-700 text-white font-mono text-lg focus:outline-none focus:border-emerald-500"
+                      className="pl-4 pr-12 py-3.5 rounded-2xl bg-slate-900 font-mono text-lg"
                     />
-                    <button
+                    <Button
+                      variant="primary"
                       type="submit"
+                      size="icon"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10"
                       disabled={isProcessing || !manualCode.trim()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl disabled:opacity-50 transition-colors"
-                    >
-                      {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 stroke-[2.5]" />}
-                    </button>
+                      icon={isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 stroke-[2.5]" />}
+                    />
                   </div>
                 </form>
               </div>
             )}
 
-            {/* Spinner przetwarzania */}
+            {/* Processing spinner */}
             {isProcessing && (
               <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3 text-white z-50">
                 <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
@@ -775,7 +774,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             )}
           </div>
 
-          {/* Dolny Pasek Nawigacyjny Skanera */}
+          {/* Scanner bottom bar */}
           <div className="absolute bottom-0 inset-x-0 z-40 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col items-center gap-3">
             <p className="text-xs text-slate-300 font-medium text-center drop-shadow-md">
               {mode === 'ADD'
@@ -807,7 +806,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         </div>
       )}
 
-      {/* Modal Dodawania Produktu */}
+      {/* Add product modal */}
       <QuickAddModal
         isOpen={isQuickAddOpen}
         onClose={() => {
@@ -822,7 +821,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         }}
       />
 
-      {/* Modal Szybkiego Usuwania */}
+      {/* Quick remove modal */}
       <QuickRemoveModal
         isOpen={isQuickRemoveOpen}
         onClose={() => {

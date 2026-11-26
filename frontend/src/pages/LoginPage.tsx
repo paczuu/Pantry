@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { Button } from '../components/ui/Button';
+import { FieldLabel, Input } from '../components/ui/FormControls';
+import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../language/LanguageContext';
 import { UserPlus, LogIn, Eye, EyeOff } from 'lucide-react';
@@ -31,7 +34,7 @@ export const LoginPage: React.FC = () => {
         await login(email.trim(), password);
       }
     } catch (e) {
-      // Błąd obsługiwany w Toast
+      // The error is shown by the toast
     } finally {
       setIsLoading(false);
     }
@@ -39,9 +42,9 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh w-full bg-slate-950 flex flex-col items-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-100">
-      {/* Cała strona się przewija (np. przy otwartej klawiaturze), zamiast zamykać formularz w małej karcie */}
+      {/* The whole page scrolls (e.g. with the keyboard open) instead of trapping the form in a small card */}
       <div className="w-full max-w-md my-auto space-y-4 sm:space-y-6">
-        {/* Logo i Nagłówek */}
+        {/* Logo and heading */}
         <div className="text-center space-y-1.5 sm:space-y-2">
           <div className="inline-flex w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 p-0.5 shadow-2xl shadow-emerald-950/80 items-center justify-center">
             <img
@@ -60,68 +63,55 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Karta Formularza z obsługą ewentualnego przepełnienia */}
+        {/* Form card (handles overflow) */}
         <div className="p-5 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl space-y-4">
-          {/* Zakładki: Logowanie / Rejestracja */}
-          <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => setIsRegister(false)}
-              className={`py-2.5 rounded-lg transition-all ${
-                !isRegister ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {language === 'en' ? 'Log in' : 'Logowanie'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsRegister(true)}
-              className={`py-2.5 rounded-lg transition-all ${
-                isRegister ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {language === 'en' ? 'Register' : 'Rejestracja'}
-            </button>
-          </div>
+          {/* Tabs: sign in / register */}
+          <SegmentedControl
+            fill
+            value={isRegister ? 'register' : 'login'}
+            onChange={(mode) => setIsRegister(mode === 'register')}
+            options={[
+              { value: 'login', label: language === 'en' ? 'Log in' : 'Logowanie' },
+              { value: 'register', label: language === 'en' ? 'Register' : 'Rejestracja' },
+            ]}
+          />
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {isRegister && (
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.nameLabel')} *</label>
-                <input
+                <FieldLabel>{t('auth.nameLabel')} *</FieldLabel>
+                <Input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={language === 'en' ? 'e.g. John, Alex' : 'np. Anna, Jan'}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.emailLabel')} *</label>
-              <input
+              <FieldLabel>{t('auth.emailLabel')} *</FieldLabel>
+              <Input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={language === 'en' ? 'your@email.com' : 'twoj@email.pl'}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">{t('auth.passwordLabel')} *</label>
+              <FieldLabel>{t('auth.passwordLabel')} *</FieldLabel>
               <div className="relative">
-                <input
+                <Input
                   type={showPassword ? 'text' : 'password'}
                   required
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-3.5 pr-11 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  className="pl-3.5 pr-11"
                 />
                 <button
                   type="button"
@@ -136,17 +126,17 @@ export const LoginPage: React.FC = () => {
 
             {isRegister && (
               <div className="pt-2 border-t border-slate-800 space-y-1.5">
-                <label className="block text-[11px] text-slate-400">
+                <FieldLabel>
                   {language === 'en' ? 'Household invite code' : 'Kod zaproszenia do gospodarstwa'}
-                </label>
-                <input
+                </FieldLabel>
+                <Input
                   type="text"
                   minLength={6}
                   maxLength={6}
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   placeholder={language === 'en' ? 'e.g. AB12CD' : 'np. AB12CD'}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-emerald-500"
+                  className="font-mono tracking-widest"
                 />
                 <p className="text-[11px] text-slate-500">
                   {language === 'en'
@@ -156,18 +146,21 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="submit"
+              fullWidth
               disabled={isLoading}
-              className="w-full py-3 mt-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-1"
+              icon={isRegister ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
             >
-              {isRegister ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
               {isLoading
                 ? (language === 'en' ? 'Processing...' : 'Przetwarzanie...')
                 : isRegister
                 ? t('auth.registerBtn')
                 : t('auth.loginBtn')}
-            </button>
+            </Button>
           </form>
         </div>
       </div>

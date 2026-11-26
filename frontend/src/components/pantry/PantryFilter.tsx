@@ -1,8 +1,10 @@
 import React from 'react';
 import { usePantry } from '../../contexts/PantryContext';
 import { useLanguage } from '../../language/LanguageContext';
+import { SearchInput, Select } from '../ui/FormControls';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { cn } from '../../utils/cn';
 import {
-  Search,
   LayoutGrid,
   List,
   Clock,
@@ -40,16 +42,15 @@ const Chip: React.FC<ChipProps> = ({ active, onClick, icon, label, count, active
     type="button"
     onClick={onClick}
     title={title}
-    className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold transition-all active:scale-95 ${
+    className={cn(
+      'shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold transition-all active:scale-95',
       active ? activeCls : idleCls
-    }`}
+    )}
   >
     {icon}
     {label}
     <span
-      className={`px-1.5 rounded-full text-[11px] font-extrabold ${
-        active ? 'bg-black/20' : 'bg-slate-800/80'
-      }`}
+      className={cn('px-1.5 rounded-full text-[11px] font-extrabold', active ? 'bg-black/20' : 'bg-slate-800/80')}
     >
       {count}
     </span>
@@ -84,46 +85,43 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Rząd 1: Wyszukiwarka -> Sortowanie (ikona) -> Widok (siatka/lista) */}
+      {/* Row 1: search -> sort (icon) -> view (grid/list) */}
       <div className="flex items-center gap-2">
-        {/* Wyszukiwarka */}
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(e) => setFilter('search', e.target.value)}
-            placeholder={t('pantry.searchPlaceholder')}
-            className={`w-full pl-9 sm:pl-10 ${
-              filters.search ? 'pr-24' : 'pr-12'
-            } sm:pr-32 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors`}
-          />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-            {filters.search && (
-              <button
-                type="button"
-                onClick={() => setFilter('search', '')}
-                className="px-1.5 py-0.5 text-xs text-slate-400 hover:text-white"
-              >
-                {t('common.clear')}
-              </button>
-            )}
-            {onOpenScannerSearch && (
-              <button
-                type="button"
-                onClick={onOpenScannerSearch}
-                className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 p-1.5 text-[11px] font-bold"
-                title={t('scanner.instructionSearch')}
-                aria-label={t('scanner.instructionSearch')}
-              >
-                <ScanBarcode className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('pantry.scanProduct')}</span>
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Search */}
+        <SearchInput
+          wrapperClassName="flex-1"
+          value={filters.search}
+          onChange={(e) => setFilter('search', e.target.value)}
+          placeholder={t('pantry.searchPlaceholder')}
+          className={cn('pl-9 sm:pl-10 sm:pr-32', filters.search ? 'pr-24' : 'pr-12')}
+          trailing={
+            <>
+              {filters.search && (
+                <button
+                  type="button"
+                  onClick={() => setFilter('search', '')}
+                  className="px-1.5 py-0.5 text-xs text-slate-400 hover:text-white"
+                >
+                  {t('common.clear')}
+                </button>
+              )}
+              {onOpenScannerSearch && (
+                <button
+                  type="button"
+                  onClick={onOpenScannerSearch}
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 p-1.5 text-[11px] font-bold"
+                  title={t('scanner.instructionSearch')}
+                  aria-label={t('scanner.instructionSearch')}
+                >
+                  <ScanBarcode className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('pantry.scanProduct')}</span>
+                </button>
+              )}
+            </>
+          }
+        />
 
-        {/* Sortowanie */}
+        {/* Sorting: a native select overlaid on an icon button */}
         <div className="relative shrink-0 flex items-center justify-center bg-slate-900 border border-slate-800 rounded-2xl p-3 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
           <ArrowUpDown className="w-4 h-4" />
           <select
@@ -141,32 +139,20 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
           </select>
         </div>
 
-        {/* Przełącznik widoku */}
-        <div className="flex items-center shrink-0 bg-slate-900 border border-slate-800 rounded-2xl p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode('grid')}
-            className={`p-2.5 rounded-xl transition-colors ${
-              viewMode === 'grid' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-            }`}
-            title={en ? 'Grid view' : 'Widok siatki'}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`p-2.5 rounded-xl transition-colors ${
-              viewMode === 'list' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
-            }`}
-            title={en ? 'List view' : 'Widok listy'}
-          >
-            <List className="w-4 h-4" />
-          </button>
-        </div>
+        {/* View switch */}
+        <SegmentedControl
+          size="icon"
+          className="shrink-0 rounded-2xl bg-slate-900"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: 'grid', label: <LayoutGrid className="w-4 h-4" />, title: en ? 'Grid view' : 'Widok siatki' },
+            { value: 'list', label: <List className="w-4 h-4" />, title: en ? 'List view' : 'Widok listy' },
+          ]}
+        />
       </div>
 
-      {/* Rząd 2: chipy statusu (przewijane poziomo na telefonie) */}
+      {/* Row 2: status chips (horizontally scrollable on phones) */}
       <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 sm:-mx-1 sm:px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Chip
           active={filters.filterByExpiry === 'ALL'}
@@ -218,12 +204,12 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
         />
       </div>
 
-      {/* Rząd 3: kategoria, grupowanie, reset */}
+      {/* Row 3: category, grouping, reset */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <select
+        <Select
           value={filters.category}
           onChange={(e) => setFilter('category', e.target.value)}
-          className="flex-1 sm:flex-none min-w-[6.5rem] max-w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
+          className="flex-1 sm:flex-none w-auto min-w-[6.5rem] max-w-full px-3 py-2 bg-slate-900 border-slate-800 text-slate-300 text-xs font-medium"
         >
           <option value="ALL">{t('pantry.categoryAll')}</option>
           {categories.map((c) => (
@@ -231,25 +217,18 @@ export const PantryFilter: React.FC<PantryFilterProps> = ({
               {tCategory(c.name)}
             </option>
           ))}
-        </select>
+        </Select>
 
         {groupBy && setGroupBy && (
           <div className="flex items-center gap-2 shrink-0">
             <Layers className="hidden sm:block w-3.5 h-3.5 text-slate-500" />
-            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5">
-              {groupOptions.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setGroupBy(opt.key)}
-                  className={`px-2 sm:px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
-                    groupBy === opt.key ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              size="sm"
+              className="p-0.5 font-semibold"
+              value={groupBy}
+              onChange={setGroupBy}
+              options={groupOptions.map((opt) => ({ value: opt.key, label: opt.label }))}
+            />
           </div>
         )}
       </div>

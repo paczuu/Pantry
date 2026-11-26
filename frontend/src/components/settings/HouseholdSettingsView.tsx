@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { PageHeader } from '../ui/PageHeader';
+import { Input } from '../ui/FormControls';
+import { Button } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePantry } from '../../contexts/PantryContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -55,7 +58,7 @@ import {
 } from 'lucide-react';
 
 /* -------------------------------------------------------------------------- */
-/*  Stałe                                                                     */
+/*  Constants                                                                 */
 /* -------------------------------------------------------------------------- */
 
 const BARCODE_PROVIDER_OPTIONS: Array<{
@@ -130,10 +133,10 @@ type SectionId =
 type SectionGroup = 'app' | 'household' | 'system';
 
 /* -------------------------------------------------------------------------- */
-/*  Małe komponenty układu                                                    */
+/*  Small layout components                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** Karta grupująca wiersze ustawień (wiersze rozdzielone cienką linią). */
+/** Card grouping settings rows (rows are separated by a thin line). */
 const SettingsCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
   className = '',
@@ -145,7 +148,7 @@ const SettingsCard: React.FC<{ children: React.ReactNode; className?: string }> 
   </div>
 );
 
-/** Pojedynczy wiersz: opis po lewej, kontrolka po prawej (na mobile pod spodem). */
+/** Single row: description on the left, control on the right (below it on phones). */
 const SettingsRow: React.FC<{
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -167,9 +170,9 @@ const SettingsRow: React.FC<{
 );
 
 /**
- * Pole ustawienia z układem „pionowym": nagłówek (ikona + tytuł + opis),
- * a pod nim kontrolki wyrównane do tekstu. Dobre dla formularzy i kodów,
- * które potrzebują więcej miejsca niż wiersz SettingsRow.
+ * Setting field with a "vertical" layout: header (icon + title + description),
+ * with the controls aligned to the text below it. Good for forms and codes
+ * that need more room than a SettingsRow.
  */
 const SettingsField: React.FC<{
   title: React.ReactNode;
@@ -196,7 +199,7 @@ const SettingsField: React.FC<{
   </div>
 );
 
-/** Pełnoszerokościowy blok wewnątrz karty (listy, siatki). */
+/** Full-width block inside a card (lists, grids). */
 const SettingsBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="p-4 sm:p-5 space-y-3">{children}</div>
 );
@@ -239,7 +242,7 @@ const useIsDesktop = () => {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Główny komponent                                                          */
+/*  Main component                                                            */
 /* -------------------------------------------------------------------------- */
 
 export const HouseholdSettingsView: React.FC = () => {
@@ -263,7 +266,7 @@ export const HouseholdSettingsView: React.FC = () => {
   const [systemLoading, setSystemLoading] = useState(false);
   const [newSystemHouseholdName, setNewSystemHouseholdName] = useState('');
 
-  // Instalacja PWA
+  // PWA install
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
 
@@ -281,17 +284,17 @@ export const HouseholdSettingsView: React.FC = () => {
     getStoredAccentTheme()
   );
 
-  // Źródła EAN
+  // EAN sources
   const [barcodeSources, setBarcodeSources] = useState<BarcodeSourceConfig[]>([]);
   const [barcodeSourcesLoading, setBarcodeSourcesLoading] = useState(true);
   const [barcodeSourcesSaving, setBarcodeSourcesSaving] = useState(false);
 
-  // Nawigacja
+  // Navigation
   const [navConfig, setNavConfig] = useState<NavItemConfig[]>(() =>
     loadNavConfig()
   );
 
-  /* ------------------------------ Nawigacja -------------------------------- */
+  /* ------------------------------ Navigation ------------------------------- */
 
   const saveNavConfig = (newConfig: NavItemConfig[]) => {
     setNavConfig(newConfig);
@@ -329,7 +332,7 @@ export const HouseholdSettingsView: React.FC = () => {
     saveNavConfig(DEFAULT_NAV_ITEMS);
   };
 
-  /* -------------------------------- Motyw ---------------------------------- */
+  /* -------------------------------- Theme ---------------------------------- */
 
   const handleAccentThemeChange = (themeId: AccentThemeId) => {
     setAccentTheme(themeId);
@@ -347,7 +350,7 @@ export const HouseholdSettingsView: React.FC = () => {
     handleAccentThemeChange('emerald');
   };
 
-  /* ------------------------------ Instalacja PWA --------------------------- */
+  /* ------------------------------ PWA install ------------------------------ */
 
   const handleNativeInstall = async () => {
     if (!installPrompt) return;
@@ -357,7 +360,7 @@ export const HouseholdSettingsView: React.FC = () => {
     setInstallPrompt(null);
   };
 
-  /* ------------------------------ Źródła EAN ------------------------------- */
+  /* ------------------------------ EAN sources ------------------------------ */
 
   const fetchBarcodeSources = async () => {
     try {
@@ -539,7 +542,7 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
-  /* ------------------------------- Członkowie ------------------------------ */
+  /* -------------------------------- Members -------------------------------- */
 
   const fetchMembers = async () => {
     try {
@@ -550,7 +553,7 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
-  /* -------------------------------- Efekty --------------------------------- */
+  /* -------------------------------- Effects -------------------------------- */
 
   useEffect(() => {
     fetchMembers();
@@ -598,7 +601,7 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   }, [user?.isSystemAdmin]);
 
-  // Instalacja PWA: wykrycie trybu standalone i natywnego promptu
+  // PWA install: detect standalone mode and the native prompt
   useEffect(() => {
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -625,7 +628,7 @@ export const HouseholdSettingsView: React.FC = () => {
     };
   }, []);
 
-  /* ------------------------------ Gospodarstwo ----------------------------- */
+  /* ------------------------------- Household ------------------------------- */
 
   const handleGenerateInviteCode = async () => {
     try {
@@ -795,7 +798,7 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
-  /* ----------------------------- Kopia zapasowa ---------------------------- */
+  /* ------------------------------- Backup ---------------------------------- */
 
   const handleDownloadBackup = async () => {
     try {
@@ -919,7 +922,7 @@ export const HouseholdSettingsView: React.FC = () => {
     }
   };
 
-  /* ------------------------------ Panel systemowy -------------------------- */
+  /* ----------------------------- System panel ------------------------------ */
 
   const fetchSystemAdminData = async () => {
     if (!user?.isSystemAdmin) return;
@@ -1068,7 +1071,7 @@ export const HouseholdSettingsView: React.FC = () => {
   };
 
   /* -------------------------------------------------------------------------- */
-  /*  Definicja sekcji                                                          */
+  /*  Section definitions                                                       */
   /* -------------------------------------------------------------------------- */
 
   const sections: Array<{
@@ -1178,30 +1181,21 @@ export const HouseholdSettingsView: React.FC = () => {
       ? activeSection
       : null;
 
-  // Na desktopie zawsze pokazujemy jakąś sekcję; na telefonie najpierw listę.
+  // On desktop a section is always shown; on phones the list comes first.
   const currentSectionId: SectionId | null =
     requestedSection ?? (isDesktop ? sections[0]?.id ?? null : null);
 
   const currentSection = sections.find((s) => s.id === currentSectionId) || null;
 
   /* -------------------------------------------------------------------------- */
-  /*  Renderery sekcji                                                          */
+  /*  Section renderers                                                         */
   /* -------------------------------------------------------------------------- */
-
-  const inputClass =
-    'px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500';
-
-  const primaryButtonClass =
-    'px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap';
-
-  const secondaryButtonClass =
-    'px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 whitespace-nowrap';
 
   const sortedNavItems = [...navConfig].sort((a, b) => a.order - b.order);
 
   const renderAppearance = () => (
     <div className="space-y-5">
-      {/* Język */}
+      {/* Language */}
       <SettingsCard>
         <SettingsBlock>
           <div>
@@ -1255,7 +1249,7 @@ export const HouseholdSettingsView: React.FC = () => {
         </SettingsBlock>
       </SettingsCard>
 
-      {/* Kolor akcentu */}
+      {/* Accent colour */}
       <SettingsCard>
         <SettingsBlock>
           <div className="flex items-start justify-between gap-3">
@@ -1332,21 +1326,16 @@ export const HouseholdSettingsView: React.FC = () => {
 
   const renderNavigation = () => (
     <SettingsCard>
-      {/* Pasek narzędzi: bez powtarzania tytułu i opisu (są już w nagłówku sekcji) */}
+      {/* Toolbar: no repeated title and description (already in the section header) */}
       <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
         <p className="text-xs text-slate-400 min-w-0">
           {L('Zapisane tylko na tym urządzeniu.', 'Stored on this device only.')}
         </p>
 
-        <button
-          type="button"
-          onClick={resetNavConfig}
-          className={`${secondaryButtonClass} shrink-0`}
-          title={t('settings.navBarResetTooltip')}
-        >
+        <Button variant="secondary" className="shrink-0" onClick={resetNavConfig} title={t('settings.navBarResetTooltip')}>
           <RotateCcw className="w-3.5 h-3.5" />
           {t('settings.navBarResetBtn')}
-        </button>
+        </Button>
       </div>
 
       {sortedNavItems.map((item, index) => {
@@ -1482,7 +1471,7 @@ export const HouseholdSettingsView: React.FC = () => {
 
     return (
       <div className="space-y-5">
-        {/* Status instalacji (bez powtarzania tytułu sekcji) */}
+        {/* Install status (no repeated section title) */}
         <SettingsCard>
           <SettingsRow
             icon={
@@ -1519,19 +1508,15 @@ export const HouseholdSettingsView: React.FC = () => {
             }
           >
             {!isStandalone && installPrompt && (
-              <button
-                type="button"
-                onClick={handleNativeInstall}
-                className={primaryButtonClass}
-              >
+              <Button variant="primary" onClick={handleNativeInstall}>
                 <Download className="w-3.5 h-3.5" />
                 {L('Zainstaluj teraz', 'Install now')}
-              </button>
+              </Button>
             )}
           </SettingsRow>
         </SettingsCard>
 
-        {/* Instrukcje dla wszystkich platform */}
+        {/* Instructions for all platforms */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {installGuides.map((guide) => (
             <SettingsCard key={guide.id}>
@@ -1588,7 +1573,7 @@ export const HouseholdSettingsView: React.FC = () => {
     return (
       <div className="space-y-5">
         <SettingsCard>
-          {/* Nazwa gospodarstwa */}
+          {/* Household name */}
           {isAdmin ? (
             <form onSubmit={handleSaveHouseholdName}>
               <SettingsField
@@ -1597,26 +1582,22 @@ export const HouseholdSettingsView: React.FC = () => {
                 description={t('settings.householdNameNotice')}
               >
                 <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
-                  <input
+                  <Input
                     type="text"
                     value={householdNameInput}
                     onChange={(e) => setHouseholdNameInput(e.target.value)}
                     minLength={2}
                     maxLength={60}
                     placeholder={t('settings.householdNamePlaceholder')}
-                    className={`${inputClass} flex-1 min-w-0`}
+                    className="flex-1 min-w-0"
                   />
 
-                  <button
-                    type="submit"
-                    disabled={householdNameSaving || nameUnchanged}
-                    className={`${primaryButtonClass} sm:w-auto`}
-                  >
+                  <Button variant="primary" className="sm:w-auto" type="submit" disabled={householdNameSaving || nameUnchanged}>
                     <Save className="w-3.5 h-3.5" />
                     {householdNameSaving
                       ? t('settings.savingBtn')
                       : t('settings.changeNameBtn')}
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="text-[11px] text-slate-500 mt-1.5">
@@ -1635,7 +1616,7 @@ export const HouseholdSettingsView: React.FC = () => {
             </SettingsRow>
           )}
 
-          {/* Kod zaproszenia */}
+          {/* Invite code */}
           {isAdmin && (
             <SettingsField
               icon={<KeyRound className="w-4 h-4 text-emerald-400" />}
@@ -1679,29 +1660,21 @@ export const HouseholdSettingsView: React.FC = () => {
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleGenerateInviteCode}
-                    className={`${secondaryButtonClass} sm:self-stretch`}
-                  >
+                  <Button variant="secondary" className="sm:self-stretch" onClick={handleGenerateInviteCode}>
                     <RotateCcw className="w-3.5 h-3.5" />
                     {t('settings.newCodeBtn')}
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleGenerateInviteCode}
-                  className={primaryButtonClass}
-                >
+                <Button variant="primary" onClick={handleGenerateInviteCode}>
                   <KeyRound className="w-4 h-4" />
                   {t('settings.generateCodeBtn')}
-                </button>
+                </Button>
               )}
             </SettingsField>
           )}
 
-          {/* Termin ważności */}
+          {/* Expiry */}
           <SettingsField
             icon={<Clock className="w-4 h-4 text-amber-400" />}
             title={t('settings.expiryWarningDaysTitle')}
@@ -1709,14 +1682,14 @@ export const HouseholdSettingsView: React.FC = () => {
           >
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   type="number"
                   min={1}
                   max={90}
                   value={warningDaysInput}
                   onChange={(e) => setWarningDaysInput(e.target.value)}
                   aria-label={t('settings.warningDaysInputLabel')}
-                  className={`${inputClass} w-20 text-center`}
+                  className="w-20 text-center"
                 />
                 <span className="text-xs text-slate-400">
                   {Number(warningDaysInput) === 1
@@ -1725,22 +1698,17 @@ export const HouseholdSettingsView: React.FC = () => {
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSaveExpiryWarningDays}
-                disabled={warningDaysSaving}
-                className={primaryButtonClass}
-              >
+              <Button variant="primary" onClick={handleSaveExpiryWarningDays} disabled={warningDaysSaving}>
                 <Save className="w-3.5 h-3.5" />
                 {warningDaysSaving
                   ? t('settings.savingBtn')
                   : t('settings.saveWarningDays')}
-              </button>
+              </Button>
             </div>
           </SettingsField>
         </SettingsCard>
 
-        {/* Zmiana gospodarstwa (tylko zwykli użytkownicy) */}
+        {/* Change household (regular users only) */}
         {!isAdmin && (
           <SettingsCard>
             <form onSubmit={handleJoinOtherHousehold}>
@@ -1750,12 +1718,12 @@ export const HouseholdSettingsView: React.FC = () => {
                 description={t('settings.changeHouseholdDesc')}
               >
                 <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
-                  <input
+                  <Input
                     type="text"
                     value={inviteCodeInput}
                     onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
                     placeholder={t('settings.inviteCodePlaceholder')}
-                    className={`${inputClass} flex-1 min-w-0 font-mono tracking-wider`}
+                    className="flex-1 min-w-0 font-mono tracking-wider"
                   />
 
                   <button
@@ -1840,12 +1808,12 @@ export const HouseholdSettingsView: React.FC = () => {
     <SettingsCard>
       <SettingsBlock>
         <form onSubmit={handleAddCategory} className="flex gap-2">
-          <input
+          <Input
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder={t('settings.categoryNamePlaceholder')}
-            className={`${inputClass} flex-1`}
+            className="flex-1"
           />
 
           <button
@@ -1886,25 +1854,17 @@ export const HouseholdSettingsView: React.FC = () => {
   const renderSources = () => (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={resetBarcodeSources}
-          disabled={barcodeSourcesSaving}
-          className={secondaryButtonClass}
-        >
+        <Button variant="secondary" onClick={resetBarcodeSources} disabled={barcodeSourcesSaving}>
           <RotateCcw className="w-3.5 h-3.5" />
           {t('settings.defaultSourcesBtn')}
-        </button>
+        </Button>
 
-        <button
-          onClick={saveBarcodeSources}
-          disabled={barcodeSourcesSaving || barcodeSourcesLoading}
-          className={primaryButtonClass}
-        >
+        <Button variant="primary" onClick={saveBarcodeSources} disabled={barcodeSourcesSaving || barcodeSourcesLoading}>
           <Save className="w-3.5 h-3.5" />
           {barcodeSourcesSaving
             ? t('settings.savingSources')
             : t('settings.saveSources')}
-        </button>
+        </Button>
       </div>
 
       {barcodeSourcesLoading ? (
@@ -2060,10 +2020,10 @@ export const HouseholdSettingsView: React.FC = () => {
           title={t('settings.backupDataTitle')}
           description={t('settings.backupDataDesc')}
         >
-          <button onClick={handleDownloadBackup} className={primaryButtonClass}>
+          <Button variant="primary" onClick={handleDownloadBackup}>
             <Download className="w-3.5 h-3.5" />
             {t('settings.exportBackup')}
-          </button>
+          </Button>
         </SettingsRow>
       </SettingsCard>
 
@@ -2114,14 +2074,14 @@ export const HouseholdSettingsView: React.FC = () => {
             onSubmit={handleCreateSystemHousehold}
             className="flex flex-col sm:flex-row gap-2"
           >
-            <input
+            <Input
               type="text"
               value={newSystemHouseholdName}
               onChange={(e) => setNewSystemHouseholdName(e.target.value)}
               minLength={2}
               maxLength={60}
               placeholder={t('settings.newHouseholdPlaceholder')}
-              className={`${inputClass} flex-1`}
+              className="flex-1"
             />
             <button
               type="submit"
@@ -2162,14 +2122,10 @@ export const HouseholdSettingsView: React.FC = () => {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleGenerateSystemInvite(household)}
-                className={`${secondaryButtonClass} shrink-0`}
-              >
+              <Button variant="secondary" className="shrink-0" onClick={() => handleGenerateSystemInvite(household)}>
                 <KeyRound className="w-3.5 h-3.5" />
                 {codeActive ? t('settings.newCodeBtn') : t('settings.generateCodeBtn')}
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -2347,19 +2303,11 @@ export const HouseholdSettingsView: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Nagłówek */}
-      {showMenu && (
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <Sliders className="w-6 h-6 text-emerald-400" />
-            {t('settings.title')}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">{t('settings.subtitle')}</p>
-        </div>
-      )}
+      {/* Header */}
+      {showMenu && <PageHeader icon={<Sliders />} title={t('settings.title')} subtitle={t('settings.subtitle')} />}
 
       <div className="md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-8 md:items-start">
-        {/* Menu sekcji */}
+        {/* Section menu */}
         {showMenu && (
           <nav
             aria-label={t('settings.title')}
@@ -2410,7 +2358,7 @@ export const HouseholdSettingsView: React.FC = () => {
           </nav>
         )}
 
-        {/* Zawartość sekcji */}
+        {/* Section content */}
         {showContent && currentSection && (
           <div className="min-w-0 space-y-5">
             <div>

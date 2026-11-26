@@ -21,12 +21,12 @@ interface PantrySwipeRowProps {
 const ACTION_WIDTH = 56;
 const ACTION_COUNT = 4;
 const OPEN_OFFSET = -(ACTION_WIDTH * ACTION_COUNT);
-/** Minimalne poziome przesunięcie palca (px), zanim uznamy gest za przesuwanie wiersza. */
+/** Minimum horizontal finger travel (px) before a gesture counts as swiping the row. */
 const DRAG_START_THRESHOLD = 8;
 
 /**
- * Zwarty wiersz produktu dla telefonu: zdjęcie, nazwa, status terminu i chip z ilością.
- * Akcje (zużyj, na listę zakupów, wyrzucone, usuń) odsłaniają się po przesunięciu w lewo.
+ * Compact pantry row for phones: photo, name, expiry status and a quantity chip.
+ * The actions (consume, add to shopping list, wasted, delete) are revealed by swiping left.
  */
 export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, actions, labels }) => {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -51,7 +51,7 @@ export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, ac
 
   const close = () => applyOffset(0);
 
-  // Dotknięcie poza otwartym wierszem zamyka go (dzięki temu otwarty jest zawsze najwyżej jeden)
+  // A tap outside an open row closes it, so at most one row is open at a time
   useEffect(() => {
     if (!isOpen) return;
 
@@ -83,7 +83,7 @@ export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, ac
     const dy = e.clientY - g.startY;
 
     if (!g.moved) {
-      // Pionowe przewijanie strony ma pierwszeństwo — reagujemy tylko na wyraźnie poziomy gest
+      // Vertical page scrolling wins: only react to a clearly horizontal gesture
       if (Math.abs(dx) < DRAG_START_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.2) return;
       g.moved = true;
       setIsDragging(true);
@@ -108,7 +108,7 @@ export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, ac
   };
 
   const handleClick = () => {
-    // Po przeciągnięciu przeglądarka wysyła jeszcze `click` — nie wolno wtedy otwierać edycji
+    // The browser still fires a `click` after a drag; it must not open the editor
     if (gesture.current.moved) {
       gesture.current.moved = false;
       return;
@@ -133,7 +133,7 @@ export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, ac
       ref={rowRef}
       className="sm:hidden relative overflow-hidden border-b border-slate-800/80 select-none"
     >
-      {/* Akcje odsłaniane po przesunięciu */}
+      {/* Actions revealed by the swipe */}
       <div className="absolute inset-y-0 right-0 flex" style={{ width: -OPEN_OFFSET }}>
         <button
           type="button"
@@ -173,7 +173,7 @@ export const PantrySwipeRow: React.FC<PantrySwipeRowProps> = ({ item, onEdit, ac
         </button>
       </div>
 
-      {/* Zawartość wiersza */}
+      {/* Row content */}
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

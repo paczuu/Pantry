@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Panel } from '../components/ui/Panel';
 import { PantryItemThumb } from '../components/common/PantryItemThumb';
 import { usePantry } from '../contexts/PantryContext';
 import { useLanguage } from '../language/LanguageContext';
@@ -36,7 +37,7 @@ const MAX_NOTES = 3;
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-// Polska odmiana: 1 produkt, 2-4 produkty, 5+ produktów
+// Polish plural forms: 1 produkt, 2-4 produkty, 5+ produktów
 const plProducts = (n: number) => {
   if (n === 1) return 'produkt';
   const last = n % 10;
@@ -44,7 +45,7 @@ const plProducts = (n: number) => {
   return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? 'produkty' : 'produktów';
 };
 
-// Postęp listy zakupów (jeśli lista zawiera pozycje)
+// Shopping list progress (when the list has items)
 const getListProgress = (list: any): { done: number; total: number } | null => {
   if (!Array.isArray(list.items)) return null;
   const done = list.items.filter(
@@ -117,7 +118,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoaded, setNotesLoaded] = useState(false);
 
-  // Filtry ze spiżarni (ustawiane kliknięciem w kafelek) nie mogą zaburzać pulpitu
+  // Pantry filters (set by tapping a tile) must not affect the dashboard
   useEffect(() => {
     resetFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -269,7 +270,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Powitanie / status dnia */}
+      {/* Greeting / status of the day */}
       <div>
         <p className="text-xs font-medium text-slate-400 capitalize">{dateLabel}</p>
         <h2
@@ -284,7 +285,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </p>
       </div>
 
-      {/* Akcje: duże pola dotykowe */}
+      {/* Actions: large touch targets */}
       <div className="grid grid-cols-3 gap-2.5">
         <button
           onClick={() => onOpenScanner('ADD')}
@@ -311,8 +312,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </button>
       </div>
 
-      {/* Świeżość: pasek + klikalne liczniki */}
-      <div className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3.5">
+      {/* Freshness: bar + clickable counters */}
+      <Panel className="p-4 space-y-3.5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white">
             {en ? 'Pantry freshness' : 'Świeżość spiżarni'}
@@ -353,9 +354,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </button>
           ))}
         </div>
-      </div>
+      </Panel>
 
-      {/* Wymagają uwagi */}
+      {/* Needs attention */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-base text-white">{t('dashboard.expiringProductsTitle')}</h3>
@@ -369,20 +370,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {urgentItems.length === 0 ? (
           <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-1">
             <div className="text-emerald-400 font-bold text-sm">{t('dashboard.noExpiringProducts')}</div>
-            {/*
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              {en
-                ? `No items in your pantry expire within the next ${expiryWarningDays} ${
-                    expiryWarningDays === 1 ? 'day' : 'days'
-                  }.`
-                : `Żaden z produktów w Twojej spiżarni nie przekracza terminu ważności w najbliższych ${expiryWarningDays} ${
-                    expiryWarningDays === 1 ? 'dniu' : 'dniach'
-                  }.`}
-            </p>
-            */}
           </div>
         ) : (
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 divide-y divide-slate-800 overflow-hidden">
+          <Panel className="divide-y divide-slate-800 overflow-hidden">
             {urgentItems.slice(0, MAX_URGENT).map((item) => {
               const days = daysUntil(item);
               const isExpired = days < 0;
@@ -425,7 +415,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               );
             })}
-          </div>
+          </Panel>
         )}
 
         {attentionCount > MAX_URGENT && (
@@ -439,9 +429,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
       </div>
 
-      {/* Listy zakupów + przypięte notatki */}
+      {/* Shopping lists + pinned notes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Listy zakupów */}
+        {/* Shopping lists */}
         <div className="space-y-3">
           <SectionHeader
             icon={<ShoppingCart className="w-4 h-4 text-emerald-400" />}
@@ -461,7 +451,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <p className="text-xs font-semibold text-emerald-400">{t('dashboard.createShoppingList')}</p>
             </button>
           ) : (
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 divide-y divide-slate-800 overflow-hidden">
+            <Panel className="divide-y divide-slate-800 overflow-hidden">
               {activeLists.slice(0, MAX_LISTS).map((list: any) => {
                 const progress = getListProgress(list);
                 const percent =
@@ -496,11 +486,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </button>
                 );
               })}
-            </div>
+            </Panel>
           )}
         </div>
 
-        {/* Przypięte notatki */}
+        {/* Pinned notes */}
         <div className="space-y-3">
           <SectionHeader
             icon={<Pin className="w-4 h-4 text-amber-400" />}

@@ -18,13 +18,13 @@ export const PantryItemThumb: React.FC<PantryItemThumbProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Priorytet dla bezpośrednio przekazanych propsów `src` i `alt`, a jako fallback wartości z `item`
+  // Explicit `src` / `alt` props win; values from `item` are the fallback
   const imageUrl = src ?? item?.imageUrl;
   const imageAlt = alt ?? item?.name ?? 'Product image';
 
   const containerClasses = `relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-slate-800 bg-slate-950 flex items-center justify-center ${className}`;
 
-  // Brak zdjęcia lub błąd ładowania -> domyślna ikona
+  // No photo or load error -> default icon
   if (!imageUrl || hasError) {
     return (
       <div className={`${containerClasses} bg-slate-800 border-slate-700/60`}>
@@ -35,14 +35,14 @@ export const PantryItemThumb: React.FC<PantryItemThumbProps> = ({
 
   return (
     <div className={containerClasses}>
-      {/* Stan ładowania (Skeleton / Loader) */}
+      {/* Loading state (skeleton) */}
       {!isLoaded && (
         <div className="absolute inset-0 bg-slate-900 animate-pulse flex items-center justify-center">
           <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
         </div>
       )}
 
-      {/* Obrazek z lazy loadingiem */}
+      {/* Lazily loaded image */}
       <img
         src={imageUrl}
         alt={imageAlt}

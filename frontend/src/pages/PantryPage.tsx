@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from 'react';
+import { QrCode, Plus, Boxes, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePantry } from '../contexts/PantryContext';
 import { useLanguage } from '../language/LanguageContext';
 import { PantryCard } from '../components/pantry/PantryCard';
 import { PantryFilter, GroupBy } from '../components/pantry/PantryFilter';
+import { Button } from '../components/ui/Button';
+import { EmptyState } from '../components/ui/Panel';
+import { PageHeader } from '../components/ui/PageHeader';
 import { PantryItem } from '../types';
 import { getExpiryStatus } from '../utils/expiry';
-import { QrCode, Plus, Boxes, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 interface PantryPageProps {
   onOpenScanner: (mode?: 'ADD' | 'REMOVE' | 'SEARCH') => void;
@@ -22,17 +26,13 @@ interface Group {
   items: PantryItem[];
 }
 
-const toneText: Record<Tone, string> = {
+const TONE_TEXT: Record<Tone, string> = {
   expired: 'text-rose-400',
   warning: 'text-amber-400',
   neutral: 'text-slate-300',
 };
 
-export const PantryPage: React.FC<PantryPageProps> = ({
-  onOpenScanner,
-  onOpenAddManual,
-  onEditItem,
-}) => {
+export const PantryPage: React.FC<PantryPageProps> = ({ onOpenScanner, onOpenAddManual, onEditItem }) => {
   const { items, isLoading, stats, expiryWarningDays, resetFilters } = usePantry();
   const { t, tCategory } = useLanguage();
 
@@ -40,7 +40,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
   const [groupBy, setGroupBy] = useState<GroupBy>('category');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  // Sumy globalne ze stats (niezależne od aktywnych filtrów)
+  // Global totals come from `stats` so they do not depend on the active filters
   const totalActive = stats?.totalActive ?? items.length;
   const expiredCount = stats?.expiredCount || 0;
   const expiringCount = stats?.expiring3DaysCount || 0;
@@ -103,7 +103,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
         ))}
       </div>
     ) : (
-      // Telefon: wiersze bez odstępów (rozdzielone liniami), od `sm` — karty z odstępem
+      // Phones: rows without gaps (separated by lines); from `sm` up: cards with a gap
       <div className="flex flex-col sm:gap-2.5">
         {list.map((item) => (
           <PantryCard key={item.id} item={item} onEdit={onEditItem} viewMode="list" />
@@ -111,52 +111,39 @@ export const PantryPage: React.FC<PantryPageProps> = ({
       </div>
     );
 
-  // Spiżarnia faktycznie pusta (a nie tylko puste wyniki filtrów)
+  // The pantry is really empty (as opposed to a filter that matches nothing)
   const isPantryEmpty = totalActive === 0 && items.length === 0;
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
-      {/* Nagłówek: tytuł + podsumowanie + akcje */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <Boxes className="w-6 h-6 text-emerald-400" />
-            {t('pantry.title')}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+      <PageHeader
+        icon={<Boxes />}
+        title={t('pantry.title')}
+        subtitle={
+          <>
             {totalActive} {t('common.items')}
             {attentionCount > 0 && (
               <>
                 {' · '}
-                <span
-                  className={`font-semibold ${expiredCount > 0 ? 'text-rose-400' : 'text-amber-400'}`}
-                >
+                <span className={cn('font-semibold', expiredCount > 0 ? 'text-rose-400' : 'text-amber-400')}>
                   {attentionCount} {t('pantry.needAttention')}
                 </span>
               </>
             )}
-          </p>
-        </div>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="primary" icon={<QrCode className="w-4 h-4" />} collapseLabel onClick={() => onOpenScanner('ADD')}>
+              {t('pantry.scanProduct')}
+            </Button>
+            <Button icon={<Plus className="w-4 h-4" />} collapseLabel onClick={onOpenAddManual}>
+              {t('pantry.addProduct')}
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => onOpenScanner('ADD')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all"
-          >
-            <QrCode className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('pantry.scanProduct')}</span>
-          </button>
-          <button
-            onClick={onOpenAddManual}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('pantry.addProduct')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Wszystkie filtry, sortowanie, widok i grupowanie w jednym miejscu */}
       <PantryFilter
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -165,44 +152,33 @@ export const PantryPage: React.FC<PantryPageProps> = ({
         setGroupBy={setGroupBy}
       />
 
-      {/* Zawartość */}
       {isLoading ? (
         <div className="py-20 text-center text-slate-400 text-sm">{t('common.loading')}</div>
       ) : isPantryEmpty ? (
-        <div className="py-20 text-center bg-slate-900/40 rounded-3xl border border-slate-800 p-6 space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mx-auto">
-            <PackageOpen className="w-8 h-8 text-emerald-400" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-bold text-white">{t('pantry.emptyTitle')}</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">{t('pantry.emptyDesc')}</p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => onOpenScanner('ADD')}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg"
-            >
-              {t('pantry.scanProduct')}
-            </button>
-            <button
-              onClick={onOpenAddManual}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all"
-            >
-              {t('pantry.addProduct')}
-            </button>
-          </div>
-        </div>
+        <EmptyState
+          className="py-20 space-y-4"
+          icon={
+            <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mx-auto">
+              <PackageOpen className="w-8 h-8 text-emerald-400" />
+            </div>
+          }
+          title={t('pantry.emptyTitle')}
+          description={t('pantry.emptyDesc')}
+          actions={
+            <>
+              <Button variant="primary" onClick={() => onOpenScanner('ADD')}>
+                {t('pantry.scanProduct')}
+              </Button>
+              <Button onClick={onOpenAddManual}>{t('pantry.addProduct')}</Button>
+            </>
+          }
+        />
       ) : items.length === 0 ? (
-        <div className="py-16 text-center bg-slate-900/40 rounded-3xl border border-slate-800 p-6 space-y-3">
-          <h3 className="text-base font-bold text-white">{t('pantry.emptyFilterTitle')}</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">{t('pantry.emptyFilterDesc')}</p>
-          <button
-            onClick={resetFilters}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all"
-          >
-            {t('pantry.resetFilters')}
-          </button>
-        </div>
+        <EmptyState
+          title={t('pantry.emptyFilterTitle')}
+          description={t('pantry.emptyFilterDesc')}
+          actions={<Button onClick={resetFilters}>{t('pantry.resetFilters')}</Button>}
+        />
       ) : groupBy === 'none' ? (
         renderItems(items)
       ) : (
@@ -221,7 +197,7 @@ export const PantryPage: React.FC<PantryPageProps> = ({
                   ) : (
                     <ChevronDown className="w-4 h-4 text-slate-500" />
                   )}
-                  <h3 className={`text-sm font-extrabold tracking-tight ${toneText[group.tone]}`}>
+                  <h3 className={cn('text-sm font-extrabold tracking-tight', TONE_TEXT[group.tone])}>
                     {group.label}
                   </h3>
                   <span className="text-[11px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full">

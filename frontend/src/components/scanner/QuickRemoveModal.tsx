@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/Button';
+import { FieldLabel, Input } from '../ui/FormControls';
+import { SegmentedControl } from '../ui/SegmentedControl';
 import { Modal } from '../common/Modal';
 import { PantryItem, ProductCatalogItem } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
@@ -68,13 +71,25 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
       if (onSuccess) onSuccess();
       onClose();
     } catch (error: any) {
-      // Błąd w toascie
+      // The error is reported in a toast
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (!isOpen) return null;
+
+  // Quick amount shortcuts; 2 and 5 only appear when that many pieces are in the pantry
+  const presets = [
+    { value: 1, label: `1 ${t('common.pcs')}`, onSelect: () => handleQuickPreset(1) },
+    ...(totalInPantry >= 2 ? [{ value: 2, label: `2 ${t('common.pcs')}`, onSelect: () => handleQuickPreset(2) }] : []),
+    ...(totalInPantry >= 5 ? [{ value: 5, label: `5 ${t('common.pcs')}`, onSelect: () => handleQuickPreset(5) }] : []),
+    {
+      value: totalInPantry,
+      label: language === 'en' ? `All (${totalInPantry})` : `Wszystko (${totalInPantry})`,
+      onSelect: handleRemoveAll,
+    },
+  ];
 
   return (
     <Modal
@@ -88,7 +103,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
       maxWidth="md"
     >
       <div className="space-y-4">
-        {/* Podsumowanie produktu */}
+        {/* Product summary */}
         <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -116,7 +131,7 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
             </div>
           </div>
 
-          {/* Dostępne partie */}
+          {/* Available batches */}
           {inPantryItems.length > 0 && (
             <div className="mt-3 pt-3 border-t border-slate-700/60 space-y-2">
               <div className="text-xs font-semibold text-slate-300">
@@ -145,143 +160,95 @@ export const QuickRemoveModal: React.FC<QuickRemoveModalProps> = ({
           )}
         </div>
 
-        {/* Wybór ilości do usunięcia */}
+        {/* Quantity to remove */}
         <div className="space-y-2">
-          <label className="block text-xs font-semibold text-slate-300">
+          <FieldLabel className="mb-0">
             {language === 'en'
               ? 'How many pieces do you want to remove / deduct?'
               : 'Ile sztuk chcesz usunąć / odliczyć?'}
-          </label>
+          </FieldLabel>
 
           <div className="flex items-center justify-center gap-3">
-            <button
-              type="button"
+            <Button
+              size="icon"
+              className="w-12 h-12"
               onClick={() => setAmount((a) => Math.max(1, a - 1))}
               disabled={amount <= 1}
-              className="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center border border-slate-700 disabled:opacity-40 transition-all font-bold"
-            >
-              <Minus className="w-5 h-5" />
-            </button>
+              icon={<Minus className="w-5 h-5" />}
+              aria-label="-1"
+            />
 
             <div className="flex-1 max-w-[140px]">
-              <input
+              <Input
                 type="number"
                 min="1"
                 max={totalInPantry}
                 value={amount}
                 onChange={(e) => setAmount(Math.min(totalInPantry, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="w-full text-center py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-extrabold text-2xl focus:outline-none focus:border-emerald-500"
+                className="text-center font-extrabold text-2xl"
               />
             </div>
 
-            <button
-              type="button"
+            <Button
+              size="icon"
+              className="w-12 h-12"
               onClick={() => setAmount((a) => Math.min(totalInPantry, a + 1))}
               disabled={amount >= totalInPantry}
-              className="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white flex items-center justify-center border border-slate-700 disabled:opacity-40 transition-all font-bold"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+              icon={<Plus className="w-5 h-5" />}
+              aria-label="+1"
+            />
           </div>
 
-          {/* Szybkie przyciski ilości */}
+          {/* Quick quantity buttons */}
           <div className="flex flex-wrap gap-1.5 justify-center pt-1">
-            <button
-              type="button"
-              onClick={() => handleQuickPreset(1)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                amount === 1 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
-              }`}
-            >
-              1 {t('common.pcs')}
-            </button>
-            {totalInPantry >= 2 && (
-              <button
-                type="button"
-                onClick={() => handleQuickPreset(2)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                  amount === 2 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
-                }`}
+            {presets.map(({ value, label, onSelect }) => (
+              <Button
+                key={label}
+                size="sm"
+                variant={amount === value ? 'primary' : 'secondary'}
+                className="py-1 text-slate-300"
+                onClick={onSelect}
               >
-                2 {t('common.pcs')}
-              </button>
-            )}
-            {totalInPantry >= 5 && (
-              <button
-                type="button"
-                onClick={() => handleQuickPreset(5)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                  amount === 5 ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
-                }`}
-              >
-                5 {t('common.pcs')}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleRemoveAll}
-              className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                amount === totalInPantry ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-300'
-              }`}
-            >
-              {language === 'en' ? `All (${totalInPantry})` : `Wszystko (${totalInPantry})`}
-            </button>
+                {label}
+              </Button>
+            ))}
           </div>
         </div>
 
-        {/* Opcja: Zużyto vs Wyrzucono */}
-        <div className="grid grid-cols-2 gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => setIsWasted(false)}
-            className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${
-              !isWasted
-                ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 ring-1 ring-emerald-500/50'
-                : 'bg-slate-800/60 border-slate-700 text-slate-400'
-            }`}
-          >
-            <Utensils className="w-4 h-4" />
-            {t('scanner.consumedBtn')}
-          </button>
+        {/* Option: consumed vs wasted */}
+        <SegmentedControl
+          fill
+          className="mt-2"
+          value={isWasted ? 'wasted' : 'consumed'}
+          onChange={(option) => setIsWasted(option === 'wasted')}
+          options={[
+            { value: 'consumed', icon: <Utensils className="w-4 h-4" />, label: t('scanner.consumedBtn') },
+            {
+              value: 'wasted',
+              icon: <Trash2 className="w-4 h-4" />,
+              label: t('scanner.wastedBtn'),
+              activeClassName: 'bg-rose-500 text-white shadow-md',
+            },
+          ]}
+        />
 
-          <button
-            type="button"
-            onClick={() => setIsWasted(true)}
-            className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${
-              isWasted
-                ? 'bg-rose-500/20 border-rose-500/60 text-rose-300 ring-1 ring-rose-500/50'
-                : 'bg-slate-800/60 border-slate-700 text-slate-400'
-            }`}
-          >
-            <Trash2 className="w-4 h-4" />
-            {t('scanner.wastedBtn')}
-          </button>
-        </div>
-
-        {/* Przyciski Akcji */}
+        {/* Action buttons */}
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-medium text-sm transition-colors"
-          >
+          <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             type="submit"
+            className={isWasted ? 'bg-rose-500 hover:bg-rose-400 text-white shadow-rose-950/40' : undefined}
             onClick={handleConfirm}
             disabled={isSubmitting || amount <= 0}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-98 disabled:opacity-50 ${
-              isWasted
-                ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-950/50'
-                : 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-emerald-950/50'
-            }`}
+            icon={isWasted ? <Trash2 className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
           >
-            {isWasted ? <Trash2 className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
             {isSubmitting
               ? (language === 'en' ? 'Removing...' : 'Usuwanie...')
               : `${language === 'en' ? 'Remove' : 'Usuń'} ${amount} ${t('common.pcs')}`}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

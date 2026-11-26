@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/Button';
 import { Modal } from '../common/Modal';
 import { ShoppingList } from '../../types';
 import { usePantry } from '../../contexts/PantryContext';
@@ -60,7 +61,7 @@ export const TransferToPantryModal: React.FC<TransferToPantryModalProps> = ({
           {t('shopping.transferModalDesc').replace('{name}', list.name)}
         </p>
 
-        {/* Lista kupionych artykułów */}
+        {/* Bought items list */}
         <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 max-h-56 overflow-y-auto space-y-2">
           <div className="text-xs font-bold text-slate-400">
             {t('shopping.transferItemsTitle')} ({checkedItems.length}):
@@ -87,29 +88,24 @@ export const TransferToPantryModal: React.FC<TransferToPantryModalProps> = ({
           ))}
         </div>
 
-        {/* Przyciski Akcji */}
+        {/* Actions */}
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-medium text-sm transition-colors"
-          >
+          <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="primary"
+            icon={<CheckCircle2 className="w-4 h-4" />}
             onClick={handleTransfer}
             disabled={isSubmitting || checkedItems.length === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-950/50 transition-all disabled:opacity-50"
           >
-            <CheckCircle2 className="w-4 h-4" />
             {isSubmitting
               ? t('shopping.transferringBtn')
               : t('shopping.transferBtn').replace(
                   '{count}',
                   String(checkedItems.length)
                 )}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

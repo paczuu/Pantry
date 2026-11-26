@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { EmptyState, Panel } from '../ui/Panel';
+import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { cn } from '../../utils/cn';
+import { SearchInput, Select } from '../ui/FormControls';
 import { ActivityLog, AuditStats } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -8,7 +13,6 @@ import { Language } from '../../language/translations';
 import {
   ShieldAlert,
   Search,
-  User as UserIcon,
   Clock,
   PlusCircle,
   Edit3,
@@ -25,7 +29,8 @@ import {
 } from 'lucide-react';
 
 /**
- * Tłumaczenie opisów akcji (details) z bazy danych do wybranego języka
+ * Translates action descriptions (details) stored in the database into the selected language.
+ * The stored text is Polish, so it is returned unchanged for `pl` and pattern-matched for `en`.
  */
 export function formatAuditDetails(detailsStr: string, language: Language): string {
   if (!detailsStr) return '';
@@ -35,7 +40,7 @@ export function formatAuditDetails(detailsStr: string, language: Language): stri
 
   let text = detailsStr;
 
-  // 1. Zwiększono ilość istniejącego produktu "..." [cap] o X szt. (aktualnie w spiżarni: Y szt.).
+  // 1. Increased quantity of an existing item "..." [cap] by X pcs (currently in pantry: Y pcs).
   text = text.replace(
     /Zwiększono ilość istniejącego produktu "([^"]+)"(?:\s*\[(.*?)\])? o (\d+) szt\.(?:\s*\(aktualnie w spiżarni: (\d+) szt\.\))?/g,
     (_, name, cap, qty, total) => {
@@ -45,7 +50,7 @@ export function formatAuditDetails(detailsStr: string, language: Language): stri
     }
   );
 
-  // 2. Dodano produkt "..." [cap] w ilości X szt.
+  // 2. Added item "..." [cap] with quantity X pcs.
   text = text.replace(
     /Dodano produkt "([^"]+)"(?:\s*\[(.*?)\])? w ilości (\d+) szt\.?/g,
     (_, name, cap, qty) => {
@@ -54,7 +59,7 @@ export function formatAuditDetails(detailsStr: string, language: Language): stri
     }
   );
 
-  // 3. Zmniejszono ilość produktu "..." o X szt. (pozostało: Y szt.).
+  // 3. Decreased quantity of item "..." by X pcs (remaining: Y pcs).
   text = text.replace(
     /Zmniejszono ilość produktu "([^"]+)" o (\d+) szt\.(?:\s*\(pozostało: (\d+) szt\.\))?/g,
     (_, name, qty, remaining) => {
@@ -63,7 +68,7 @@ export function formatAuditDetails(detailsStr: string, language: Language): stri
     }
   );
 
-  // 4. Całkowicie zużyto produkt "..." w ilości X szt.
+  // 4. Item "..." fully consumed (X pcs).
   text = text.replace(
     /Całkowicie zużyto produkt "([^"]+)"(?:\s*w ilości (\d+) szt\.)?/g,
     (_, name, qty) => {
@@ -72,67 +77,67 @@ export function formatAuditDetails(detailsStr: string, language: Language): stri
     }
   );
 
-  // 5. Wyrzucono produkt "..." z powodu przeterminowania.
+  // 5. Item "..." thrown away because it expired.
   text = text.replace(
     /Wyrzucono produkt "([^"]+)" z powodu przeterminowania\.?/g,
     'Discarded item "$1" due to expiration.'
   );
 
-  // 6. Wyrzucono produkt "..." (zmarnowano).
+  // 6. Item "..." thrown away (wasted).
   text = text.replace(
     /Wyrzucono produkt "([^"]+)"(?:\s*\(zmarnowano\))?\.?/g,
     'Discarded item "$1" (wasted).'
   );
 
-  // 7. Usunięto produkt "..." ze spiżarni.
+  // 7. Item "..." removed from the pantry.
   text = text.replace(
     /Usunięto produkt "([^"]+)" ze spiżarni\.?/g,
     'Removed item "$1" from pantry.'
   );
 
-  // 8. Przeniesiono X kupionych produktów z listy "..." do spiżarni.
+  // 8. X bought items moved from list "..." to the pantry.
   text = text.replace(
     /Przeniesiono (\d+) kupionych produktów z listy "([^"]+)" do spiżarni\.?/g,
     'Transferred $1 purchased items from list "$2" to pantry.'
   );
 
-  // 9. Użytkownik utworzył konto za pomocą kodu zaproszenia i dołączył do gospodarstwa.
+  // 9. A user registered with an invite code and joined the household.
   text = text.replace(
     /Użytkownik utworzył konto za pomocą kodu zaproszenia i dołączył do gospodarstwa\.?/g,
     'User registered with invite code and joined the household.'
   );
 
-  // 10. Administrator wygenerował nowy kod zaproszenia ważny przez 5 minut.
+  // 10. An admin generated a new invite code valid for 5 minutes.
   text = text.replace(
     /Administrator wygenerował nowy kod zaproszenia ważny przez 5 minut\.?/g,
     'Administrator generated a new invite code valid for 5 minutes.'
   );
 
-  // 11. Administrator X zmienił rolę użytkownika Y (E) na: R.
+  // 11. Admin X changed the role of user Y (E) to R.
   text = text.replace(
     /Administrator (.+?) zmienił rolę użytkownika (.+?) \((.+?)\) na:\s*([A-Z]+)\.?/g,
     'Administrator $1 changed role of user $2 ($3) to: $4.'
   );
 
-  // 12. Administrator X usunął konto użytkownika Y (E) z systemu.
+  // 12. Admin X deleted the account of user Y (E).
   text = text.replace(
     /Administrator (.+?) usunął konto użytkownika (.+?) \((.+?)\) z systemu\.?/g,
     'Administrator $1 removed user account $2 ($3) from system.'
   );
 
-  // 13. Utworzono pierwsze konto instalacji jako administrator gospodarstwa i administrator systemu.
+  // 13. First account of the installation created as household admin and system admin.
   text = text.replace(
     /Utworzono pierwsze konto instalacji jako administrator gospodarstwa i administrator systemu\.?/g,
     'Created initial system installation account as household & system administrator.'
   );
 
-  // 14. X dołączył(a) do gospodarstwa domowego.
+  // 14. X joined the household.
   text = text.replace(
     /(.+?) dołączył\(a\) do gospodarstwa domowego\.?/g,
     '$1 joined the household.'
   );
 
-  // 15. Zaktualizowano dane produktu "..." / Edycja pól:
+  // 15. Item "..." updated / edited fields:
   text = text.replace(/Zaktualizowano dane produktu "([^"]+)":?/g, 'Updated item "$1" properties:');
   text = text.replace(/\bilość:\s*/g, 'quantity: ');
   text = text.replace(/\bnazwa:\s*/g, 'name: ');
@@ -199,15 +204,12 @@ export const AuditLogsView: React.FC = () => {
 
   if (!isAdmin) {
     return (
-      <div className="max-w-md mx-auto py-16 text-center space-y-3">
-        <ShieldAlert className="w-12 h-12 text-amber-400 mx-auto" />
-        <h3 className="text-lg font-bold text-white">
-          {t('audit.accessRestricted')}
-        </h3>
-        <p className="text-xs text-slate-400">
-          {t('audit.accessRestrictedDesc')}
-        </p>
-      </div>
+      <EmptyState
+        className="max-w-md mx-auto"
+        icon={<ShieldAlert className="w-12 h-12 text-amber-400 mx-auto" />}
+        title={t('audit.accessRestricted')}
+        description={t('audit.accessRestrictedDesc')}
+      />
     );
   }
 
@@ -328,7 +330,7 @@ export const AuditLogsView: React.FC = () => {
         );
       }
     } catch (e) {
-      // Zwykły tekst
+      // Plain text
     }
 
     return (
@@ -342,85 +344,75 @@ export const AuditLogsView: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Nagłówek */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              <ShieldAlert className="w-6 h-6 text-amber-400" />
-              {t('audit.title')}
-            </h2>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {t('audit.desc')}
-          </p>
-        </div>
+      {/* Header */}
+      <PageHeader
+        icon={<ShieldAlert />}
+        iconClassName="text-amber-400"
+        title={t('audit.title')}
+        subtitle={t('audit.desc')}
+        actions={
+          <Button
+            icon={<RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />}
+            collapseLabel
+            onClick={() => fetchAuditData()}
+          >
+            {t('common.refresh')}
+          </Button>
+        }
+      />
 
-        <button
-          onClick={() => fetchAuditData()}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs transition-all shrink-0"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">{t('common.refresh')}</span>
-        </button>
-      </div>
-
-      {/* Podsumowanie Aktywności */}
+      {/* Activity summary */}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
+          <Panel className="p-3.5 rounded-2xl">
             <div className="text-[11px] font-semibold text-slate-400">
               {t('audit.events30Days')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">{stats.totalEvents30Days}</div>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
+          </Panel>
+          <Panel className="p-3.5 rounded-2xl">
             <div className="text-[11px] font-semibold text-emerald-400">
               {t('audit.itemsAddedStat')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">
               {(stats.actionCounts['ADDED_PRODUCT'] || 0) + (stats.actionCounts['INCREASED_QUANTITY'] || 0)}
             </div>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
+          </Panel>
+          <Panel className="p-3.5 rounded-2xl">
             <div className="text-[11px] font-semibold text-amber-400">
               {t('audit.consumedStat')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">
               {(stats.actionCounts['DECREASED_QUANTITY'] || 0) + (stats.actionCounts['CONSUMED_PRODUCT'] || 0)}
             </div>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800">
+          </Panel>
+          <Panel className="p-3.5 rounded-2xl">
             <div className="text-[11px] font-semibold text-cyan-400">
               {t('audit.editsStat')}
             </div>
             <div className="text-xl font-extrabold text-white mt-0.5">
               {(stats.actionCounts['UPDATED_VALUES'] || 0) + (stats.actionCounts['EDYTOWANO_PRODUKT'] || 0)}
             </div>
-          </div>
+          </Panel>
         </div>
       )}
 
-      {/* Filtry */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+      {/* Filters */}
+      <Panel className="p-4 rounded-2xl space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {/* Szukaj */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder={t('audit.searchPlaceholder')}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+          {/* Search */}
+          <SearchInput
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder={t('audit.searchPlaceholder')}
+            className="py-2 text-xs rounded-xl bg-slate-800 border-slate-700"
+          />
 
-          {/* Typ akcji */}
-          <select
+          {/* Action type */}
+          <Select
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+            className="py-2 text-xs w-auto"
           >
             <option value="ALL">{t('audit.allActionTypes')}</option>
             <option value="ADDED_PRODUCT">{language === 'en' ? 'Item added' : 'Dodanie produktu'}</option>
@@ -433,13 +425,13 @@ export const AuditLogsView: React.FC = () => {
             <option value="JOINED_HOUSEHOLD">{language === 'en' ? 'Member joined' : 'Dołączenie domownika'}</option>
             <option value="ROLE_CHANGE">{language === 'en' ? 'Role change' : 'Zmiana uprawnień'}</option>
             <option value="INVITE_CODE_GENERATED">{language === 'en' ? 'Invite code generated' : 'Wygenerowanie kodu'}</option>
-          </select>
+          </Select>
 
-          {/* Użytkownicy */}
-          <select
+          {/* Users */}
+          <Select
             value={userFilter}
             onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+            className="py-2 text-xs w-auto"
           >
             <option value="ALL">{t('audit.allUsers')}</option>
             {stats && Object.entries(stats.userActivity).map(([uid, u]) => (
@@ -447,23 +439,21 @@ export const AuditLogsView: React.FC = () => {
                 {u.name} ({u.count} {t('audit.actionsCount')})
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-      </div>
+      </Panel>
 
-      {/* Lista Zdarzeń / Oś Czasu */}
+      {/* Event timeline */}
       <div className="space-y-3">
         {logs.length === 0 ? (
-          <div className="py-16 text-center text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800">
-            {t('audit.empty')}
-          </div>
+          <EmptyState title={t('audit.empty')} />
         ) : (
           logs.map((log) => (
             <div
               key={log.id}
               className="p-4 rounded-2xl bg-slate-900/70 hover:bg-slate-900 border border-slate-800/80 transition-all space-y-2.5 shadow-sm"
             >
-              {/* Nagłówek zdarzenia: Kto, Co, Kiedy */}
+              {/* Event header: who, what, when */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-200 text-xs font-bold shrink-0">
@@ -491,7 +481,7 @@ export const AuditLogsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Obiekt i Szczegóły Zmian */}
+              {/* Target and change details */}
               <div className="pl-9 space-y-1">
                 <div className="text-xs font-semibold text-emerald-400">
                   {t('audit.itemPrefix')}: <strong className="text-white font-bold">{log.entityName}</strong>
@@ -503,7 +493,7 @@ export const AuditLogsView: React.FC = () => {
         )}
       </div>
 
-      {/* Paginacja */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between py-3 border-t border-slate-800 text-xs text-slate-400">
           <div>

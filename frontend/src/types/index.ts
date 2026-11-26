@@ -43,8 +43,8 @@ export interface PantryItem {
   name: string;
   brand?: string | null;
   category: string;
-  quantity: number; // wyłącznie sztuki
-  capacity?: string | null; // np. "500g", "1L", "250ml"
+  quantity: number; // pieces only
+  capacity?: string | null; // e.g. "500g", "1L", "250ml"
   expiryDate?: string | null;
   openedDate?: string | null;
   notes?: string | null;
@@ -71,7 +71,7 @@ export interface ShoppingItem {
   id: string;
   shoppingListId: string;
   name: string;
-  quantity: number; // sztuki
+  quantity: number; // pieces
   capacity?: string | null;
   category: string;
   barcode?: string | null;

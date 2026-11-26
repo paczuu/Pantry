@@ -1,4 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ModalActions } from '../ui/ModalActions';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { EmptyState } from '../ui/Panel';
+import { Button } from '../ui/Button';
+import { PageHeader } from '../ui/PageHeader';
+import { FieldLabel, Input, SearchInput, Textarea } from '../ui/FormControls';
 import { Note, NoteColor, ChecklistItem } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -295,54 +301,40 @@ export const NotesView: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Nagłówek i Szukajka */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-emerald-400" />
-            {t('notes.title')}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {language === 'en'
-              ? 'Create checklists, reminders, recipes, and meal plans'
-              : 'Twórz listy zadań z polami wyboru, wskazówki i plany posiłków'}
-          </p>
-        </div>
-
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span className="hidden sm:inline">
+      {/* Header and search */}
+      <PageHeader
+        icon={<BookOpen />}
+        title={t('notes.title')}
+        subtitle={
+          language === 'en'
+            ? 'Create checklists, reminders, recipes, and meal plans'
+            : 'Twórz listy zadań z polami wyboru, wskazówki i plany posiłków'
+        }
+        actions={
+          <Button variant="primary" icon={<Plus className="w-4 h-4 stroke-[2.5]" />} collapseLabel onClick={handleOpenAdd}>
             {language === 'en' ? 'Add note / checklist' : 'Dodaj notatkę / listę zadań'}
-          </span>
-        </button>
-      </div>
+          </Button>
+        }
+      />
 
-      {/* Wyszukiwarka */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={language === 'en' ? 'Search notes and checklists...' : 'Szukaj w notatkach i listach...'}
-          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-        />
-      </div>
+      {/* Search */}
+      <SearchInput
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={language === 'en' ? 'Search notes and checklists...' : 'Szukaj w notatkach i listach...'}
+      />
 
-      {/* Siatka Notatek */}
+      {/* Notes grid */}
       {filteredNotes.length === 0 ? (
-        <div className="py-16 text-center text-slate-500 text-sm bg-slate-900/40 rounded-3xl border border-slate-800/60 p-6 space-y-2">
-          <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-bold text-white">{t('notes.emptyTitle')}</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            {language === 'en'
+        <EmptyState
+          icon={<BookOpen className="w-10 h-10 text-slate-600 mx-auto" />}
+          title={t('notes.emptyTitle')}
+          description={
+            language === 'en'
               ? 'Click "Add note / checklist" to save information, tasks, or meal ideas.'
-              : 'Kliknij „Dodaj notatkę / listę zadań”, aby zapisać informacje, listę zadań lub pomysły na posiłki.'}
-          </p>
-        </div>
+              : 'Kliknij „Dodaj notatkę / listę zadań”, aby zapisać informacje, listę zadań lub pomysły na posiłki.'
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredNotes.map((note) => {
@@ -405,7 +397,7 @@ export const NotesView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Treść / Lista zadań */}
+                  {/* Body / checklist */}
                   {note.isChecklist ? (
                     <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto">
                       {items.map((item) => (
@@ -445,7 +437,7 @@ export const NotesView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Dodawania/Edycji Notatki (Styl Google Keep) */}
+      {/* Add / edit note modal (Google Keep style) */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -457,76 +449,59 @@ export const NotesView: React.FC = () => {
         maxWidth="lg"
         isDirty={isDirty}
         headerActions={
-          <div className="flex items-center gap-2 mr-1">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="hidden sm:block px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              form="note-edit-form"
-              className="px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5"
-            >
-              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-              {editingNote ? t('common.save') : (language === 'en' ? 'Create' : 'Utwórz')}
-            </button>
-          </div>
+          <ModalActions
+            formId="note-edit-form"
+            submitLabel={editingNote ? t('common.save') : language === 'en' ? 'Create' : 'Utwórz'}
+            onCancel={() => setIsModalOpen(false)}
+          />
         }
       >
         <form id="note-edit-form" onSubmit={handleSaveNote} className="space-y-4">
-          {/* Przełącznik formatu: Tylko przy tworzeniu nowej notatki */}
+          {/* Format switch: only when creating a new note */}
           {!editingNote && (
-            <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setIsChecklist(false)}
-                className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
-                  !isChecklist ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                {language === 'en' ? 'Text note' : 'Notatka tekstowa'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsChecklist(true)}
-                className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
-                  isChecklist ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <CheckSquare className="w-4 h-4" />
-                {language === 'en' ? 'Checklist' : 'Lista zadań'}
-              </button>
-            </div>
+            <SegmentedControl
+              fill
+              value={isChecklist ? 'checklist' : 'text'}
+              onChange={(format) => setIsChecklist(format === 'checklist')}
+              options={[
+                {
+                  value: 'text',
+                  icon: <FileText className="w-4 h-4" />,
+                  label: language === 'en' ? 'Text note' : 'Notatka tekstowa',
+                },
+                {
+                  value: 'checklist',
+                  icon: <CheckSquare className="w-4 h-4" />,
+                  label: language === 'en' ? 'Checklist' : 'Lista zadań',
+                },
+              ]}
+            />
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <FieldLabel>
               {language === 'en' ? 'Title *' : 'Tytuł *'}
-            </label>
-            <input
+            </FieldLabel>
+            <Input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('notes.noteTitlePlaceholder')}
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-white text-base font-bold focus:outline-none focus:border-emerald-500"
+              className="px-4 rounded-2xl text-base font-bold"
               autoFocus={!editingNote}
             />
           </div>
 
-          {/* Formularz Listy zadań lub Duże pole tekstowe (Google Keep style) */}
+          {/* Checklist form or large text area */}
           {isChecklist ? (
             <div className="space-y-3">
-              <label className="block text-xs font-semibold text-slate-300">
+              <FieldLabel className="mb-0">
                 {language === 'en' ? 'Checklist items' : 'Elementy listy'}
-              </label>
+              </FieldLabel>
               
               <div className="flex gap-2">
-                <input
+                <Input
                   ref={checklistInputRef}
                   type="text"
                   value={newChecklistText}
@@ -539,18 +514,14 @@ export const NotesView: React.FC = () => {
                     }
                   }}
                   placeholder={t('notes.newChecklistItemPlaceholder')}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                  className="flex-1 text-xs sm:text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={handleAddChecklistItem}
-                  className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400 transition-colors"
-                >
+                <Button variant="primary" onClick={handleAddChecklistItem}>
                   {t('common.add')}
-                </button>
+                </Button>
               </div>
 
-              {/* Lista pozycji w modalu z podglądem wykonania i bezpośrednią edycją tekstu */}
+              {/* Checklist items with completion state and inline editing */}
               <div className="space-y-2 max-h-[45dvh] overflow-y-auto pt-1 pr-1">
                 {checklistItems.map((item) => (
                   <div
@@ -594,23 +565,23 @@ export const NotesView: React.FC = () => {
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <FieldLabel>
                 {language === 'en' ? 'Note content' : 'Treść notatki'}
-              </label>
-              <textarea
+              </FieldLabel>
+              <Textarea
                 rows={10}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={t('notes.noteContentPlaceholder')}
-                className="w-full min-h-[260px] sm:min-h-[320px] max-h-[55dvh] p-4 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 font-sans leading-relaxed resize-y overflow-y-auto shadow-inner"
+                className="min-h-[260px] sm:min-h-[320px] max-h-[55dvh] p-4 rounded-2xl font-sans leading-relaxed resize-y overflow-y-auto shadow-inner"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <FieldLabel>
               {language === 'en' ? 'Card color' : 'Kolor kafelka'}
-            </label>
+            </FieldLabel>
             <div className="flex items-center gap-3 pt-1">
               {(['default', 'emerald', 'blue', 'amber', 'rose', 'purple'] as NoteColor[]).map((c) => (
                 <button

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../ui/Button';
 import { Modal } from './Modal';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
 import { useLanguage } from '../../language/LanguageContext';
@@ -54,14 +55,15 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ isOpen, onClos
                 : 'Twoja przeglądarka obsługuje bezpośrednią 1-kliknięciową instalację aplikacji:'}
             </p>
 
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              icon={<Download className="w-4 h-4" />}
               onClick={handleInstallClick}
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-2 transition-all active:scale-98"
             >
-              <Download className="w-4 h-4" />
               {t('pwa.installNativeBtn')}
-            </button>
+            </Button>
           </div>
         ) : isIOS ? (
           <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-2.5">
