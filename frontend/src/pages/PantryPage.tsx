@@ -103,7 +103,8 @@ export const PantryPage: React.FC<PantryPageProps> = ({
         ))}
       </div>
     ) : (
-      <div className="space-y-2.5">
+      // Telefon: wiersze bez odstępów (rozdzielone liniami), od `sm` — karty z odstępem
+      <div className="flex flex-col sm:gap-2.5">
         {list.map((item) => (
           <PantryCard key={item.id} item={item} onEdit={onEditItem} viewMode="list" />
         ))}

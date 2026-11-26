@@ -107,3 +107,67 @@ export const ExpiryBadge: React.FC<ExpiryBadgeProps> = ({
     </div>
   );
 };
+
+/**
+ * Status terminu jako zwykły, kolorowy tekst (bez plakietki) — do zwartych wierszy listy.
+ * Zwraca fragmenty `span`, więc można je łączyć w jednej linii z innymi informacjami.
+ */
+export const ExpiryText: React.FC<{
+  expiryDate?: string | null;
+  openedDate?: string | null;
+}> = ({ expiryDate, openedDate }) => {
+  const { expiryWarningDays } = usePantry();
+  const { language } = useLanguage();
+  const en = language === 'en';
+
+  if (!expiryDate && !openedDate) return null;
+
+  const locale = en ? 'en-US' : 'pl-PL';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let text = '';
+  let cls = '';
+
+  if (expiryDate) {
+    const exp = new Date(expiryDate);
+    const expClean = new Date(exp.getFullYear(), exp.getMonth(), exp.getDate());
+    const days = Math.round((expClean.getTime() - today.getTime()) / 86400000);
+
+    if (days < 0) {
+      const abs = Math.abs(days);
+      text = en
+        ? `${abs} ${abs === 1 ? 'day' : 'days'} overdue`
+        : `${abs} ${abs === 1 ? 'dzień' : 'dni'} po terminie`;
+      cls = 'text-rose-400';
+    } else if (days === 0) {
+      text = en ? 'Expires today' : 'Wygasa dzisiaj';
+      cls = 'text-rose-400';
+    } else if (days === 1) {
+      text = en ? 'Expires tomorrow' : 'Wygasa jutro';
+      cls = 'text-amber-300';
+    } else if (days <= expiryWarningDays) {
+      text = en ? `Expires in ${days} days` : `Wygasa za ${days} dni`;
+      cls = 'text-amber-400';
+    } else if (days <= 7) {
+      text = en ? `In ${days} days` : `Za ${days} dni`;
+      cls = 'text-yellow-400';
+    } else {
+      text = `${en ? 'Until' : 'Do'} ${exp.toLocaleDateString(locale)}`;
+      cls = 'text-emerald-400';
+    }
+  }
+
+  return (
+    <>
+      {text && <span className={`font-medium ${cls}`}>{text}</span>}
+      {openedDate && (
+        <span className="text-cyan-300">
+          {text ? ' · ' : ''}
+          {en ? 'Opened ' : 'Otwarte '}
+          {new Date(openedDate).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}
+        </span>
+      )}
+    </>
+  );
+};

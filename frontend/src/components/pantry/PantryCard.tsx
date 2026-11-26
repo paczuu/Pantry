@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../language/LanguageContext';
 import { ExpiryBadge } from '../common/ExpiryBadge';
 import { PantryItemThumb } from '../common/PantryItemThumb';
+import { PantrySwipeRow } from './PantrySwipeRow';
 import { api } from '../../services/api';
 import { getExpiryStatus } from '../../utils/expiry';
 import {
@@ -258,49 +259,23 @@ export const PantryCard: React.FC<PantryCardProps> = ({
   if (viewMode === 'list') {
     return (
       <>
-      {/* TELEFON: nazwa na całą szerokość, pod nią terminy po lewej i stepper ilości po prawej */}
-      <div
-        onClick={() => onEdit(item)}
-        className={`sm:hidden relative flex items-start gap-3 p-3 rounded-2xl transition-all border cursor-pointer select-none ${statusClasses}`}
-      >
-        <PantryItemThumb item={item} className="!w-12 !h-12" />
-
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-start justify-between gap-1">
-            <h4
-              className="font-extrabold text-white text-sm line-clamp-2 break-words leading-snug min-w-0 pt-1"
-              title={item.name}
-            >
-              {item.name}
-            </h4>
-            <div className="-mt-1 -mr-1 shrink-0">
-              <CardMenu {...menuProps} />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-              {item.capacity && (
-                <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-bold whitespace-nowrap">
-                  {item.capacity}
-                </span>
-              )}
-              <ExpiryBadge expiryDate={item.expiryDate} openedDate={item.openedDate} />
-            </div>
-
-            <div className="shrink-0 ml-auto" onClick={(e) => e.stopPropagation()}>
-              <Stepper
-                quantity={item.quantity}
-                pcs={t('common.pcs')}
-                decTitle={t('pantry.consumeOne')}
-                disabled={isUpdating}
-                onDec={handleDecrement}
-                onInc={handleIncrement}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* TELEFON: zwarty wiersz z akcjami odsłanianymi przesunięciem w lewo */}
+      <PantrySwipeRow
+        item={item}
+        onEdit={onEdit}
+        actions={{
+          onConsume: () => handleDecrement(),
+          onShopping: () => handleAddToShoppingList(),
+          onWasted: () => handleWasted(),
+          onDelete: () => handleDelete(),
+        }}
+        labels={{
+          consume: en ? 'Consume' : 'Zużyj',
+          shopping: en ? 'To list' : 'Do listy',
+          wasted: en ? 'Wasted' : 'Wyrzuć',
+          remove: en ? 'Delete' : 'Usuń',
+        }}
+      />
 
       {/* TABLET / DESKTOP: jeden rząd — zdjęcie, nazwa, termin, ilość */}
       <div
